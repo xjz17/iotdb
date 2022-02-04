@@ -30,7 +30,7 @@ The algorithm 1: Data generator is implemented by python in direction Code, name
 + Experiment:
     + set data and code successfully
     + run python script Ratio_expr.py
-    + check result and visualise the relationship between combinations of encodings and compressors and compression ratio
+    + check result and visualize the relationship between combinations of encodings and compressors and compression ratio
 
 ### Fig 13, 14 Insert Time, Select Time over all Datasets
 + Data sources: Data/Ingestion
@@ -63,7 +63,7 @@ The algorithm 1: Data generator is implemented by python in direction Code, name
     + set data and code successfully
     + run python script Ratio_expr.py
     + check the result
-    + Compute the average of each data feature and compression ratio, then visualise them
+    + Compute the average of each data feature and compression ratio, then visualize them
 
 ## 7.2 Varying Data Features
 ### Fig 16-20: Varing Data Features
@@ -85,7 +85,7 @@ The algorithm 1: Data generator is implemented by python in direction Code, name
 + Experiment:
     + set data and code successfully
     + run python script Ratio_expr.py
-    + visualise the correlation between certain feature and compression ratio
+    + visualize the correlation between certain feature and compression ratio
 
 ## 7.3 Recommendation Performance
 + Data source: Data/Synthetic_data & Data/Real-world_data
@@ -114,3 +114,6 @@ The algorithm 1: Data generator is implemented by python in direction Code, name
     + Step III: train and test
         + set train.ipynb ready: set train dataset to the result generated in step I, test dataset to the result generated in step II
         + run train.ipynb, check the result of different classifiers
+
+## Visualization
+Codes of result visualization are in Visualization
