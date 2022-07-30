@@ -20,4 +20,4 @@ We uploaded the codes used in the evaluations. Detailed information including ho
 ## Appendix
 Based on the analyze of data features above, we propose Time Series EncodingClassi"er (TSEC) to automatically recommend a proper encodingmethod upon the profiled data features.
 
-This part is not included in the paper published on pVLDB, you can download our appendix from the home page of Shaoxu Song: https://sxsong.github.io/doc/encoding.pdf
+This part is not included in the paper published on pVLDB, you can download our appendix from this link: https://sxsong.github.io/doc/encoding.pdf
