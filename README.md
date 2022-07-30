@@ -16,3 +16,8 @@ In this repository, we open source both synthetic datasets and real-world datase
 In this section, we carried out evaluations on real-world numerical data, synthetic numerical data, real-world text data and synthetic text data. 
 
 We uploaded the codes used in the evaluations. Detailed information including how to reproduce the result is written in the readme file in each sub folder.
+
+## Appendix
+Based on the analyze of data features above, we propose Time Series EncodingClassi"er (TSEC) to automatically recommend a proper encodingmethod upon the profiled data features.
+
+This part is not included in the paper published on pVLDB, you can download our appendix from the home page of Shaoxu Song: https://sxsong.github.io/doc/encoding.pdf
