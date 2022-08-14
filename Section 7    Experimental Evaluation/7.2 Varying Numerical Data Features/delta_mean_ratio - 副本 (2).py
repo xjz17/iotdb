@@ -138,13 +138,13 @@ dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
 """ for i in range(2):
     dataset = p[i]
     DataType = dt[i] """
-dirs = ["int","long","float","double"]
-RESULT1_PATH = "result_compression_ratio.csv"  ###
+dirs = ["INT32"]
+RESULT1_PATH = "result_delta_mean_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("Datatype,Compression,Encoding,Compression_Ratio\n")
     
 for dir in dirs:
-    dataset = "/home/srt_2022/client-py/data/learn/{}".format(dir) ###
+    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Delta mean/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         path = dataset + '/' + dataFile
@@ -153,14 +153,7 @@ for dir in dirs:
         time_list = [x for x in data["Sensor"]]
         value_list = [[x] for x in data["s_0"]]
         measurements = ["s_0"]
-        if dir == "int":
-            tsdt = [TSDataType.INT32]
-        if dir == "long":
-            tsdt = [TSDataType.INT64]   
-        if dir == "float":
-            tsdt = [TSDataType.FLOAT]
-        if dir == "double":
-            tsdt = [TSDataType.DOUBLE]
+        tsdt = [TSDataType.INT32]
 
         for data_type in tsdt:              ###
             # calculate the uncompressed data size
