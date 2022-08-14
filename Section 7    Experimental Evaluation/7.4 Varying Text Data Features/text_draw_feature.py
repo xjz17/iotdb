@@ -23,7 +23,7 @@ fmri = pd.read_csv("text_feature/exponent_text_ratio_result.csv")
 f = sns.lineplot(x="Exponent",y="Compression Ratio",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[0],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# # f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -35,7 +35,7 @@ fmri = pd.read_csv("time_text_features/exponent_text_time_result.csv")
 f = sns.lineplot(x="Exponent",y="Insert Time",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[1],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# # f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -48,7 +48,7 @@ f.set_ylim(0,1)
 f = sns.lineplot(x="Exponent",y="Select Time",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[2],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# # f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -60,9 +60,9 @@ f.set_ylim(0,4)
 lines, labels = ax_arr[0].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center', bbox_to_anchor=(0.5,1.1),fontsize=30,ncol=4)
 
-fig.savefig("text_features_exponent.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("text_features_exponent.png", dpi = 400,bbox_inches='tight')
-plt.show()
+# fig.savefig("text_features_exponent.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig20.png", dpi = 400,bbox_inches='tight')
+# plt.show()
 
 # # -------------------------------Types------------------------------------------------
 
@@ -75,7 +75,7 @@ f = sns.lineplot(x="Types",y="Compression Ratio",hue="Encoding",hue_order=["HUFF
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[0],size='Encoding',sizes=[5,5,5,5])
 #sns.despine(offset=10, trim=True)
-f.get_legend().remove()
+# # f.get_legend().remove()
 # f.legend(loc = 'best',fontsize=7)
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
@@ -87,7 +87,7 @@ fmri = pd.read_csv("time_text_features/types_text_time_result.csv")
 f = sns.lineplot(x="Types",y="Insert Time",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[1],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# # f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -98,7 +98,7 @@ f.set_ylim(0,1)
 f = sns.lineplot(x="Types",y="Select Time",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[2],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# # f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -108,9 +108,9 @@ f.set_xlabel("Domain")
 f.set_ylim(0,4)
 lines, labels = ax_arr[0].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center', bbox_to_anchor=(0.5,1.1),fontsize=30,ncol=4)
-plt.show()
-fig.savefig("text_features_domain.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("text_features_domain.png", dpi = 400,bbox_inches='tight')
+# plt.show()
+# fig.savefig("text_features_domain.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig21.png", dpi = 400,bbox_inches='tight')
 
 # # -----------------------------Length------------------------------
 
@@ -123,7 +123,7 @@ f = sns.lineplot(x="Length",y="Compression Ratio",hue="Encoding",hue_order=["HUF
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[0],size='Encoding',sizes=[5,5,5,5])
 #sns.despine(offset=10, trim=True)
-f.get_legend().remove()
+# # f.get_legend().remove()
 # f.legend(loc = 'best',fontsize=7)
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
@@ -136,7 +136,7 @@ fmri = pd.read_csv("time_text_features/length_text_time_result.csv")
 f = sns.lineplot(x="Length",y="Insert Time",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[1],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# # f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -147,7 +147,7 @@ f.set_ylim(0,1)
 f = sns.lineplot(x="Length",y="Select Time",hue="Encoding",hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[2],size='Encoding',sizes=[5,5,5,5])
-f.get_legend().remove()
+# f.get_legend().remove()
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
@@ -157,9 +157,9 @@ f_title.set_fontsize(30)
 f.set_ylim(0,4)
 lines, labels = ax_arr[0].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center',bbox_to_anchor=(0.5,1.1), fontsize=30,ncol=4)
-plt.show()
-fig.savefig("text_features_length.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("text_features_length.png", dpi = 400,bbox_inches='tight')
+# plt.show()
+# fig.savefig("text_features_length.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig22.png", dpi = 400,bbox_inches='tight')
 
 
 # # ----------------------------REPEAT----------------------------------
@@ -173,7 +173,7 @@ f = sns.lineplot(x="Repeat",y="Compression Ratio",hue="Encoding",hue_order=["HUF
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[0],size='Encoding',sizes=[5,5,5,5])
 #sns.despine(offset=10, trim=True)
-f.get_legend().remove()
+# f.get_legend().remove()
 # f.legend(loc = 'best',fontsize=7)
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
@@ -186,7 +186,7 @@ f = sns.lineplot(x="Repeat",y="Insert Time",hue="Encoding",hue_order=["HUFFMAN",
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[1],size='Encoding',sizes=[5,5,5,5])
 #sns.despine(offset=10, trim=True)
-f.get_legend().remove()
+# f.get_legend().remove()
 # f.legend(loc = 'best',fontsize=7)
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
@@ -198,7 +198,7 @@ f = sns.lineplot(x="Repeat",y="Select Time",hue="Encoding",hue_order=["HUFFMAN",
                        markers=['o','o','o','o'],err_style=None,style="Encoding",dashes=False,
                        palette=my_palette,data=fmri,ax=ax_arr[2],size='Encoding',sizes=[5,5,5,5])
 #sns.despine(offset=10, trim=True)
-f.get_legend().remove()
+# f.get_legend().remove()
 # f.legend(loc = 'best',fontsize=7)
 f.tick_params(labelsize = 30) 
 f.xaxis.label.set_size(30)
@@ -209,6 +209,6 @@ f.set_title("(c) Repeat").set_fontsize(30)
 f.set_ylim(0,4)
 lines, labels = ax_arr[0].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center', bbox_to_anchor=(0.5,1.1),fontsize=30,ncol=4)
-plt.show()
-fig.savefig("text_features_repeat.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("text_features_repeat.png", dpi = 400,bbox_inches='tight')
+# plt.show()
+# fig.savefig("text_features_repeat.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig23.png", dpi = 400,bbox_inches='tight')

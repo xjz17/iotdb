@@ -98,6 +98,8 @@ for dataFile in fileList:
                 "delete storage group root.*"
             )
             session.set_storage_group("root.test")
+
+
             tablet = Tablet(device, measurements, data_types,
                             value_list, time_list)
             session.execute_non_query_statement(
@@ -115,6 +117,7 @@ for dataFile in fileList:
             session.execute_non_query_statement(
                 "flush"
             )
+            exit()
             data_path = os.listdir(STORAGE_PATH)
             compressed_size = 0
             for filename in data_path:
@@ -129,7 +132,7 @@ for dataFile in fileList:
                 logger.write("{},{},{},{}\n".format(dataFile, "NONE", encoding.name,ratio))
             else:
                 logger.write("{},{},{},{}\n".format(dataFile, compressor.name, encoding.name,ratio))
-            # print("{},{},{},{}\n".format(dataFile, compressor.name, encoding.name,ratio))
+            print("{},{},{},{}\n".format(dataFile, compressor.name, encoding.name,ratio))
             session.close()
     # if count == 50:
     #     break

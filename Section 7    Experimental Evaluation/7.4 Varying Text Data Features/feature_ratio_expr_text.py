@@ -113,7 +113,6 @@ for dir in dirs:
                     device = "root.test.t1"
                     time_list = [x for x in data["Sensor"]]
                     value_list = [[x] for x in data["s_0"]]
-
                     orginal_data_size = len(time_list)*8
                     for values in value_list:
                         for value in values:
@@ -147,6 +146,7 @@ for dir in dirs:
                     for filename in data_path:
                         if re.match(".+\\.tsfile",filename):
                             f = open(STORAGE_PATH + "/" + filename,'rb')
+                            print(STORAGE_PATH + "/" + filename)
                             compressed_size += len(f.read())
                     print(compressed_size)
                     print(orginal_data_size)

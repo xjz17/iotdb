@@ -45,25 +45,25 @@ def statistic(feature, fold):
         typ = fold*150
         if typ == 0:
             typ = 1
-        return exp,typ,leng,rep
+        return "{},{},{},{}".format(exp,typ,leng,rep)
     if feature == "Exponent":
         exp = fold + 2
         leng = 100
         rep = 0.5
         typ = 750
-        return exp,typ,leng,rep
+        return "{},{},{},{}".format(exp,typ,leng,rep)
     if feature == "Length":
         exp = 0
         leng = round(100*(fold+1))
         rep = 0.5
         typ = 2
-        return exp,typ,leng,rep
+        return "{},{},{},{}".format(exp,typ,leng,rep)
     if feature == "Repeat":
         exp = 0
         leng = 1000
         rep = (fold/10)*(0.1)+0.9
         typ = 2
-        return exp,typ,leng,rep
+        return "{},{},{},{}".format(exp,typ,leng,rep)
 
 print("Start.")
 STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
@@ -114,7 +114,7 @@ for dir in new_dirs:
                         break
                     path = str(path_fold) + '/' + path_per
                     # print(path)
-                    data = pd.read_csv(str(path), quoting = 3)
+                    data = pd.read_csv(str(path))
                     device = "root.test.t1"
                     time_list = [x for x in data["Sensor"]]
                     value_list = [x for x in data["s_0"]]
