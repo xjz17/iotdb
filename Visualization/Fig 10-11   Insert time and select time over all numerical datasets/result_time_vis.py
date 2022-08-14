@@ -5,6 +5,35 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
+fin = open("result_ingestion.csv", "r", encoding = "UTF-8")
+fout1 = open("result_int.csv", "w", encoding="UTF-8", newline="")
+fout2 = open("result_long.csv", "w", encoding="UTF-8", newline="")
+fout3 = open("result_float.csv", "w", encoding="UTF-8", newline="")
+fout4 = open("result_double.csv", "w", encoding="UTF-8", newline="")
+
+reader = csv.reader(fin)
+
+
+fout1.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
+fout2.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
+fout3.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
+fout4.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
+
+for ln in islice(reader, 1, None):
+    if ln[1] == "INT32":
+        fout1.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
+    if ln[1] == "INT64":
+        fout2.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
+    if ln[1] == "FLOAT":
+        fout3.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
+    if ln[1] == "DOUBLE":
+        fout4.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
+fout1.close()
+fout2.close()
+fout3.close()
+fout4.close()
+
+
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 

@@ -32,7 +32,7 @@ from iotdb.utils.Tablet import Tablet
 
 TEST_SIZE = 100000
 REPEAT_TIME = 10
-RESULT_PATH = "./result_{}.csv".format(time.time())
+RESULT_PATH = "./result_ingestion.csv"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -51,17 +51,20 @@ logger.write("DataSet,DataType,Compressor,Encoding,Insert Time,Select Time\n")
 p = Path("./ingestion")
 for child in p.iterdir():
     dataset = str(child)
+    print(dataset)
     fileList = os.listdir(dataset)
     for dataFile in fileList:
+        DataType: list
         path = child.joinpath(dataFile)
-        if re.match(".+double.+", dataFile):
-            DataType = [TSDataType.FLOAT, TSDataType.DOUBLE]
-        elif re.match(".+int.+", dataFile):
+        if re.match(".+INT32", dataset):
             DataType = [TSDataType.INT32]
-        elif re.match(".+long.+", dataFile):
+        if re.match(".+INT64", dataset):
             DataType = [TSDataType.INT64]
-        else:
-            raise ValueError("unsupported file name {}".format(str(path)))
+        if re.match(".+FLOAT", dataset):
+            DataType = [TSDataType.FLOAT]
+        if re.match(".+DOUBLE", dataset):
+            DataType = [TSDataType.DOUBLE]
+
         data = pd.read_csv(str(path))
         device = "root.test.t1"
         time_list = [x for x in data["Senser"]]

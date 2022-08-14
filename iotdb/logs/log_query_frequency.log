@@ -1,0 +1,5 @@
+2022-08-14 13:10:13,773 [pool-2-IoTDB-timedQuerySqlCount-1] INFO  o.a.i.d.s.b.QueryFrequencyRecorder:42 - Query count in current 1 minute 161  
+2022-08-14 13:11:13,781 [pool-2-IoTDB-timedQuerySqlCount-1] INFO  o.a.i.d.s.b.QueryFrequencyRecorder:42 - Query count in current 1 minute 11  
+2022-08-14 13:14:36,467 [pool-2-IoTDB-timedQuerySqlCount-1] INFO  o.a.i.d.s.b.QueryFrequencyRecorder:42 - Query count in current 1 minute 85  
+2022-08-14 13:46:52,486 [pool-2-IoTDB-timedQuerySqlCount-1] INFO  o.a.i.d.s.b.QueryFrequencyRecorder:42 - Query count in current 1 minute 157  
+2022-08-14 13:47:52,483 [pool-2-IoTDB-timedQuerySqlCount-1] INFO  o.a.i.d.s.b.QueryFrequencyRecorder:42 - Query count in current 1 minute 49  

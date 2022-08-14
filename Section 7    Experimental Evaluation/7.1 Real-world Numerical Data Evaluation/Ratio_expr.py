@@ -25,7 +25,6 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn import datasets
 import scipy.stats as ss
 
 from iotdb.Session import Session
@@ -116,7 +115,7 @@ def statistic(data):
 
 
 
-STORAGE_PATH = "/home/srt_2022/apache-iotdb-0.12.4-all-bin/apache-iotdb-0.12.4-all-bin/data/data/sequence/root.test/0/0"
+STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -140,75 +139,82 @@ dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
 """ for i in range(2):
     dataset = p[i]
     DataType = dt[i] """
-dirs = ["int","long","float","double"]
-RESULT1_PATH = "./data/learn/new_result.csv"  ###
+dirs = ["INT32","INT64","FLOAT","DOUBLE"]
+RESULT1_PATH = "result_compression_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
-logger.write("Datatype,Compression,Encoding,Compression_Ratio\n")
+logger.write("DataType,Compression,Encoding,Compression Ratio\n")
     
 for dir in dirs:
-    dataset = "/home/srt_2022/client-py/data/learn/{}".format(dir) ###
-    fileList = os.listdir(dataset)
-    for dataFile in fileList:
-        path = dataset + '/' + dataFile
-        data = pd.read_csv(str(path))
-        device = "root.test.t1"
-        time_list = [x for x in data["Sensor"]]
-        value_list = [[x] for x in data["s_0"]]
-        measurements = ["s_0"]
-        if dir == "int":
-            tsdt = [TSDataType.INT32]
-        if dir == "long":
-            tsdt = [TSDataType.INT64]   
-        if dir == "float":
-            tsdt = [TSDataType.FLOAT]
-        if dir == "double":
-            tsdt = [TSDataType.DOUBLE]
+    type_fol = "../../Section 6    Encoding Benchmark/Datasets/Real-world Datasets/Numerical Data/{}".format(dir) ###
+    fileList = os.listdir(type_fol)
 
-        for data_type in tsdt:              ###
-            # calculate the uncompressed data size
-            if data_type == TSDataType.INT32 or data_type == TSDataType.FLOAT:
-                point_size = 4
-            else:
-                point_size = 8
-            orginal_data_size = len(value_list)*(8+point_size)
-            # different compression combinations
-            data_types = [data_type]
-            encodings = [TSEncoding.RAKE,TSEncoding.RLE,TSEncoding.TS_2DIFF,TSEncoding.GORILLA,
-            TSEncoding.PLAIN,TSEncoding.SPRINTZ,TSEncoding.RLBE]
-            compressors = [Compressor.UNCOMPRESSED,Compressor.GZIP,Compressor.LZ4,Compressor.SNAPPY]
-            min_ratio = 1
-            Sata = data["s_0"].to_numpy()
-            for compressor in compressors:
-                for encoding in encodings:
-                    tablet = Tablet(device, measurements, data_types,
-                                    value_list, time_list)
-                    session.execute_non_query_statement(
-                        "set system to writable"
-                    )
-                    session.execute_non_query_statement(
-                        "delete timeseries root.test.t1.s_0"
-                    )
-                    session.execute_non_query_statement(
-                        "create timeseries root.test.t1.s_0 with datatype={},encoding={},compressor={}".format(
-                            data_type.name, encoding.name, compressor.name)
-                    )
-                    session.insert_tablet(tablet)
-                    session.execute_non_query_statement(
-                        "flush"
-                    )
-                    data_path = os.listdir(STORAGE_PATH)
-                    compressed_size = 0
-                    for filename in data_path:
-                        if re.match(".+\\.tsfile",filename):
-                            f = open(STORAGE_PATH + "/" + filename,'rb')
-                            compressed_size += len(f.read())
-                    ratio = float(compressed_size)/orginal_data_size
-                    res = statistic(Sata)
-                    logger.write("{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
-                                                            encoding.name,ratio))
-                    print("{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
-                                                            encoding.name,ratio))
-                    counter+=1
+    for dataset in fileList:
+        inner_fileList = os.listdir(type_fol + '/' + str(dataset))
+
+        for dataFile in inner_fileList:
+            path = type_fol + '/' + str(dataset) + '/' + dataFile
+            data = pd.read_csv(str(path))
+            device = "root.test.t1"
+            time_list = [x for x in data["Sensor"]]
+            value_list = [[x] for x in data["s_0"]]
+            measurements = ["s_0"]
+            if dir == "INT32":
+                tsdt = [TSDataType.INT32]
+            if dir == "INT64":
+                tsdt = [TSDataType.INT64]
+            if dir == "FLOAT":
+                tsdt = [TSDataType.FLOAT]
+            if dir == "DOUBLE":
+                tsdt = [TSDataType.DOUBLE]
+
+            for data_type in tsdt:              ###
+                # calculate the uncompressed data size
+                if data_type == TSDataType.INT32 or data_type == TSDataType.FLOAT:
+                    point_size = 4
+                else:
+                    point_size = 8
+                orginal_data_size = len(value_list)*(8+point_size)
+                # different compression combinations
+                data_types = [data_type]
+                encodings = [TSEncoding.RAKE,TSEncoding.RLE,TSEncoding.TS_2DIFF,TSEncoding.GORILLA,
+                TSEncoding.PLAIN,TSEncoding.SPRINTZ,TSEncoding.RLBE]
+                compressors = [Compressor.UNCOMPRESSED,Compressor.GZIP,Compressor.LZ4,Compressor.SNAPPY]
+                min_ratio = 1
+                Sata = data["s_0"].to_numpy()
+                for compressor in compressors:
+                    for encoding in encodings:
+                        tablet = Tablet(device, measurements, data_types,
+                                        value_list, time_list)
+                        session.execute_non_query_statement(
+                            "set system to writable"
+                        )
+                        session.execute_non_query_statement(
+                            "delete timeseries root.test.t1.s_0"
+                        )
+                        session.execute_non_query_statement(
+                            "create timeseries root.test.t1.s_0 with datatype={},encoding={},compressor={}".format(
+                                data_type.name, encoding.name, compressor.name)
+                        )
+                        session.insert_tablet(tablet)
+                        session.execute_non_query_statement(
+                            "flush"
+                        )
+                        data_path = os.listdir(STORAGE_PATH)
+                        compressed_size = 0
+                        for filename in data_path:
+                            if re.match(".+\\.tsfile",filename):
+                                f = open(STORAGE_PATH + "/" + filename,'rb')
+                                compressed_size += len(f.read())
+                        ratio = float(compressed_size)/orginal_data_size
+                        # res = statistic(Sata)
+                        cpn = compressor.name
+                        if cpn == "UNCOMPRESSED":
+                            cpn = "NONE"
+                        logger.write("{},{},{},{}\n".format(data_type.name, cpn,
+                                                                encoding.name,ratio))
+                        # print("{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
+                        #                                         encoding.name,ratio))
+                        counter+=1
 
 logger.close()
 session.close()
