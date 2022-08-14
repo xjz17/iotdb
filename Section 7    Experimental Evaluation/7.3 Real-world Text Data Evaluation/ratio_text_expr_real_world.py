@@ -30,12 +30,11 @@ import scipy.stats as ss
 from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import Compressor, TSDataType, TSEncoding
 from iotdb.utils.Tablet import Tablet
-from sklearn import datasets
 
 
 
 
-STORAGE_PATH = "/home/srt_2022/apache-iotdb-0.13.0-SNAPSHOT-all-bin/data/data/sequence/root.test/0/0"
+STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -55,12 +54,12 @@ password_ = 'root'
     dataset = p[i]
     DataType = dt[i] """
 # dirs = ["int","long","float","double"]
-RESULT1_PATH = "./text_encode/text_new_result_set2.csv"  ###
+RESULT1_PATH = "text_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("DataFile,Compression,Encoding,Compression Ratio\n")
     
 # for dir in dirs:
-dataset = "/home/srt_2022/client-py/data/TEXTDATA1" ###
+dataset = "../../Section 6    Encoding Benchmark/Datasets/Real-world Datasets/Text Data" ###
 fileList = os.listdir(dataset)
 count = 0
 presize = 0
@@ -89,7 +88,7 @@ for dataFile in fileList:
     for values in value_list:
         for value in values:
             orginal_data_size += len(value)
-    print(orginal_data_size)
+    # print(orginal_data_size)
 
     for compressor in compressors:
         for encoding in encodings:
@@ -123,14 +122,14 @@ for dataFile in fileList:
                     # print(filename)
                     f = open(STORAGE_PATH + "/" + filename,'rb')
                     compressed_size += len(f.read())
-            print(compressed_size)
+            # print(compressed_size)
             
             ratio = float(compressed_size)/orginal_data_size
             if compressor.name == "UNCOMPRESSED":
                 logger.write("{},{},{},{}\n".format(dataFile, "NONE", encoding.name,ratio))
             else:
                 logger.write("{},{},{},{}\n".format(dataFile, compressor.name, encoding.name,ratio))
-            print("{},{},{},{}\n".format(dataFile, compressor.name, encoding.name,ratio))
+            # print("{},{},{},{}\n".format(dataFile, compressor.name, encoding.name,ratio))
             session.close()
     # if count == 50:
     #     break

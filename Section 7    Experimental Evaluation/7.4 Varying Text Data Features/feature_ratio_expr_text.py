@@ -25,7 +25,6 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn import datasets
 import scipy.stats as ss
 
 from iotdb.Session import Session
@@ -66,8 +65,7 @@ def statistic(feature, fold):
         return "{},{},{},{}".format(exp,typ,leng,rep)
 
 
-
-STORAGE_PATH = "/home/srt_2022/apache-iotdb-0.13.0-SNAPSHOT-all-bin/apache-iotdb-0.13.0-SNAPSHOT-all-bin/data/data/sequence/root.test/0/0" ###
+STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -79,16 +77,17 @@ session.execute_non_query_statement(
     "delete storage group root.*"
 )
 session.set_storage_group("root.test")
+print("start")
 # dirs=["Length"]
 # dirs=["Class","Exponent","Repeat"]
 # dirs=["Exponent"]
 dirs=["Class","Exponent","Length","Repeat"]
-RESULT1_PATH = "/home/srt_2022/client-py/text_feature/text_ratio_result414.csv"  ###
+RESULT1_PATH = "text_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("Datatype,Compression,Encoding,Exponent,Types,Length,Repeat,Compression Ratio\n")
 REPEAT_TIME = 1 
 for dir in dirs:
-    dataset = "/home/srt_2022/client-py/text_feature/TEXT_synthetic_data414/{}".format(dir) ###
+    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Text Data/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         fold = int(dataFile)
@@ -107,7 +106,9 @@ for dir in dirs:
                 res = statistic(dir, fold)                
                 for path_per in run_path:
                     path = str(path_fold) + '/' + path_per
-                    data = pd.read_csv(str(path),encoding='utf-8',dtype = {'Sensor':np.int64,'s_0':str}) 
+                    print(path)
+                    data = pd.read_csv(str(path),encoding='utf-8',dtype = {'Sensor':np.int64,'s_0':str})
+                    print(data.keys())
                     data.dropna(inplace=True)
                     device = "root.test.t1"
                     time_list = [x for x in data["Sensor"]]
@@ -154,10 +155,10 @@ for dir in dirs:
                     if count > REPEAT_TIME:
                         ratio /= REPEAT_TIME
                         if compressor.name == "UNCOMPRESSED":
-                            logger.write("{},{},{},{},{}\n".format(path, "NONE", encoding.name, res, ratio))
+                            logger.write("{},{},{},{},{}\n".format(dir, "NONE", encoding.name, res, ratio))
                         else:
-                            logger.write("{},{},{},{},{}\n".format(path, compressor.name, encoding.name, res, ratio))
-                        print("{},{},{},{},{}\n".format(path, compressor.name, encoding.name, res, ratio))
+                            logger.write("{},{},{},{},{}\n".format(dir, compressor.name, encoding.name, res, ratio))
+                        print("{},{},{},{},{}\n".format(dir, compressor.name, encoding.name, res, ratio))
                         break
                     session.close()
 

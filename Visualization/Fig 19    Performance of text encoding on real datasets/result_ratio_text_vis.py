@@ -13,7 +13,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 sns.set_theme(style="ticks", palette="pastel")
 # drow the fig of compression ratio
 # plt.tick_params(labelsize=30)
-df = pd.read_csv("text_new_result_all.csv")
+df = pd.read_csv("text_ratio.csv")
 fig, ax_arr = plt.subplots(1,3, figsize=(24,7))
 my_palette=["#1178b4", "#33a02c","#e31a1c", "#ff7f00"]
 

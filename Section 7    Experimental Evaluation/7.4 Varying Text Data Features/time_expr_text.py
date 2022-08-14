@@ -25,7 +25,6 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn import datasets
 import scipy.stats as ss
 
 from iotdb.Session import Session
@@ -55,7 +54,7 @@ def statistic(feature, fold):
         return exp,typ,leng,rep
     if feature == "Length":
         exp = 0
-        Len = round(100*(fold+1))
+        leng = round(100*(fold+1))
         rep = 0.5
         typ = 2
         return exp,typ,leng,rep
@@ -67,7 +66,7 @@ def statistic(feature, fold):
         return exp,typ,leng,rep
 
 print("Start.")
-STORAGE_PATH = "/home/srt_2022/apache-iotdb-0.13.0-SNAPSHOT-all-bin/data/data/sequence/root.test/0/0" ###
+STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
 REPEAT_TIME = 20
 ip = "127.0.0.1"
 port_ = "6667"
@@ -84,11 +83,11 @@ session.set_storage_group("root.test")
 dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
 
 new_dirs=["Class","Exponent","Length","Repeat"]
-RESULT1_PATH = "./data/learn/new_result_time_text_4_8.csv"  ###
+RESULT1_PATH = "text_time.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("DataFile,Compression,Encoding,Exponent,Types,Length,Repeat,Increase,Select Time,Insert Time\n")
 for dir in new_dirs:
-    dataset = "/home/srt_2022/client-py/data/TEXT_synthetic_data/{}".format(dir) ###
+    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Text Data/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         fold = int(dataFile)
@@ -115,7 +114,7 @@ for dir in new_dirs:
                         break
                     path = str(path_fold) + '/' + path_per
                     # print(path)
-                    data = pd.read_csv(str(path))
+                    data = pd.read_csv(str(path), quoting = 3)
                     device = "root.test.t1"
                     time_list = [x for x in data["Sensor"]]
                     value_list = [x for x in data["s_0"]]
@@ -156,10 +155,10 @@ for dir in new_dirs:
                 select_time /= REPEAT_TIME
                 res = statistic(dir, fold)
                 if compressor.name == "UNCOMPRESSED":
-                    logger.write("{},{},{},{},{},{}\n".format(dataFile, "NONE", encoding.name, res, select_time,insert_time))
+                    logger.write("{},{},{},{},{},{}\n".format(dir, "NONE", encoding.name, res, select_time,insert_time))
                 else:
-                    logger.write("{},{},{},{},{},{}\n".format(dataFile, compressor.name, encoding.name, res, select_time,insert_time))
-                print("{},{},{},{},{},{}\n".format(dataFile, compressor.name, encoding.name, res, select_time,insert_time))
+                    logger.write("{},{},{},{},{},{}\n".format(dir, compressor.name, encoding.name, res, select_time,insert_time))
+                print("{},{},{},{},{},{}\n".format(dir, compressor.name, encoding.name, res, select_time,insert_time))
                 # counter+=1
 logger.close()
 session.close()

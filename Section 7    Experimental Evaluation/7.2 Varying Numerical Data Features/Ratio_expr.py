@@ -25,7 +25,6 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn import datasets
 import scipy.stats as ss
 
 from iotdb.Session import Session
@@ -114,9 +113,8 @@ def statistic(data):
         repeat,sort
     )
 
+STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
 
-
-STORAGE_PATH = "/home/srt_2022/apache-iotdb-0.12.4-all-bin/apache-iotdb-0.12.4-all-bin/data/data/sequence/root.test/0/0"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -141,7 +139,7 @@ dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
     dataset = p[i]
     DataType = dt[i] """
 dirs = ["int","long","float","double"]
-RESULT1_PATH = "./data/learn/new_result.csv"  ###
+RESULT1_PATH = "result_compression_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("Datatype,Compression,Encoding,Compression_Ratio\n")
     

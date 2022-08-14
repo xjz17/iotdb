@@ -1111,3 +1111,575 @@
 2022-08-14 13:47:13,694 [pool-14-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
 2022-08-14 13:47:14,286 [pool-14-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
 2022-08-14 13:47:14,919 [pool-14-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-7 is closing 
+2022-08-14 14:41:52,282 [pool-12-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:41:52,897 [pool-12-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:41:52,929 [pool-12-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:41:54,341 [pool-12-IoTDB-RPC-Client-1] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-1 is closing 
+2022-08-14 14:41:54,354 [pool-12-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:41:54,430 [pool-12-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:41:54,464 [pool-12-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:41:55,991 [pool-12-IoTDB-RPC-Client-2] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-2 is closing 
+2022-08-14 14:41:55,995 [pool-12-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:41:56,011 [pool-12-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:41:56,045 [pool-12-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:41:57,189 [pool-12-IoTDB-RPC-Client-3] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-3 is closing 
+2022-08-14 14:41:57,195 [pool-12-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:41:57,212 [pool-12-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:41:57,246 [pool-12-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:00,937 [pool-12-IoTDB-RPC-Client-4] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-4 is closing 
+2022-08-14 14:42:00,941 [pool-12-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:00,956 [pool-12-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:00,980 [pool-12-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:03,426 [pool-12-IoTDB-RPC-Client-5] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-5 is closing 
+2022-08-14 14:42:03,448 [pool-12-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:03,462 [pool-12-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:03,493 [pool-12-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:08,024 [pool-12-IoTDB-RPC-Client-6] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-6 is closing 
+2022-08-14 14:42:08,028 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:08,043 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:08,067 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:10,563 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-7 is closing 
+2022-08-14 14:42:10,571 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:10,587 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:10,620 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:11,468 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-8 is closing 
+2022-08-14 14:42:11,475 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:11,551 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:11,587 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:13,580 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-9 is closing 
+2022-08-14 14:42:13,583 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:13,597 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:13,633 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:15,130 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-10 is closing 
+2022-08-14 14:42:15,401 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:15,417 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:15,450 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:16,587 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-11 is closing 
+2022-08-14 14:42:16,591 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:16,605 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:16,638 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:18,796 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-12 is closing 
+2022-08-14 14:42:18,800 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:18,810 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:18,831 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:22,522 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-13 is closing 
+2022-08-14 14:42:22,526 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:22,539 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:22,571 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:23,524 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-14 is closing 
+2022-08-14 14:42:23,527 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:23,543 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:23,579 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:25,929 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-15 is closing 
+2022-08-14 14:42:25,933 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:25,951 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:25,987 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:28,797 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-16 is closing 
+2022-08-14 14:42:30,038 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:30,055 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:30,104 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:30,709 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-17 is closing 
+2022-08-14 14:42:30,713 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:30,728 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:30,760 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:31,917 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-18 is closing 
+2022-08-14 14:42:31,920 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:31,942 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:31,976 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:32,830 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-19 is closing 
+2022-08-14 14:42:32,834 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:32,852 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:32,891 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:34,245 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-20 is closing 
+2022-08-14 14:42:34,249 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:34,265 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:34,298 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:36,180 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-21 is closing 
+2022-08-14 14:42:36,183 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:42:36,195 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:42:36,229 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:42:39,737 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-22 is closing 
+2022-08-14 14:43:25,302 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:25,309 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:25,341 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:25,863 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-23 is closing 
+2022-08-14 14:43:25,865 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:25,875 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:25,903 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:26,591 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-24 is closing 
+2022-08-14 14:43:26,595 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:26,608 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:26,638 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:27,288 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-25 is closing 
+2022-08-14 14:43:27,291 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:27,306 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:27,340 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:27,898 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-26 is closing 
+2022-08-14 14:43:27,900 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:27,912 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:27,938 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:28,569 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-27 is closing 
+2022-08-14 14:43:28,573 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:28,587 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:28,612 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:29,525 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-28 is closing 
+2022-08-14 14:43:29,527 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:29,541 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:29,571 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:30,304 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-29 is closing 
+2022-08-14 14:43:30,308 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:30,318 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:30,340 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:30,870 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-30 is closing 
+2022-08-14 14:43:30,874 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:30,887 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:30,912 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:31,410 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-31 is closing 
+2022-08-14 14:43:31,415 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:31,426 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:31,452 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:32,025 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-32 is closing 
+2022-08-14 14:43:32,028 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:32,040 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:32,063 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:32,657 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-33 is closing 
+2022-08-14 14:43:32,661 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:32,669 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:32,689 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:33,347 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-34 is closing 
+2022-08-14 14:43:33,349 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:33,357 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:33,383 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:33,893 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-35 is closing 
+2022-08-14 14:43:33,895 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:33,907 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:33,943 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:34,622 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-36 is closing 
+2022-08-14 14:43:34,625 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:34,636 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:34,659 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:35,248 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-37 is closing 
+2022-08-14 14:43:35,251 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:35,265 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:35,292 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:35,813 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-38 is closing 
+2022-08-14 14:43:36,198 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:36,209 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:36,250 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:36,801 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-39 is closing 
+2022-08-14 14:43:36,807 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:36,817 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:36,839 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:37,394 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-40 is closing 
+2022-08-14 14:43:37,395 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:37,405 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:37,437 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:38,062 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-41 is closing 
+2022-08-14 14:43:38,065 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:38,076 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:38,107 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:38,666 [pool-12-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-42 is closing 
+2022-08-14 14:43:38,669 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:38,683 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:38,713 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:39,348 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-43 is closing 
+2022-08-14 14:43:50,763 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:50,768 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:50,793 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:51,557 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-44 is closing 
+2022-08-14 14:43:51,571 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:51,578 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:51,612 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:52,353 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-45 is closing 
+2022-08-14 14:43:52,358 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:52,367 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:52,402 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:53,041 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-46 is closing 
+2022-08-14 14:43:53,046 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:53,050 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:53,081 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:53,648 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-47 is closing 
+2022-08-14 14:43:53,652 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:53,667 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:53,699 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:54,276 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-48 is closing 
+2022-08-14 14:43:54,282 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:54,289 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:54,311 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:55,248 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-49 is closing 
+2022-08-14 14:43:55,252 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:55,261 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:55,296 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:56,005 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-50 is closing 
+2022-08-14 14:43:56,009 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:56,018 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:56,048 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:56,685 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-51 is closing 
+2022-08-14 14:43:56,689 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:56,697 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:56,721 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:57,214 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-52 is closing 
+2022-08-14 14:43:57,217 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:57,224 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:57,251 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:57,924 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-53 is closing 
+2022-08-14 14:43:57,928 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:57,936 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:57,970 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:58,620 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-54 is closing 
+2022-08-14 14:43:58,623 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:58,630 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:58,659 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:59,180 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-55 is closing 
+2022-08-14 14:43:59,184 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:59,191 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:59,224 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:43:59,717 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-56 is closing 
+2022-08-14 14:43:59,719 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:43:59,727 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:43:59,753 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:00,411 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-57 is closing 
+2022-08-14 14:44:00,419 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:00,426 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:00,454 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:01,057 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-58 is closing 
+2022-08-14 14:44:01,061 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:01,066 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:01,093 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:01,670 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-59 is closing 
+2022-08-14 14:44:02,069 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:02,077 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:02,114 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:02,640 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-60 is closing 
+2022-08-14 14:44:02,645 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:02,649 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:02,677 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:03,285 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-61 is closing 
+2022-08-14 14:44:03,289 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:03,296 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:03,319 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:03,938 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-62 is closing 
+2022-08-14 14:44:03,943 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:03,952 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:03,977 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:04,522 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-63 is closing 
+2022-08-14 14:44:04,526 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:04,533 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:04,556 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:05,148 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-64 is closing 
+2022-08-14 14:44:05,151 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:05,156 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:05,182 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:05,880 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-65 is closing 
+2022-08-14 14:44:05,883 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:44:05,893 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:44:05,922 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 14:44:06,020 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-66 is closing 
+2022-08-14 14:55:30,533 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:55:30,533 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:55:30,642 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-67 is closing 
+2022-08-14 14:55:34,889 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:55:34,891 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:55:34,993 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-68 is closing 
+2022-08-14 14:55:46,351 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:55:46,352 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:55:46,430 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-69 is closing 
+2022-08-14 14:55:50,736 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 14:55:50,737 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 14:55:50,845 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-70 is closing 
+2022-08-14 15:10:44,701 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:10:44,701 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:10:45,034 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-71 is closing 
+2022-08-14 15:10:46,770 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:10:46,770 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:10:46,980 [pool-12-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-72 is closing 
+2022-08-14 15:13:08,209 [pool-41-IoTDB-Cluster-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:13:08,230 [pool-41-IoTDB-Cluster-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:13:08,445 [pool-41-IoTDB-Cluster-RPC-Client-1] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-1 is closing 
+2022-08-14 15:13:10,199 [pool-41-IoTDB-Cluster-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:13:10,200 [pool-41-IoTDB-Cluster-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:13:10,413 [pool-41-IoTDB-Cluster-RPC-Client-2] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-2 is closing 
+2022-08-14 15:14:26,846 [pool-41-IoTDB-Cluster-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:26,846 [pool-41-IoTDB-Cluster-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:27,418 [pool-41-IoTDB-Cluster-RPC-Client-3] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-3 is closing 
+2022-08-14 15:14:27,421 [pool-41-IoTDB-Cluster-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:27,455 [pool-41-IoTDB-Cluster-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:27,931 [pool-41-IoTDB-Cluster-RPC-Client-4] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-4 is closing 
+2022-08-14 15:14:27,936 [pool-41-IoTDB-Cluster-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:27,951 [pool-41-IoTDB-Cluster-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:28,509 [pool-41-IoTDB-Cluster-RPC-Client-5] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-5 is closing 
+2022-08-14 15:14:30,528 [pool-41-IoTDB-Cluster-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:30,534 [pool-41-IoTDB-Cluster-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:31,034 [pool-41-IoTDB-Cluster-RPC-Client-6] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-6 is closing 
+2022-08-14 15:14:31,041 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:31,049 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:31,476 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-7 is closing 
+2022-08-14 15:14:31,480 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:31,485 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:31,912 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-8 is closing 
+2022-08-14 15:14:31,916 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:31,923 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:32,327 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-9 is closing 
+2022-08-14 15:14:32,331 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:32,337 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:32,737 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-10 is closing 
+2022-08-14 15:14:32,740 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:32,747 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:33,187 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-11 is closing 
+2022-08-14 15:14:33,190 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:33,195 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:33,669 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-12 is closing 
+2022-08-14 15:14:33,672 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:33,676 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:34,026 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-13 is closing 
+2022-08-14 15:14:34,029 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:34,034 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:34,784 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-14 is closing 
+2022-08-14 15:14:34,789 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:34,796 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:35,202 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-15 is closing 
+2022-08-14 15:14:35,205 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:35,211 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:35,595 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-16 is closing 
+2022-08-14 15:14:35,598 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:35,603 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:36,014 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-17 is closing 
+2022-08-14 15:14:36,017 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:36,023 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:36,382 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-18 is closing 
+2022-08-14 15:14:36,386 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:36,390 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:36,851 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-19 is closing 
+2022-08-14 15:14:36,854 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:36,858 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:37,235 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-20 is closing 
+2022-08-14 15:14:37,238 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:37,243 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:37,579 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-21 is closing 
+2022-08-14 15:14:37,802 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:37,807 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:38,178 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-22 is closing 
+2022-08-14 15:14:38,181 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:38,188 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:38,547 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-23 is closing 
+2022-08-14 15:14:38,549 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:38,554 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:38,946 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-24 is closing 
+2022-08-14 15:14:38,948 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:38,954 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:39,290 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-25 is closing 
+2022-08-14 15:14:39,294 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:39,300 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:39,652 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-26 is closing 
+2022-08-14 15:14:39,655 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:39,659 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:40,050 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-27 is closing 
+2022-08-14 15:14:40,053 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:40,057 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:40,491 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-28 is closing 
+2022-08-14 15:14:40,494 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:40,498 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:40,857 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-29 is closing 
+2022-08-14 15:14:40,860 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:40,864 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:41,186 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-30 is closing 
+2022-08-14 15:14:41,189 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:41,194 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:41,531 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-31 is closing 
+2022-08-14 15:14:41,534 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:41,538 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:41,900 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-32 is closing 
+2022-08-14 15:14:41,903 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:41,907 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:42,243 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-33 is closing 
+2022-08-14 15:14:42,245 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:42,250 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:42,565 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-34 is closing 
+2022-08-14 15:14:42,567 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:42,571 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:42,935 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-35 is closing 
+2022-08-14 15:14:42,937 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:42,941 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:43,317 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-36 is closing 
+2022-08-14 15:14:43,320 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:43,325 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:43,752 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-37 is closing 
+2022-08-14 15:14:43,954 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:43,959 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:44,423 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-38 is closing 
+2022-08-14 15:14:44,430 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:44,450 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:44,936 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-39 is closing 
+2022-08-14 15:14:44,939 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:44,944 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:45,326 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-40 is closing 
+2022-08-14 15:14:45,328 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:45,333 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:45,669 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-41 is closing 
+2022-08-14 15:14:45,672 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:45,677 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:46,029 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-42 is closing 
+2022-08-14 15:14:46,032 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:46,037 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:46,430 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-43 is closing 
+2022-08-14 15:14:46,433 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:46,437 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:46,893 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-44 is closing 
+2022-08-14 15:14:46,896 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:46,900 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:47,215 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-45 is closing 
+2022-08-14 15:14:47,218 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:47,222 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:47,525 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-46 is closing 
+2022-08-14 15:14:47,528 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:47,531 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:47,926 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-47 is closing 
+2022-08-14 15:14:47,928 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:47,934 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:48,301 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-48 is closing 
+2022-08-14 15:14:48,303 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:48,308 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:48,632 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-49 is closing 
+2022-08-14 15:14:48,634 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:48,638 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:48,964 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-50 is closing 
+2022-08-14 15:14:48,966 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:48,971 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:49,316 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-51 is closing 
+2022-08-14 15:14:49,318 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:49,322 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:49,683 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-52 is closing 
+2022-08-14 15:14:49,685 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:49,689 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:50,007 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-53 is closing 
+2022-08-14 15:14:50,639 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:50,643 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:52,110 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-54 is closing 
+2022-08-14 15:14:52,114 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:52,120 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:53,472 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-55 is closing 
+2022-08-14 15:14:53,475 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:53,480 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:54,815 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-56 is closing 
+2022-08-14 15:14:54,818 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:54,825 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:56,223 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-57 is closing 
+2022-08-14 15:14:56,224 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:56,230 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:57,480 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-58 is closing 
+2022-08-14 15:14:57,482 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:57,485 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:14:58,723 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-59 is closing 
+2022-08-14 15:14:58,725 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:14:58,728 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:15:00,024 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-60 is closing 
+2022-08-14 15:15:00,027 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:15:00,033 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:15:01,232 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-61 is closing 
+2022-08-14 15:15:01,235 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:15:01,242 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:15:02,449 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-62 is closing 
+2022-08-14 15:15:02,451 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:15:02,455 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:15:03,665 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-63 is closing 
+2022-08-14 15:15:03,668 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:15:03,673 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:15:04,849 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-64 is closing 
+2022-08-14 15:15:04,850 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:15:04,855 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:15:05,212 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-65 is closing 
+2022-08-14 15:17:24,622 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:17:26,697 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:17:26,923 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-66 is closing 
+2022-08-14 15:17:28,690 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:17:28,691 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:17:28,870 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-67 is closing 
+2022-08-14 15:17:35,189 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:17:35,189 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:17:35,401 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-68 is closing 
+2022-08-14 15:19:47,245 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:19:47,246 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:19:47,497 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-69 is closing 
+2022-08-14 15:19:47,499 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:19:47,502 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:19:48,177 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-70 is closing 
+2022-08-14 15:19:48,179 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:19:48,187 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:19:48,873 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-71 is closing 
+2022-08-14 15:19:48,875 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:19:48,884 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:19:49,618 [pool-41-IoTDB-Cluster-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-72 is closing 
+2022-08-14 15:19:49,621 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:19:49,629 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:19:50,416 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-73 is closing 
+2022-08-14 15:19:52,235 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:19:52,246 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:19:53,143 [pool-41-IoTDB-Cluster-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-74 is closing 
+2022-08-14 15:24:26,685 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:24:26,699 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:24:26,984 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-1 is closing 
+2022-08-14 15:24:28,701 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:24:28,701 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:24:28,972 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:24:29,119 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-2 is closing 
+2022-08-14 15:27:41,293 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:27:41,293 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:27:41,569 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-3 is closing 
+2022-08-14 15:27:43,371 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:27:43,372 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:27:43,659 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:27:43,740 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-4 is closing 
+2022-08-14 15:29:03,433 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-5 is closing 
+2022-08-14 15:29:03,434 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:29:03,434 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:29:03,656 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-6 is closing 
+2022-08-14 15:31:16,233 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:31:16,250 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:33:10,821 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-1 is closing 
+2022-08-14 15:33:22,696 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:33:22,696 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:33:23,126 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-2 is closing 
+2022-08-14 15:33:24,996 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:33:24,997 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:33:25,314 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:33:25,407 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-3 is closing 
+2022-08-14 15:33:33,011 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:33:33,012 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:33:33,418 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-4 is closing 
+2022-08-14 15:33:35,266 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:33:35,266 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:33:35,524 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:33:35,609 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-5 is closing 
+2022-08-14 15:34:06,219 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:34:06,236 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:34:06,652 [pool-14-IoTDB-RPC-Client-1] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-1 is closing 
+2022-08-14 15:34:08,387 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:34:08,388 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:34:08,664 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:34:08,748 [pool-14-IoTDB-RPC-Client-2] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-2 is closing 
+2022-08-14 15:35:16,922 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:35:16,923 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:35:17,320 [pool-14-IoTDB-RPC-Client-3] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-3 is closing 
+2022-08-14 15:35:19,052 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:35:19,052 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:35:19,204 [pool-14-IoTDB-RPC-Client-4] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-4 is closing 
+2022-08-14 15:43:14,160 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:43:14,160 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:43:14,634 [pool-14-IoTDB-RPC-Client-5] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-5 is closing 
+2022-08-14 15:43:16,687 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:43:16,689 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:43:17,020 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:43:17,117 [pool-14-IoTDB-RPC-Client-6] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-6 is closing 
+2022-08-14 15:44:31,792 [pool-14-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:44:31,793 [pool-14-IoTDB-RPC-Client-7] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:44:32,187 [pool-14-IoTDB-RPC-Client-7] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-7 is closing 
+2022-08-14 15:44:34,000 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:44:34,002 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:44:34,279 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1864 - delete timeseries [root.test.t1.s_0] 
+2022-08-14 15:44:34,358 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-8 is closing 
+2022-08-14 15:45:02,738 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:45:02,738 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:45:03,146 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-9 is closing 
+2022-08-14 15:46:59,953 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1955 - delete storage group [root.*] 
+2022-08-14 15:46:59,954 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.q.e.PlanExecutor:1943 - set storage group to [root.test] 
+2022-08-14 15:47:00,195 [pool-14-IoTDB-RPC-Client-8] INFO  o.a.i.d.s.b.ServiceProvider:214 - Session-10 is closing 

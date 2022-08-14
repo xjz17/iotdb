@@ -712,3 +712,15 @@ org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test.t1
 2022-08-14 13:46:29,797 [pool-6-IoTDB-Compaction-4] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:238 - [CrossSpaceCompaction] Delete TsFile :D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\unsequence\root.test\0\0\1660455988942-75-0-0.tsfile. 
 2022-08-14 13:46:29,799 [pool-6-IoTDB-Compaction-4] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:238 - [CrossSpaceCompaction] Delete TsFile :D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\unsequence\root.test\0\0\1660455989250-76-0-0.tsfile. 
 2022-08-14 13:46:29,811 [pool-6-IoTDB-Compaction-4] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:167 - root.test-0 [Compaction] CrossSpaceCompactionTask Costs 0 s 
+2022-08-14 14:40:57,775 [main] INFO  o.a.i.d.e.c.CompactionTaskManager:118 - Compaction task manager started. 
+2022-08-14 14:41:12,548 [main] INFO  o.a.i.d.e.c.CompactionTaskManager:118 - Compaction task manager started. 
+2022-08-14 15:12:51,205 [main] INFO  o.a.i.d.e.c.CompactionTaskManager:118 - Compaction task manager started. 
+2022-08-14 15:20:12,509 [pool-246-IoTDB-Compaction_Schedule-root.test-0-1] INFO  o.a.i.d.e.c.c.r.RewriteCrossSpaceCompactionSelector:110 - select files for cross compaction, sequence files: [D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\sequence\root.test\0\0\1660461592504-1-0-0.tsfile], unsequence files [D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\unsequence\root.test\0\0\1660461592623-2-0-0.tsfile] 
+2022-08-14 15:20:12,509 [pool-246-IoTDB-Compaction_Schedule-root.test-0-1] INFO  o.a.i.d.e.c.c.r.RewriteCrossSpaceCompactionSelector:132 - root.test-0 [Compaction] submit a task with 1 sequence file and 1 unseq files 
+2022-08-14 15:20:12,511 [pool-10-IoTDB-Compaction-1] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:124 - root.test-0 [Compaction] CrossSpaceCompactionTask start. Sequence files : [D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\sequence\root.test\0\0\1660461592504-1-0-0.tsfile], unsequence files : [D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\unsequence\root.test\0\0\1660461592623-2-0-0.tsfile] 
+2022-08-14 15:20:12,601 [pool-10-IoTDB-Compaction-1] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:238 - [CrossSpaceCompaction] Delete TsFile :D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\sequence\root.test\0\0\1660461592504-1-0-0.tsfile. 
+2022-08-14 15:20:12,602 [pool-10-IoTDB-Compaction-1] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:238 - [CrossSpaceCompaction] Delete TsFile :D:\本科\Git\iotdb_xjz17\iotdb\iotdb\data\data\unsequence\root.test\0\0\1660461592623-2-0-0.tsfile. 
+2022-08-14 15:20:12,604 [pool-10-IoTDB-Compaction-1] INFO  o.a.i.d.e.c.c.r.t.RewriteCrossSpaceCompactionTask:167 - root.test-0 [Compaction] CrossSpaceCompactionTask Costs 0 s 
+2022-08-14 15:24:23,222 [main] INFO  o.a.i.d.e.c.CompactionTaskManager:118 - Compaction task manager started. 
+2022-08-14 15:31:12,138 [main] INFO  o.a.i.d.e.c.CompactionTaskManager:118 - Compaction task manager started. 
+2022-08-14 15:34:00,277 [main] INFO  o.a.i.d.e.c.CompactionTaskManager:118 - Compaction task manager started. 
