@@ -139,12 +139,12 @@ dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
     dataset = p[i]
     DataType = dt[i] """
 dirs = ["INT32"]
-RESULT1_PATH = "result_mean_ratio.csv"  ###
+RESULT1_PATH = "result_delta_var_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("DataFile,Datatype,Data Mean,Data Variance,Data Spread,Delta Mean,Delta Variance,Delta Spread,Repeat,Increase,Compression,Encoding,Compression Ratio,Select Time,Insert Time\n")
 REPEAT_TIME = 10
 for dir in dirs:
-    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Value mean/{}".format(dir) ###
+    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Delta variance/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         path = dataset + '/' + dataFile
@@ -173,8 +173,8 @@ for dir in dirs:
                 for encoding in encodings:
                     tablet = Tablet(device, measurements, data_types,
                                     value_list, time_list)
-                    select_time = 0
                     insert_time = 0
+                    select_time = 0
                     for _ in range(REPEAT_TIME):
                         session.execute_non_query_statement(
                             "set system to writable"
@@ -191,9 +191,6 @@ for dir in dirs:
                         time_end = time.time()
                         insert_time += time_end - time_start
 
-
-
-
                         time_start = time.time()
                         session_data_set = session.execute_query_statement(
                             "select s_0 from root.test.t1")
@@ -206,15 +203,15 @@ for dir in dirs:
                     data_path = os.listdir(STORAGE_PATH)
                     compressed_size = 0
                     for filename in data_path:
-                        if re.match(".+\\.tsfile",filename):
-                            f = open(STORAGE_PATH + "/" + filename,'rb')
+                        if re.match(".+\\.tsfile", filename):
+                            f = open(STORAGE_PATH + "/" + filename, 'rb')
                             compressed_size += len(f.read())
-                    ratio = float(compressed_size)/orginal_data_size
+                    ratio = float(compressed_size) / orginal_data_size
                     res = statistic(Sata)
                     logger.write("{},{},{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
-                                                            encoding.name,ratio,select_time,insert_time))
+                                                                    encoding.name, ratio, select_time, insert_time))
                     print("{},{},{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
-                                                            encoding.name,ratio,select_time,insert_time))
+                                                             encoding.name, ratio, select_time, insert_time))
                     counter+=1
 
 logger.close()

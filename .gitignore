@@ -4,3 +4,4 @@ Section 6    Encoding Benchmark/Datasets
 *.tsfile
 *.resource
 *.csv
+*.png

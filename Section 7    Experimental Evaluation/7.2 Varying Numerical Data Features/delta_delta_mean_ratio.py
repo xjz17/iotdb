@@ -139,12 +139,12 @@ dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
     dataset = p[i]
     DataType = dt[i] """
 dirs = ["INT32"]
-RESULT1_PATH = "result_mean_ratio.csv"  ###
+RESULT1_PATH = "result_delta_mean_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("DataFile,Datatype,Data Mean,Data Variance,Data Spread,Delta Mean,Delta Variance,Delta Spread,Repeat,Increase,Compression,Encoding,Compression Ratio,Select Time,Insert Time\n")
-REPEAT_TIME = 10
+REPEAT_TIME = 20
 for dir in dirs:
-    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Value mean/{}".format(dir) ###
+    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Delta mean/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         path = dataset + '/' + dataFile
@@ -173,8 +173,10 @@ for dir in dirs:
                 for encoding in encodings:
                     tablet = Tablet(device, measurements, data_types,
                                     value_list, time_list)
-                    select_time = 0
+                    print(len(value_list))
+                    print(len(time_list))
                     insert_time = 0
+                    select_time = 0
                     for _ in range(REPEAT_TIME):
                         session.execute_non_query_statement(
                             "set system to writable"

@@ -139,12 +139,12 @@ dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
     dataset = p[i]
     DataType = dt[i] """
 dirs = ["INT32"]
-RESULT1_PATH = "result_delta_variance_ratio.csv"  ###
+RESULT1_PATH = "result_repeat_ratio.csv"  ###
 logger = open(RESULT1_PATH, "w")
-logger.write("Datatype,Compression,Encoding,Compression_Ratio\n")
-    
+logger.write("DataFile,Datatype,Data Mean,Data Variance,Data Spread,Delta Mean,Delta Variance,Delta Spread,Repeat,Increase,Compression,Encoding,Compression Ratio,Select Time,Insert Time\n")
+REPEAT_TIME = 0
 for dir in dirs:
-    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Delta variance/{}".format(dir) ###
+    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Numerical Data/Repeat/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         path = dataset + '/' + dataFile
@@ -173,20 +173,36 @@ for dir in dirs:
                 for encoding in encodings:
                     tablet = Tablet(device, measurements, data_types,
                                     value_list, time_list)
-                    session.execute_non_query_statement(
-                        "set system to writable"
-                    )
-                    session.execute_non_query_statement(
-                        "delete timeseries root.test.t1.s_0"
-                    )
-                    session.execute_non_query_statement(
-                        "create timeseries root.test.t1.s_0 with datatype={},encoding={},compressor={}".format(
-                            data_type.name, encoding.name, compressor.name)
-                    )
-                    session.insert_tablet(tablet)
-                    session.execute_non_query_statement(
-                        "flush"
-                    )
+                    select_time = 0
+                    insert_time = 0
+                    for _ in range(REPEAT_TIME):
+                        session.execute_non_query_statement(
+                            "set system to writable"
+                        )
+                        session.execute_non_query_statement(
+                            "delete timeseries root.test.t1.s_0"
+                        )
+                        session.execute_non_query_statement(
+                            "create timeseries root.test.t1.s_0 with datatype={},encoding={},compressor={}".format(
+                                data_type.name, encoding.name, compressor.name)
+                        )
+                        time_start = time.time()
+                        session.insert_tablet(tablet)
+                        time_end = time.time()
+                        insert_time += time_end - time_start
+
+
+
+
+                        time_start = time.time()
+                        session_data_set = session.execute_query_statement(
+                            "select s_0 from root.test.t1")
+                        time_end = time.time()
+                        session_data_set.close_operation_handle()
+                        select_time += time_end - time_start
+                    insert_time /= REPEAT_TIME
+                    select_time /= REPEAT_TIME
+                    time.sleep(1)
                     data_path = os.listdir(STORAGE_PATH)
                     compressed_size = 0
                     for filename in data_path:
@@ -195,10 +211,10 @@ for dir in dirs:
                             compressed_size += len(f.read())
                     ratio = float(compressed_size)/orginal_data_size
                     res = statistic(Sata)
-                    logger.write("{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
-                                                            encoding.name,ratio))
-                    print("{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
-                                                            encoding.name,ratio))
+                    logger.write("{},{},{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
+                                                            encoding.name,ratio,select_time,insert_time))
+                    print("{},{},{},{},{},{},{},{}\n".format(dataFile, data_type.name, res, compressor.name,
+                                                            encoding.name,ratio,select_time,insert_time))
                     counter+=1
 
 logger.close()
