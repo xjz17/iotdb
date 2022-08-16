@@ -5,33 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-fin = open("result_ingestion.csv", "r", encoding = "UTF-8")
-fout1 = open("result_int.csv", "w", encoding="UTF-8", newline="")
-fout2 = open("result_long.csv", "w", encoding="UTF-8", newline="")
-fout3 = open("result_float.csv", "w", encoding="UTF-8", newline="")
-fout4 = open("result_double.csv", "w", encoding="UTF-8", newline="")
-
-reader = csv.reader(fin)
-
-
-fout1.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
-fout2.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
-fout3.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
-fout4.write("DataSet,Compressor,Encoding,Insert Time,Select Time\n")
-
-for ln in islice(reader, 1, None):
-    if ln[1] == "INT32":
-        fout1.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
-    if ln[1] == "INT64":
-        fout2.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
-    if ln[1] == "FLOAT":
-        fout3.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
-    if ln[1] == "DOUBLE":
-        fout4.write("{},{},{},{},{}\n".format(ln[0], ln[2], ln[3], ln[4], ln[5]))
-fout1.close()
-fout2.close()
-fout3.close()
-fout4.close()
 
 
 plt.rcParams['pdf.fonttype'] = 42
@@ -105,9 +78,9 @@ f.yaxis.label.set_size(30)
 lines, labels = ax_arr[0][1].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center', fontsize=30,ncol=4)
 
-plt.show()
-fig.savefig("insert_time.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("insert_time.png", dpi = 400,bbox_inches='tight')
+# plt.show()
+fig.savefig("fig10.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig10.png", dpi = 400,bbox_inches='tight')
 
 
 # 画查询时间的图
@@ -176,6 +149,6 @@ f.yaxis.label.set_size(30)
 lines, labels = ax_arr[0][1].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center', fontsize=30,ncol=4)
 
-plt.show()
-fig.savefig("select_time.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("select_time.png", dpi = 400,bbox_inches='tight')
+# plt.show()
+fig.savefig("fig11.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig11.png", dpi = 400,bbox_inches='tight')

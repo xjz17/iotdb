@@ -139,8 +139,8 @@ lines, labels = ax.get_legend_handles_labels()
 # labels = labels[order]
 fig.legend(lines, labels, loc = 'upper center', fontsize=30,ncol=4)
 
-fig.savefig("fig13.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("fig13.png", dpi = 400,bbox_inches='tight')
+fig.savefig("radar.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("radar.png", dpi = 400,bbox_inches='tight')
 # radar of trade-off between time cost and compression ratio
 
 

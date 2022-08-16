@@ -72,5 +72,5 @@ f.yaxis.label.set_size(15)
 lines, labels = ax_arr.get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center', bbox_to_anchor=(0.5,1.1),fontsize=15,ncol=4)
 
-fig.savefig("vary_dataset_features.eps",format='eps',dpi = 400,bbox_inches='tight')
-fig.savefig("vary_dataset_features.png", dpi = 400,bbox_inches='tight')
+fig.savefig("fig12.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig12.png", dpi = 400,bbox_inches='tight')

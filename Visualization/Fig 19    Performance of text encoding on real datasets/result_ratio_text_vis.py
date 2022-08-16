@@ -13,7 +13,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 sns.set_theme(style="ticks", palette="pastel")
 # drow the fig of compression ratio
 # plt.tick_params(labelsize=30)
-df = pd.read_csv("text_ratio.csv")
+df = pd.read_csv("text_new_result_all.csv")
 fig, ax_arr = plt.subplots(1,3, figsize=(24,7))
 my_palette=["#1178b4", "#33a02c","#e31a1c", "#ff7f00"]
 
@@ -68,6 +68,6 @@ lines, labels = ax_arr[0].get_legend_handles_labels()
 fig.legend(lines, labels, loc = 'upper center',bbox_to_anchor=(0.5,1.1),fontsize=30,ncol=4)
 
 
-plt.show()
+# plt.show()
 fig.savefig("text_compression.eps",format='eps',dpi = 400,bbox_inches='tight')
 fig.savefig("text_compression.png", dpi = 400,bbox_inches='tight')
