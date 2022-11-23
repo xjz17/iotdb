@@ -5,3 +5,5 @@ Section 6    Encoding Benchmark/Datasets
 *.resource
 *.csv
 *.png
+client-cpp/src/main/CMakeLists.txt
+client-cpp/src/test/CMakeLists.txt
