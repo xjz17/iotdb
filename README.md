@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -7,6 +8,10 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
+=======
+# Guideline: Experimental Reproduction
+In our paper Time Series Data Encoding for Efficient Storage A Comparative Analysis in Apache IoTDB, we introduced two data generators, several comparison experiments and TSEC, timeseries encoding classifier. 
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
         http://www.apache.org/licenses/LICENSE-2.0
 
@@ -20,6 +25,7 @@
 -->
 [English](./README.md) | [中文](./README_ZH.md)
 
+<<<<<<< HEAD
 # IoTDB
 [![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
 [![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
@@ -37,12 +43,21 @@
 [![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 # Overview
+=======
+## Section 6: Encoding Benchmark
+In this section, we introduced the datasets we use including synthetic numerical data, real-world numerical data, synthetic text data and real-world numerical data. We also introduced the evaluation metrix: several data features and how to calculate them. 
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
 IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
+<<<<<<< HEAD
 # Main Features
 
 Main features of IoTDB are as follows:
+=======
+## Section 7: Experimental Evaluation
+In this section, we carried out evaluations on real-world numerical data, synthetic numerical data, real-world text data and synthetic text data. 
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
 1. Flexible deployment strategy. IoTDB provides users a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
 2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
@@ -52,9 +67,14 @@ Main features of IoTDB are as follows:
 6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Seamless integration with state-of-the-practice Open Source Ecosystem. IoTDB supports analysis ecosystems such as, Hadoop, Spark, and visualization tool, such as, Grafana.
 
+<<<<<<< HEAD
 For the latest information about IoTDB, please visit [IoTDB official website](https://iotdb.apache.org/). If you encounter any problems or identify any bugs while using IoTDB, please report an issue in [jira](https://issues.apache.org/jira/projects/IOTDB/issues).
 
 <!-- TOC -->
+=======
+## Appendix
+Based on the analyze of data features above, we propose Time Series EncodingClassi"er (TSEC) to automatically recommend a proper encodingmethod upon the profiled data features.
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
 ## Outline
 
@@ -77,6 +97,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
   - [Only build cli](#only-build-cli)
   - [Usage of CSV Import and Export Tool](#usage-of-csv-import-and-export-tool)
 
+<<<<<<< HEAD
 <!-- /TOC -->
 
 # Quick Start
@@ -84,9 +105,48 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
 
 ## Prerequisites
+=======
+## File Structure
++ Section 6    Encoding Benchmark: datasets, data generators and feature calculators
+  + Data Generator: numerical and text data generator
+    + numerical_data_generator.py: numerical data generator
+    + text_data_generator.py: text data generator
+  + DataSets: all datasets of this paper excluding ingestion datasets
+    + Real-world Datasets: real-world datasets of both numerical and text data
+    + Synthetic Dataset: synthetic datasets of both numerical and text data
+  + Feature Calculator: two feature calculator for numerical and text datasets
+    + numerical_data_feature_calculator.py: feature calculator for numerical data
+    + text_data_feature_calculator.py: feature calculator for text data
++ Section 7    Experimental Evaluation: codes, data, and intruction file of each subsection
+  + 7.1 Real-world Numerical Data Evaluation
+  + 7.2 Varying Numerical Data Features 
+  + 7.3 Real-world Text Data Evaluation 
+  + 7.4 Varying Text Data Features 
++ Visualization: result files and visualization files (download the directory and run the python script according to instruction file directly, as result files are organized by us). Each folder is for each figure.
+  + Fig 10-11 Insert time and select time over all numerical datasets
+  + Fig 12 Compression ratio and features on each datasets 
+  + Fig 13 Trade-off between time and compression ratio 
+  + Fig 14-18 Varying data features 
+  + Fig 19 Performance of text encoding on real datasets 
+  + Fig 20-23 Varying text features 
+  + Fig 9 Compression ratio over all numerical datasets 
++ Appendix: test code and visualization code of appendix
+  + Correlation: codes used to calculate the pearson correlation between each feature and predicted result
+  + TSEC: machine learning models used in TSEC and python scripts used to train them
+  + Compare: the comparison code of TSEC, CodecDB and C-store
+  + Extra Cost: the code used to text the time cost of feature extracting
++ script_draw: draw all the figures in the paper
++ script_from_experiment: reproduce the experiments and draw the figures
+
+## Environment Requirement
++ IoTDB: download from branch https://github.com/apache/iotdb/tree/research/encoding-exp
++ python: 3.8+
++ modules needed: seaborn 0.11.1+ (used in visualization), scikit-learn 0.24.1+ (used in TSEC), joblib 1.0.1+ (used in TSEC), numpy, pandas
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
 To use IoTDB, you need to have:
 
+<<<<<<< HEAD
 1. Java >= 1.8 (1.8, 11 to 17 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid "too many open files" error.
@@ -98,15 +158,32 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
+=======
+- Data can be downloaded from https://cloud.tsinghua.edu.cn/d/7bd715b11b4b4acb8b0d/
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
 ## Installation
 
+<<<<<<< HEAD
 IoTDB provides three installation methods, you can refer to the following suggestions, choose the one fits you best:
+=======
+- Before experiment:
+  - Clone this repository
+  - Set IoTDB (two methods)
+    - Download from (recommended) https://github.com/apache/iotdb/tree/research/encoding-exp , then copy IoTDB to the root directory of this repository
+    - Compile from https://github.com/apache/iotdb/tree/research/encoding-exp, then find the folder distribution/target/apache-iotdb-0.13.0-SNAPSHOT-all-bin, copy to the root directory of this repository and rename as "iotdb"
+  - Set IoTDB's config
+    - In iotdb/conf/iotdb-engine.properties, change line 201 to 
+      ```py
+      wal_buffer_size=200000000
+      ```
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
 * Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/tree/master/docker/src/main
 
+<<<<<<< HEAD
 
 Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
 
@@ -419,3 +496,33 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 * https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!
+=======
+- run iotdb-server
+
+  ```bash
+  cd iotdb/sbin/
+  ./start-server.sh
+  ```
+
+- produce the result of insert time and select time of real-world datasets
+
+  ```bash
+  <!-- return to root -->
+  cd ../../
+
+  cd script
+  ./fig10-11.sh
+  ```
+
+- find fig 10-11
+  ```bash
+  <!-- return to root -->
+  cd ../
+  
+  cd Section 7    Experimental Evaluation/7.1 Real-world Numerical Data Evaluation
+  <!-- fig10.png and fig11.png are the 2 figures generated by experiment -->
+  ```
+
+
+
+>>>>>>> parent of 3e07f3fac1 (Update README.md)
