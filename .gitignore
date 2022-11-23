@@ -44,6 +44,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 ### CSV ###
 *.csv
+<<<<<<< HEAD
 ### Maven ###
 grafana/target/
 !grafana/.mvn/wrapper/maven-wrapper.jar
@@ -113,3 +114,6 @@ node3/
 antlr/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
 antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+=======
+*.png
+>>>>>>> parent of 287d267761 (Update .gitignore)
