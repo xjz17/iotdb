@@ -225,7 +225,7 @@ public class ReorderingEncodeDeltaTest {
   int d0 = 0;
   ArrayList<ArrayList<Integer>> ts_block_raw = (ArrayList<ArrayList<Integer>>) ts_block.clone();
   // split timestamp into intervals and deviations
-    System.out.println(ts_block);
+//    System.out.println(ts_block);
   //address other timestamps and values
 
   for(int j=block_size-1;j>0;j--) {
@@ -302,7 +302,7 @@ public class ReorderingEncodeDeltaTest {
     result.add(0);
     result.add(0);
     ts_block = (ArrayList<ArrayList<Integer>>) ts_block_raw.clone();
-    System.out.println(ts_block);
+//    System.out.println(ts_block);
   }
   sum_count ++;
 }
@@ -495,8 +495,8 @@ public class ReorderingEncodeDeltaTest {
     int count_raw = 0;
     int count_reorder = 0;
 //    System.out.println(block_num);
-    for(int i=0;i<1;i++){
-//    for(int i=0;i<block_num;i++){
+//    for(int i=0;i<1;i++){
+    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -825,13 +825,13 @@ public class ReorderingEncodeDeltaTest {
             "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=1;file_i<2;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=1;file_i<2;file_i++){
       String inputPath = input_path_list.get(file_i);
-//      String Output =output_path_list.get(file_i);
+      String Output =output_path_list.get(file_i);
 
 
-          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
+//          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
       // speed
       int repeatTime = 1; // set repeat time
