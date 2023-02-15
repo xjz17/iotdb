@@ -6,7 +6,7 @@
 + Code configuration: 
     + STORAGE_PATH on line 119:
         ```
-        STORAGE_PATH = <IoTDB_PATH>/apache-iotdb-0.12.4-all-bin/apache-iotdb-0.12.4-all-bin/data/data/sequence/root.test/0/0
+        STORAGE_PATH = <IoTDB_PATH>/apache-iotdb-1.0.0-all-bin/apache-iotdb-1.0.0-all-bin/data/data/sequence/root.test/0/0
         ```
     + set file operation to fit dataset storage
     + set RESULT1_PATH to the directory where the result is expected to save in

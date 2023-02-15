@@ -15,7 +15,7 @@ sns.set_theme(style="ticks", palette="pastel")
 # plt.tick_params(labelsize=30)
 df = pd.read_csv("text_ratio.csv")
 fig, ax_arr = plt.subplots(1,3, figsize=(24,7))
-my_palette=["#1178b4", "#33a02c","#e31a1c", "#ff7f00"]
+my_palette=["#1178b4", "#33a02c","#e31a1c", "#ff7f00","#6a3d9a","#fb9a99", "#814a19"]
 
 # fig.subplots_adjust(bottom=0.1)
 fig.subplots_adjust(hspace=0.2)
@@ -24,7 +24,7 @@ fig.subplots_adjust(wspace=0.25)
 f = sns.boxplot(x="Compression", y="Compression Ratio",
             hue="Encoding", palette=my_palette,
             data=df,
-            hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
+            hue_order=["HUFFMAN","MTF","BW","DICTIONARY","RLE","AC","PLAIN"],
             order=["NONE","SNAPPY","LZ4","GZIP"],
             ax = ax_arr[0])
 # f.set(ylim=(0,2.0))
@@ -40,7 +40,7 @@ df = pd.read_csv("text_time.csv")
 f = sns.boxplot(x="Compression", y="Insert Time",
             hue="Encoding", palette=my_palette,
             data=df,
-            hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
+            hue_order=["HUFFMAN","MTF","BW","DICTIONARY","RLE","PLAIN","AC"],
             order=["NONE","SNAPPY","LZ4","GZIP"],
             ax = ax_arr[1])
 
@@ -54,7 +54,7 @@ f.yaxis.label.set_size(30)
 f = sns.boxplot(x="Compression", y="Select Time",
             hue="Encoding", palette=my_palette,
             data=df,
-            hue_order=["HUFFMAN","DICTIONARY","RLE","PLAIN"],
+            hue_order=["HUFFMAN","MTF","BW","DICTIONARY","RLE","PLAIN","AC"],
             order=["NONE","SNAPPY","LZ4","GZIP"],
             ax = ax_arr[2])
  
@@ -65,9 +65,9 @@ f.xaxis.label.set_size(30)
 f.yaxis.label.set_size(30)
 
 lines, labels = ax_arr[0].get_legend_handles_labels()
-fig.legend(lines, labels, loc = 'upper center',bbox_to_anchor=(0.5,1.1),fontsize=30,ncol=4)
+fig.legend(lines, labels, loc = 'upper center',bbox_to_anchor=(0.5,1.2),fontsize=30,ncol=4)
 
 
 # plt.show()
-# fig.savefig("fig19.eps",format='eps',dpi = 400,bbox_inches='tight')
+fig.savefig("fig19.eps",format='eps',dpi = 400,bbox_inches='tight')
 fig.savefig("fig19.png", dpi = 400,bbox_inches='tight')

@@ -65,7 +65,9 @@ def statistic(feature, fold):
         return "{},{},{},{}".format(exp,typ,leng,rep)
 
 
-STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
+
+
+STORAGE_PATH = "/home/srt_2022/apache_iotdb_bin/apache-iotdb-1.0.0-all-bin/data/data/sequence/root.test/0/0"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -82,12 +84,12 @@ print("start")
 # dirs=["Class","Exponent","Repeat"]
 # dirs=["Exponent"]
 dirs=["Class","Exponent","Length","Repeat"]
-RESULT1_PATH = "text_ratio.csv"  ###
+RESULT1_PATH = "text_ratio_2.csv"  ###
 logger = open(RESULT1_PATH, "w")
 logger.write("Datatype,Compression,Encoding,Exponent,Types,Length,Repeat,Compression Ratio\n")
 REPEAT_TIME = 1 
 for dir in dirs:
-    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Text Data/{}".format(dir) ###
+    dataset = "Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Text Data/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         fold = int(dataFile)
@@ -96,7 +98,7 @@ for dir in dirs:
         
         data_types = [TSDataType.TEXT]
         # encodings = [TSEncoding.DICTIONARY]
-        encodings = [TSEncoding.RLE,TSEncoding.PLAIN,TSEncoding.HUFFMAN,TSEncoding.DICTIONARY]
+        encodings = [TSEncoding.RLE,TSEncoding.PLAIN,TSEncoding.HUFFMAN,TSEncoding.DICTIONARY,TSEncoding.MTF,TSEncoding.BW,TSEncoding.AC]
         compressors = [Compressor.UNCOMPRESSED]
         for compressor in compressors:
             for encoding in encodings:
@@ -107,7 +109,7 @@ for dir in dirs:
                 for path_per in run_path:
                     path = str(path_fold) + '/' + path_per
                     print(path)
-                    data = pd.read_csv(str(path),encoding='utf-8',dtype = {'Sensor':np.int64,'s_0':str})
+                    data = pd.read_csv(str(path),encoding='utf-8',dtype = {'Sensor':np.int64,'s_0':str},error_bad_lines=False, engine="python")
                     print(data.keys())
                     data.dropna(inplace=True)
                     device = "root.test.t1"

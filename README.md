@@ -17,10 +17,11 @@ In this section, we carried out evaluations on real-world numerical data, synthe
 
 We uploaded the codes used in the evaluations. Detailed information including how to reproduce the result is written in the readme file in each sub folder.
 
-## Appendix
-Based on the analyze of data features above, we propose Time Series EncodingClassi"er (TSEC) to automatically recommend a proper encodingmethod upon the profiled data features.
+## Section 8: Automatic Recommendation
 
-This part is not included in the paper published on pVLDB, you can download our appendix from this link: https://sxsong.github.io/doc/encoding.pdf
+Based on the analyze of data features above, we propose Time Series EncodingClassifier (TSEC) to automatically recommend a proper encodingmethod upon the profiled data features.
+
+<!-- This part is not included in the paper published on pVLDB, you can download our Section 8    Automatic Recommendation from this link: https://sxsong.github.io/doc/encoding.pdf -->
 
 ---
 
@@ -40,6 +41,11 @@ This part is not included in the paper published on pVLDB, you can download our 
   + 7.2 Varying Numerical Data Features 
   + 7.3 Real-world Text Data Evaluation 
   + 7.4 Varying Text Data Features 
++ Section 8    Automatic Recommendation: test code and visualization code of each subsection
+  + 8.3 Training: machine learning models used in TSEC and python scripts used to train them
+    + Correlation: codes used to calculate the pearson correlation between each feature and predicted result
+  + 8.4 Comparison: the comparison code of TSEC, CodecDB and C-store
+  + 8.6 Extra Cost of Recommendation: the code used to text the time cost of feature extracting
 + Visualization: result files and visualization files (download the directory and run the python script according to instruction file directly, as result files are organized by us). Each folder is for each figure.
   + Fig 10-11 Insert time and select time over all numerical datasets
   + Fig 12 Compression ratio and features on each datasets 
@@ -48,11 +54,6 @@ This part is not included in the paper published on pVLDB, you can download our 
   + Fig 19 Performance of text encoding on real datasets 
   + Fig 20-23 Varying text features 
   + Fig 9 Compression ratio over all numerical datasets 
-+ Appendix: test code and visualization code of appendix
-  + Correlation: codes used to calculate the pearson correlation between each feature and predicted result
-  + TSEC: machine learning models used in TSEC and python scripts used to train them
-  + Compare: the comparison code of TSEC, CodecDB and C-store
-  + Extra Cost: the code used to text the time cost of feature extracting
 + script_draw: draw all the figures in the paper
 + script_from_experiment: reproduce the experiments and draw the figures
 

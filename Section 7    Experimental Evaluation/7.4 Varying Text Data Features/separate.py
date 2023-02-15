@@ -7,7 +7,7 @@ if not os.path.exists("time_text_features"):
     os.mkdir("time_text_features")
 
 
-reader = csv.reader(open("text_ratio.csv", "r", encoding="UTF-8"))
+reader = csv.reader(open("text_ratio_2.csv", "r", encoding="UTF-8"))
 fout1 = open("text_feature/exponent_text_ratio_result.csv", "w", encoding="UTF-8", newline="")
 fout2 = open("text_feature/length_text_ratio_result.csv", "w", encoding="UTF-8", newline="")
 fout3 = open("text_feature/repeat_text_ratio_result.csv", "w", encoding="UTF-8", newline="")
@@ -40,7 +40,7 @@ fout4.close()
 
 
 
-reader = csv.reader(open("text_time.csv", "r", encoding="UTF-8"))
+reader = csv.reader(open("text_time_2.csv", "r", encoding="UTF-8"))
 fout1 = open("time_text_features/exponent_text_time_result.csv", "w", encoding="UTF-8", newline="")
 fout2 = open("time_text_features/length_text_time_result.csv", "w", encoding="UTF-8", newline="")
 fout3 = open("time_text_features/repeat_text_time_result.csv", "w", encoding="UTF-8", newline="")

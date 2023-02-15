@@ -34,7 +34,8 @@ from iotdb.utils.Tablet import Tablet
 
 
 
-STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
+
+STORAGE_PATH = "/home/srt_2022/apache_iotdb_bin/apache-iotdb-1.0.0-all-bin/data/data/sequence/root.test/0/0"
 
 ip = "127.0.0.1"
 port_ = "6667"
@@ -59,7 +60,7 @@ logger = open(RESULT1_PATH, "w")
 logger.write("DataFile,Compression,Encoding,Compression Ratio\n")
     
 # for dir in dirs:
-dataset = "../../Section 6    Encoding Benchmark/Datasets/Real-world Datasets/Text Data" ###
+dataset = "Section 6    Encoding Benchmark/Datasets/Real-world Datasets/Text Data" ###
 fileList = os.listdir(dataset)
 count = 0
 presize = 0
@@ -80,7 +81,7 @@ for dataFile in fileList:
     measurements = ["s_0"]
     # different compression combinations
     data_types = [TSDataType.TEXT]
-    encodings = [TSEncoding.PLAIN,TSEncoding.HUFFMAN,TSEncoding.RLE,TSEncoding.DICTIONARY]
+    encodings = [TSEncoding.PLAIN,TSEncoding.HUFFMAN,TSEncoding.RLE,TSEncoding.DICTIONARY,TSEncoding.MTF,TSEncoding.BW,TSEncoding.AC]
     compressors = [Compressor.UNCOMPRESSED,Compressor.GZIP,Compressor.LZ4,Compressor.SNAPPY]
     # min_ratio = 1
     Sata = data["s_0"].to_numpy()
@@ -105,9 +106,9 @@ for dataFile in fileList:
             session.execute_non_query_statement(
                 "set system to writable"
             )
-            session.execute_non_query_statement(
-                "delete timeseries root.test.t1.s_0"
-            )
+            # session.execute_non_query_statement(
+            #     "delete timeseries root.test.t1.s_0"
+            # )
             session.execute_non_query_statement(
                 "create timeseries root.test.t1.s_0 with datatype=TEXT,encoding={},compressor={}".format(
                     encoding.name, compressor.name)
@@ -117,7 +118,7 @@ for dataFile in fileList:
             session.execute_non_query_statement(
                 "flush"
             )
-            exit()
+            # exit()
             data_path = os.listdir(STORAGE_PATH)
             compressed_size = 0
             for filename in data_path:

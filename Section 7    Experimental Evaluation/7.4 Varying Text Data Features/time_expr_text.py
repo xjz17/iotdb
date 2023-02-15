@@ -65,29 +65,24 @@ def statistic(feature, fold):
         typ = 2
         return "{},{},{},{}".format(exp,typ,leng,rep)
 
+
 print("Start.")
-STORAGE_PATH = "../../iotdb/data/data/sequence/root.test/0/0"
+STORAGE_PATH = "/home/srt_2022/apache_iotdb_bin/apache-iotdb-1.0.0-all-bin/data/data/sequence/root.test/0/0"
 REPEAT_TIME = 20
 ip = "127.0.0.1"
 port_ = "6667"
 username_ = 'root'
 password_ = 'root'
-session = Session(ip, port_, username_, password_)
-session.open(False)
-session.execute_non_query_statement(
-    "delete storage group root.*"
-)
-session.set_storage_group("root.test")
 
 
 dt = [[TSDataType.FLOAT,TSDataType.DOUBLE],[TSDataType.INT32,TSDataType.INT64]]
 
 new_dirs=["Class","Exponent","Length","Repeat"]
-RESULT1_PATH = "text_time.csv"  ###
+RESULT1_PATH = "text_time_2.csv"  ###
 logger = open(RESULT1_PATH, "w")
-logger.write("DataFile,Compression,Encoding,Exponent,Types,Length,Repeat,Increase,Select Time,Insert Time\n")
+logger.write("DataFile,Compression,Encoding,Exponent,Types,Length,Repeat,Select Time,Insert Time\n")
 for dir in new_dirs:
-    dataset = "../../Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Text Data/{}".format(dir) ###
+    dataset = "Section 6    Encoding Benchmark/Datasets/Synthetic Datasets/Text Data/{}".format(dir) ###
     fileList = os.listdir(dataset)
     for dataFile in fileList:
         fold = int(dataFile)
@@ -101,8 +96,8 @@ for dir in new_dirs:
             # else:
             #     point_size = 8
         data_types = [TSDataType.TEXT]
-        encodings = [TSEncoding.DICTIONARY,TSEncoding.HUFFMAN,TSEncoding.RLE,TSEncoding.PLAIN]
-        compressors = [Compressor.UNCOMPRESSED,Compressor.GZIP,Compressor.LZ4,Compressor.SNAPPY]
+        encodings = [TSEncoding.DICTIONARY,TSEncoding.HUFFMAN,TSEncoding.RLE,TSEncoding.PLAIN,TSEncoding.MTF,TSEncoding.BW,TSEncoding.AC]
+        compressors = [Compressor.UNCOMPRESSED]
         for compressor in compressors:
             for encoding in encodings:        
                 insert_time = 0
@@ -114,16 +109,25 @@ for dir in new_dirs:
                         break
                     path = str(path_fold) + '/' + path_per
                     # print(path)
-                    data = pd.read_csv(str(path))
+                    data = pd.read_csv(str(path),encoding='utf-8',dtype = {'Sensor':np.int64,'s_0':str},error_bad_lines=False, engine="python")
+                    data.dropna(inplace=True)
                     device = "root.test.t1"
                     time_list = [x for x in data["Sensor"]]
-                    value_list = [x for x in data["s_0"]]
+                    value_list = [[x] for x in data["s_0"]]
+                    # print(len(value_list))
                     # orginal_data_size = len(value_list)*(8+point_size)
                     measurements = ["s_0"]
                     # min_ratio = 1
                     Sata = data["s_0"].to_numpy()
 
                     tablet = Tablet(device, measurements, data_types,value_list, time_list)
+                    
+                    session = Session(ip, port_, username_, password_)
+                    session.open(False)
+                    session.execute_non_query_statement(
+                        "delete storage group root.*"
+                    )
+                    session.set_storage_group("root.test")
 
                     session.execute_non_query_statement(
                         "set system to writable"
@@ -135,13 +139,12 @@ for dir in new_dirs:
                         "create timeseries root.test.t1.s_0 with datatype=TEXT,encoding={},compressor={}".format(
                             encoding.name, compressor.name)
                     )
+
+                    time_start = time.time()
                     session.insert_tablet(tablet)
                     session.execute_non_query_statement(
                         "flush"
                     )                        
-
-                    time_start = time.time()
-                    session.insert_tablet(tablet)
                     time_end = time.time()
                     insert_time += time_end-time_start
 
