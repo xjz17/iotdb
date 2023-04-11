@@ -1,4 +1,4 @@
-package org.apache.iotdb.tsfile.encoding;
+package org.apache.iotdb.tsfile.encoding.decoder;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
@@ -9,11 +9,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Objects;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerTradeoff {
   public static int getBitWith(int num){
     return 32 - Integer.numberOfLeadingZeros(num);
   }
@@ -987,7 +986,7 @@ public class Reger {
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int q){
     block_size ++;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
@@ -1010,10 +1009,10 @@ public class Reger {
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
-      result2.add(1);
-//      splitTimeStamp3(ts_block,result2);
+//      result2.add(1);
+      splitTimeStamp3(ts_block,result2);
 
-      quickSort(ts_block,0,0,block_size-1);
+//      quickSort(ts_block,0,0,block_size-1);
 
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -1047,7 +1046,7 @@ public class Reger {
       j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
 
       int adjust_count = 0;
-      while(j_star!=-1 && i_star !=-1){
+      while(j_star!=-1 && i_star !=-1 && adjust_count < q){
         if(adjust_count < block_size/2 && adjust_count <= 33){
           adjust_count ++;
         }else {
@@ -1080,10 +1079,12 @@ public class Reger {
           ts_block = old_ts_block;
           break;
         }
+        adjust_count ++;
 
         i_star =getIStar(ts_block,block_size,raw_length,theta);
         if(i_star == j_star) break;
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+
       }
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
@@ -1321,7 +1322,8 @@ public class Reger {
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
 //    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
-    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+//    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\tradeoff";
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
     dataset_block_size.add(512);
@@ -1371,8 +1373,8 @@ public class Reger {
 //    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-    for(int file_i=0;file_i<1;file_i++){
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=0;file_i<6;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1390,6 +1392,7 @@ public class Reger {
               "Encoding Algorithm",
               "Encoding Time",
               "Decoding Time",
+              "q",
               "Points",
               "Compressed Size",
               "Compression Ratio"
@@ -1414,27 +1417,30 @@ public class Reger {
           data.add(tmp);
         }
         inputStream.close();
+        for(int q=0;q<10;q++){
         long encodeTime = 0;
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
         int repeatTime2 = 100;
-        for (int i = 0; i < repeatTime; i++) {
-          long s = System.nanoTime();
-          ArrayList<Byte> buffer = new ArrayList<>();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
-            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i));
-          long e = System.nanoTime();
-          encodeTime += ((e - s)/repeatTime2);
-          compressed_size += buffer.size();
-          double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
-          ratio += ratioTmp;
-          s = System.nanoTime();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
-            data_decoded = ReorderingRegressionDecoder(buffer);
-          e = System.nanoTime();
-          decodeTime += ((e-s)/repeatTime2);
-        }
+          for (int i = 0; i < repeatTime; i++) {
+            long s = System.nanoTime();
+            ArrayList<Byte> buffer = new ArrayList<>();
+            for(int repeat=0;repeat<repeatTime2;repeat++)
+              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),q);
+            long e = System.nanoTime();
+            encodeTime += ((e - s)/repeatTime2);
+            compressed_size += buffer.size();
+            double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
+            ratio += ratioTmp;
+            s = System.nanoTime();
+//            for(int repeat=0;repeat<repeatTime2;repeat++)
+//              data_decoded = ReorderingRegressionDecoder(buffer);
+            e = System.nanoTime();
+            decodeTime += ((e-s)/repeatTime2);
+          }
+
+
 
         ratio /= repeatTime;
         compressed_size /= repeatTime;
@@ -1446,12 +1452,14 @@ public class Reger {
                 "REGER",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
+                String.valueOf(q),
                 String.valueOf(data.size()),
                 String.valueOf(compressed_size),
                 String.valueOf(ratio)
         };
         System.out.println(ratio);
         writer.writeRecord(record);
+        }
       }
       writer.close();
     }
