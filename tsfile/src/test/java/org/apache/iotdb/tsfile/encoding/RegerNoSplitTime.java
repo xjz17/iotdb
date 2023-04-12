@@ -9,11 +9,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Objects;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerNoSplitTime {
   public static int getBitWith(int num){
     return 32 - Integer.numberOfLeadingZeros(num);
   }
@@ -1010,8 +1009,8 @@ public class Reger {
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
-//      result2.add(1);
-      splitTimeStamp3(ts_block,result2);
+      result2.add(1);
+//      splitTimeStamp3(ts_block,result2);
 
       quickSort(ts_block,0,0,block_size-1);
 
@@ -1418,7 +1417,7 @@ public class Reger {
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
-        int repeatTime2 = 1;
+        int repeatTime2 = 100;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
           ArrayList<Byte> buffer = new ArrayList<>();
