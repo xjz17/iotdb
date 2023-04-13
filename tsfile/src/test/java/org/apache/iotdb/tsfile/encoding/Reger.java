@@ -238,13 +238,13 @@ public class Reger {
     long sum_squ_XY_v = 0;
 
     for(int i=1;i<block_size;i++){
-      sum_X_r += ts_block.get(i-1).get(0);
+      sum_X_r += (ts_block.get(i-1).get(0));
       sum_X_v += ts_block.get(i-1).get(1);
-      sum_Y_r += ts_block.get(i).get(0);
+      sum_Y_r += (ts_block.get(i).get(0));
       sum_Y_v += ts_block.get(i).get(1);
-      sum_squ_X_r += ((long) ts_block.get(i - 1).get(0) *ts_block.get(i-1).get(0));
+      sum_squ_X_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i-1).get(0)));
       sum_squ_X_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i-1).get(1));
-      sum_squ_XY_r += ((long) ts_block.get(i - 1).get(0) *ts_block.get(i).get(0));
+      sum_squ_XY_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i).get(0)));
       sum_squ_XY_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i).get(1));
     }
 
@@ -1001,7 +1001,8 @@ public class Reger {
 
     int count_raw = 0;
     int count_reorder = 0;
-    for(int i=0;i<block_num;i++){
+    for(int i=0;i<1;i++){
+//    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -1014,21 +1015,25 @@ public class Reger {
       splitTimeStamp3(ts_block,result2);
 
       quickSort(ts_block,0,0,block_size-1);
-
+//      System.out.println(ts_block);
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
       ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
+//      System.out.println(ts_block_delta);
 
       // value-order
       quickSort(ts_block,1,0,block_size-1);
+
+//      System.out.println(ts_block);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
       ArrayList<Float> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
+//      System.out.println(ts_block_delta_reorder);
 
       int i_star;
       int j_star;
@@ -1088,6 +1093,7 @@ public class Reger {
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
+//      System.out.println(cur_encoded_result.size());
     }
 
     int remaining_length = length_all - block_num*block_size;
@@ -1153,8 +1159,10 @@ public class Reger {
         ts_block_delta.add(tmp);
       }
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
+
       encoded_result.addAll(cur_encoded_result);
     }
+
     return encoded_result;
   }
 
@@ -1178,7 +1186,7 @@ public class Reger {
     else{
       zero_number = 9 - remain_length % 8;
     }
-
+    block_num = 1;
     for(int k = 0; k < block_num; k++){
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
@@ -1228,6 +1236,8 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
+//      System.out.println(time_list);
+//      System.out.println(value_list);
       for (int i=0;i<block_size-1;i++){
         int ti = (time_list.get(i) - time0) * td_common  + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
@@ -1235,7 +1245,9 @@ public class Reger {
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
+
       quickSort(ts_block, 0, 0, block_size-1);
+//      System.out.println(ts_block);
       data.addAll(ts_block);
     }
 
@@ -1430,8 +1442,15 @@ public class Reger {
           double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
+          for(int repeat=0;repeat<1;repeat++)
             data_decoded = ReorderingRegressionDecoder(buffer);
+//          for(int p=0;p< data.size();p++){
+//            if(!Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1)) ){
+////              System.out.println("sbbbb");
+////              System.out.println(data.get(p).get(1));
+////              System.out.println(data_decoded.get(p).get(1));
+//            }
+//          }//||  Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1))
           e = System.nanoTime();
           decodeTime += ((e-s)/repeatTime2);
         }

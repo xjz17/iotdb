@@ -1154,8 +1154,8 @@ public class RegerAblationUpdateFormulasC {
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
-      result2.add(1);
-//      splitTimeStamp3(ts_block,result2);
+//      result2.add(1);
+      splitTimeStamp3(ts_block,result2);
 
       quickSort(ts_block,0,0,block_size-1);
 

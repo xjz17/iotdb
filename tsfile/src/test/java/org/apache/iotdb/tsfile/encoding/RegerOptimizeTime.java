@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 import static java.lang.Math.abs;
@@ -175,17 +176,9 @@ public class RegerOptimizeTime {
       quickSort(ts_block,index, r + 1, high);
     }
   }
-  public static void countingSort(ArrayList<ArrayList<Integer>> ts_block, int index) {
+  public static void countingSort(ArrayList<ArrayList<Integer>> ts_block, int max,int min, int index) {
     int n = ts_block.size();
-    int max = ts_block.get(0).get(index), min = ts_block.get(0).get(index);
 
-    for (int i = 1; i < n; i++) {
-      if (ts_block.get(i).get(index) > max) {
-        max = ts_block.get(i).get(index);
-      } else if (ts_block.get(i).get(index) < min) {
-        min = ts_block.get(i).get(index);
-      }
-    }
     int[] count = new int[max - min + 1];
     for (int i = 0; i < n; i++) {
       count[ts_block.get(i).get(index) - min]++;
@@ -197,8 +190,9 @@ public class RegerOptimizeTime {
     int[][] sortedArr = new int[n][2];
 
     for (int i = n - 1; i >= 0; i--) {
-      sortedArr[--count[ts_block.get(i).get(index) - min]][0] = ts_block.get(i).get(0);
-      sortedArr[count[ts_block.get(i).get(index) - min]][1] = ts_block.get(i).get(1);
+      int index_row = --count[ts_block.get(i).get(index) - min];
+      sortedArr[index_row][0] = ts_block.get(i).get(0);
+      sortedArr[index_row][1] = ts_block.get(i).get(1);
     }
 
     for (int i = 0; i < n; i++) {
@@ -269,14 +263,15 @@ public class RegerOptimizeTime {
     long sum_squ_X_v = 0;
     long sum_squ_XY_v = 0;
 
+
     for(int i=1;i<block_size;i++){
-      sum_X_r += ts_block.get(i-1).get(0);
+      sum_X_r += (ts_block.get(i-1).get(0));
       sum_X_v += ts_block.get(i-1).get(1);
-      sum_Y_r += ts_block.get(i).get(0);
+      sum_Y_r += (ts_block.get(i).get(0));
       sum_Y_v += ts_block.get(i).get(1);
-      sum_squ_X_r += ((long) ts_block.get(i - 1).get(0) *ts_block.get(i-1).get(0));
+      sum_squ_X_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i-1).get(0)));
       sum_squ_X_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i-1).get(1));
-      sum_squ_XY_r += ((long) ts_block.get(i - 1).get(0) *ts_block.get(i).get(0));
+      sum_squ_XY_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i).get(0)));
       sum_squ_XY_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i).get(1));
     }
 
@@ -294,7 +289,6 @@ public class RegerOptimizeTime {
       theta0_v = (float) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
       theta1_v = (float) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
     }
-
     ArrayList<Integer> tmp0 = new ArrayList<>();
     tmp0.add(ts_block.get(0).get(0));
     tmp0.add(ts_block.get(0).get(1));
@@ -1033,8 +1027,8 @@ public class RegerOptimizeTime {
 
     int count_raw = 0;
     int count_reorder = 0;
-    for(int i=0;i<1;i++){
-//    for(int i=0;i<block_num;i++){
+//    for(int i=5;i<6;i++){
+    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -1046,8 +1040,20 @@ public class RegerOptimizeTime {
 //      result2.add(1);
       splitTimeStamp3(ts_block,result2);
 
-//      quickSort(ts_block,0,0,block_size-1);
-      countingSort(ts_block,0);
+      int index = 0;
+      int max = ts_block.get(0).get(index), min = ts_block.get(0).get(index);
+
+      for (int i_b = 1; i_b < block_size; i_b++) {
+        if (ts_block.get(i_b).get(index) > max) {
+          max = ts_block.get(i_b).get(index);
+        } else if (ts_block.get(i_b).get(index) < min) {
+          min = ts_block.get(i_b).get(index);
+        }
+      }
+      if(max-min>13194313)
+      quickSort(ts_block,index,0,block_size-1);
+      else
+      countingSort(ts_block,max, min,index);
 
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -1055,29 +1061,37 @@ public class RegerOptimizeTime {
       ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
-
+//      System.out.println(ts_block_delta);
       // value-order
-      System.out.println(ts_block_reorder);
-      quickSort(ts_block_reorder,1,0,block_size-1);
-      System.out.println(ts_block_reorder);
-      countingSort(ts_block,1);
-      System.out.println(ts_block);
-//      for(int kkk=0;kkk<ts_block.size();kkk++){
-//        if(!Objects.equals(ts_block.get(kkk).get(0), ts_block_reorder.get(kkk).get(0)) ||
-//                !Objects.equals(ts_block.get(kkk).get(1), ts_block_reorder.get(kkk).get(1))) System.out.println("sbbb");
-//      }
+       index = 1;
+      int max_1 = ts_block.get(0).get(index), min_1 = ts_block.get(0).get(index);
 
+      for (int i_b = 1; i_b < block_size; i_b++) {
+        if (ts_block.get(i_b).get(index) > max_1) {
+          max_1 = ts_block.get(i_b).get(index);
+        } else if (ts_block.get(i_b).get(index) < min_1) {
+          min_1 = ts_block.get(i_b).get(index);
+        }
+      }
+      if(max_1-min_1>13194313)
+        quickSort(ts_block,index,0,block_size-1);
+      else
+        countingSort(ts_block,max_1,min_1,index);
 //      System.out.println(ts_block);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
       ArrayList<Float> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
+//      System.out.println(ts_block_delta_reorder);
 
       int i_star;
       int j_star;
       if(raw_length.get(0)<=reorder_length.get(0)){
-        countingSort(ts_block,0);
+        if(max-min>13194313)
+          quickSort(ts_block,0,0,block_size-1);
+        else
+          countingSort(ts_block,max, min,0);
 //        quickSort(ts_block,0,0,block_size-1);
         count_raw ++;
         i_star =getIStar(ts_block,block_size,0,theta);
@@ -1085,7 +1099,10 @@ public class RegerOptimizeTime {
       else{
         raw_length = reorder_length;
         theta = theta_reorder;
-        countingSort(ts_block,1);
+        if(max_1-min_1>13194313)
+          quickSort(ts_block,1,0,block_size-1);
+        else
+          countingSort(ts_block,max_1,min_1,1);
 //        quickSort(ts_block,1,0,block_size-1);
         count_reorder ++;
         i_star =getIStar(ts_block,block_size,1,theta);
@@ -1134,6 +1151,7 @@ public class RegerOptimizeTime {
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
+//      System.out.println(cur_encoded_result.size());
     }
 
     int remaining_length = length_all - block_num*block_size;
@@ -1154,7 +1172,20 @@ public class RegerOptimizeTime {
       ArrayList<Integer> result2 = new ArrayList<>();
       splitTimeStamp3(ts_block,result2);
 
-      countingSort(ts_block,0);
+      int index = 0;
+      int max = ts_block.get(0).get(index), min = ts_block.get(0).get(index);
+
+      for (int i_b = 1; i_b < ts_block.size(); i_b++) {
+        if (ts_block.get(i_b).get(index) > max) {
+          max = ts_block.get(i_b).get(index);
+        } else if (ts_block.get(i_b).get(index) < min) {
+          min = ts_block.get(i_b).get(index);
+        }
+      }
+      if(max-min>13194313)
+        quickSort(ts_block,index,0,remaining_length-1);
+      else
+        countingSort(ts_block,max, min,index);
 //      quickSort(ts_block,0,0,remaining_length-1);
 
       // time-order
@@ -1164,9 +1195,23 @@ public class RegerOptimizeTime {
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
               i_star_ready,theta);
 
+
       // value-order
-      countingSort(ts_block,1);
-//      quickSort(ts_block_reorder,1,0,remaining_length-1);
+      index = 1;
+      int max_1 = ts_block.get(0).get(index), min_1 = ts_block.get(0).get(index);
+
+      for (int i_b = 1; i_b < ts_block.size(); i_b++) {
+        if (ts_block.get(i_b).get(index) > max_1) {
+          max_1 = ts_block.get(i_b).get(index);
+        } else if (ts_block.get(i_b).get(index) < min_1) {
+          min_1 = ts_block.get(i_b).get(index);
+        }
+      }
+      if(max_1-min_1>13194313)
+        quickSort(ts_block,index,0,remaining_length-1);
+      else
+        countingSort(ts_block,max_1,min_1,index);
+      //      quickSort(ts_block_reorder,1,0,remaining_length-1);
 
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
@@ -1174,15 +1219,22 @@ public class RegerOptimizeTime {
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
               i_star_ready_reorder,theta_reorder);
 
+
       if(raw_length.get(0)<=reorder_length.get(0)){
-        countingSort(ts_block,0);
+        if(max-min>13194313)
+          quickSort(ts_block,0,0,remaining_length-1);
+        else
+          countingSort(ts_block,max, min,0);
 //        quickSort(ts_block,0,0,remaining_length-1);
         count_raw ++;
       }
       else{
         raw_length = reorder_length;
         theta = theta_reorder;
-        countingSort(ts_block,1);
+        if(max_1-min_1>13194313)
+          quickSort(ts_block,1,0,remaining_length-1);
+        else
+          countingSort(ts_block,max_1,min_1,1);
 //        quickSort(ts_block,1,0,remaining_length-1);
         count_reorder ++;
       }
@@ -1204,6 +1256,7 @@ public class RegerOptimizeTime {
         ts_block_delta.add(tmp);
       }
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
+
       encoded_result.addAll(cur_encoded_result);
     }
     return encoded_result;
@@ -1216,7 +1269,6 @@ public class RegerOptimizeTime {
     decode_pos += 4;
     int block_size = bytes2Integer(encoded, decode_pos, 4);
     decode_pos += 4;
-
     int block_num = length_all / block_size;
     int remain_length = length_all - block_num * block_size;
     int zero_number;
@@ -1286,8 +1338,8 @@ public class RegerOptimizeTime {
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
-      countingSort(ts_block,0);
-//      quickSort(ts_block, 0, 0, block_size-1);
+//      countingSort(ts_block,0);
+      quickSort(ts_block, 0, 0, block_size-1);
       data.addAll(ts_block);
     }
 
@@ -1358,8 +1410,8 @@ public class RegerOptimizeTime {
         ts_block.add(ts_block_tmp);
       }
 
-      countingSort(ts_block,0);
-//      quickSort(ts_block, 0, 0, remain_length+zero_number-1);
+//      countingSort(ts_block,0);
+      quickSort(ts_block, 0, 0, remain_length+zero_number-1);
 
       for(int i = zero_number; i < remain_length+zero_number; i++){
         data.add(ts_block.get(i));
@@ -1378,8 +1430,8 @@ public class RegerOptimizeTime {
 
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
-//    dataset_block_size.add(512);
-    dataset_block_size.add(8);
+    dataset_block_size.add(512);
+//    dataset_block_size.add(8);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
     dataset_block_size.add(256);
@@ -1426,8 +1478,8 @@ public class RegerOptimizeTime {
 //    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-    for(int file_i=0;file_i<1;file_i++){
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=1;file_i<2;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1474,20 +1526,23 @@ public class RegerOptimizeTime {
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
-        int repeatTime2 = 1;
+        int repeatTime2 = 150;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
           ArrayList<Byte> buffer = new ArrayList<>();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
+          for(int repeat=0;repeat<repeatTime2;repeat++){
+//            System.out.println(repeat);
             buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i));
+          }
+
           long e = System.nanoTime();
           encodeTime += ((e - s)/repeatTime2);
           compressed_size += buffer.size();
           double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-//          for(int repeat=0;repeat<repeatTime2;repeat++)
-//            data_decoded = ReorderingRegressionDecoder(buffer);
+          for(int repeat=0;repeat<1;repeat++)
+            data_decoded = ReorderingRegressionDecoder(buffer);
           e = System.nanoTime();
           decodeTime += ((e-s)/repeatTime2);
         }
