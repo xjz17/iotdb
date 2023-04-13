@@ -1001,8 +1001,8 @@ public class Reger {
 
     int count_raw = 0;
     int count_reorder = 0;
-    for(int i=0;i<1;i++){
-//    for(int i=0;i<block_num;i++){
+//    for(int i=0;i<1;i++){
+    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -1093,7 +1093,7 @@ public class Reger {
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
-//      System.out.println(cur_encoded_result.size());
+      System.out.println(cur_encoded_result.size());
     }
 
     int remaining_length = length_all - block_num*block_size;
@@ -1442,8 +1442,8 @@ public class Reger {
           double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-          for(int repeat=0;repeat<1;repeat++)
-            data_decoded = ReorderingRegressionDecoder(buffer);
+//          for(int repeat=0;repeat<1;repeat++)
+//            data_decoded = ReorderingRegressionDecoder(buffer);
 //          for(int p=0;p< data.size();p++){
 //            if(!Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1)) ){
 ////              System.out.println("sbbbb");
