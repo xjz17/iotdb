@@ -276,9 +276,6 @@ public class Reger {
       int epsilon_v =
           ts_block.get(j).get(1)
               - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
-      if ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1) < 0) {
-        epsilon_v += 1;
-      }
 
       if (epsilon_r < timestamp_delta_min) {
         timestamp_delta_min = epsilon_r;
@@ -297,8 +294,10 @@ public class Reger {
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for (int j = block_size - 1; j > 0; j--) {
-      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
+      int epsilon_r = ts_block.get(j).get(0)
+        - (int) ((double) (theta0_r + timestamp_delta_min) + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+      int epsilon_v = ts_block.get(j).get(1)
+        - (int) ((double) (theta0_v + value_delta_min) + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
       if (epsilon_r > max_interval) {
         max_interval = epsilon_r;
         max_interval_i = j;
@@ -1318,11 +1317,7 @@ public class Reger {
         time_list.set(i, ti);
         ti_pre = ti;
 
-        int vi =
-            (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        if ((double) theta0_v + (double) theta1_v * vi_pre < 0) {
-          vi -= 1;
-        }
+        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
         value_list.set(i, vi);
         vi_pre = vi;
       }
@@ -1394,11 +1389,7 @@ public class Reger {
         int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
         time_list.set(i, ti);
         ti_pre = ti;
-        int vi =
-            (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        if ((double) theta0_v + (double) theta1_v * vi_pre < 0) {
-          vi -= 1;
-        }
+        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
         value_list.set(i, vi);
         vi_pre = vi;
       }
