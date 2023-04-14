@@ -1323,7 +1323,7 @@ public class RegerTradeoff {
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
 //    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
 //    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\tradeoff";
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\tradeoff_q30";
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
     dataset_block_size.add(512);
@@ -1373,8 +1373,8 @@ public class RegerTradeoff {
 //    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-//    for(int file_i=1;file_i<2;file_i++){
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=6;file_i<7;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1402,6 +1402,7 @@ public class RegerTradeoff {
       assert tempList != null;
 
       for (File f : tempList) {
+        System.out.println(f.toPath());
         InputStream inputStream = Files.newInputStream(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
@@ -1417,12 +1418,12 @@ public class RegerTradeoff {
           data.add(tmp);
         }
         inputStream.close();
-        for(int q=18;q>=0;q-=2){
+        for(int q=30;q>=0;q-=2){
         long encodeTime = 0;
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
-        int repeatTime2 = 300;
+        int repeatTime2 = 200;
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
             ArrayList<Byte> buffer = new ArrayList<>();
