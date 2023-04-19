@@ -62,7 +62,7 @@ public class EncodeTest {
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio_ts_2diff.csv";
 
     // speed
-    int repeatTime = 10; // set repeat time
+    int repeatTime = 1; // set repeat time
     String dataTypeName = "int"; // set dataType
     //    if (args.length >= 2) inputPath = args[1];
     //    if (args.length >= 3) Output = args[2];
@@ -192,13 +192,13 @@ public class EncodeTest {
                     ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
                     s = System.nanoTime();
 //                    int i_tmp = 0;
-                    while (decoder.hasNext(ebuffer)) {
-//                      decoder.readInt(ebuffer);
-                      int tmp_tmp = decoder.readInt(ebuffer);
-//                      if(tmp.get(i_tmp) == tmp_tmp)
-//                        System.out.println("equal");
-//                      i_tmp += 1;
-                    }
+//                    while (decoder.hasNext(ebuffer)) {
+////                      decoder.readInt(ebuffer);
+//                      int tmp_tmp = decoder.readInt(ebuffer);
+////                      if(tmp.get(i_tmp) == tmp_tmp)
+////                        System.out.println("equal");
+////                      i_tmp += 1;
+//                    }
                     e = System.nanoTime();
                     decodeTime += (e - s);
 

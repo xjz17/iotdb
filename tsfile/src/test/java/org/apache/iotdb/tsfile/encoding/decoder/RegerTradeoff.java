@@ -1,4 +1,4 @@
-package org.apache.iotdb.tsfile.encoding;
+package org.apache.iotdb.tsfile.encoding.decoder;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
@@ -9,11 +9,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Objects;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerTradeoff {
   public static int getBitWith(int num){
     return 32 - Integer.numberOfLeadingZeros(num);
   }
@@ -65,7 +64,7 @@ public class Reger {
     return dest;
   }
 
-  public static float bytes2Float(ArrayList<Byte> b, int index) {
+  public static float bytes2float(ArrayList<Byte> b, int index) {
     int l;
     l = b.get(index);
     l &= 0xff;
@@ -238,13 +237,13 @@ public class Reger {
     long sum_squ_XY_v = 0;
 
     for(int i=1;i<block_size;i++){
-      sum_X_r += (ts_block.get(i-1).get(0));
+      sum_X_r += ts_block.get(i-1).get(0);
       sum_X_v += ts_block.get(i-1).get(1);
-      sum_Y_r += (ts_block.get(i).get(0));
+      sum_Y_r += ts_block.get(i).get(0);
       sum_Y_v += ts_block.get(i).get(1);
-      sum_squ_X_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i-1).get(0)));
+      sum_squ_X_r += ((long) ts_block.get(i - 1).get(0) *ts_block.get(i-1).get(0));
       sum_squ_X_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i-1).get(1));
-      sum_squ_XY_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i).get(0)));
+      sum_squ_XY_r += ((long) ts_block.get(i - 1).get(0) *ts_block.get(i).get(0));
       sum_squ_XY_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i).get(1));
     }
 
@@ -270,8 +269,8 @@ public class Reger {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = ts_block.get(j).get(0) - (int) ((double)theta0_r + (double)theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = ts_block.get(j).get(1) - (int) ((double)theta0_v + (double)theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - (int) ( theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
+      int epsilon_v = ts_block.get(j).get(1) - (int) ( theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
 
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
@@ -285,18 +284,13 @@ public class Reger {
       ts_block_delta.add(tmp);
     }
 
-    timestamp_delta_min-=1;
-    value_delta_min-=1;
-
     int max_interval = Integer.MIN_VALUE;
     int max_interval_i = -1;
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
-      int epsilon_r = ts_block.get(j).get(0)
-              - (int) ((double) (theta0_r + timestamp_delta_min) + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
-      int epsilon_v = ts_block.get(j).get(1)
-              - (int) ((double) (theta0_v + value_delta_min) + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       if(epsilon_r>max_interval){
         max_interval = epsilon_r;
         max_interval_i = j;
@@ -992,7 +986,7 @@ public class Reger {
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int q){
     block_size ++;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
@@ -1006,7 +1000,6 @@ public class Reger {
 
     int count_raw = 0;
     int count_reorder = 0;
-//    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -1019,26 +1012,22 @@ public class Reger {
 //      result2.add(1);
       splitTimeStamp3(ts_block,result2);
 
-      quickSort(ts_block,0,0,block_size-1);
-//      System.out.println(ts_block);
+//      quickSort(ts_block,0,0,block_size-1);
+
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
       ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
-//      System.out.println(ts_block_delta);
 
       // value-order
       quickSort(ts_block,1,0,block_size-1);
-
-//      System.out.println(ts_block);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
       ArrayList<Float> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
-//      System.out.println(ts_block_delta_reorder);
 
       int i_star;
       int j_star;
@@ -1057,7 +1046,7 @@ public class Reger {
       j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
 
       int adjust_count = 0;
-      while(j_star!=-1 && i_star !=-1){
+      while(j_star!=-1 && i_star !=-1 && adjust_count < q){
         if(adjust_count < block_size/2 && adjust_count <= 33){
           adjust_count ++;
         }else {
@@ -1090,15 +1079,16 @@ public class Reger {
           ts_block = old_ts_block;
           break;
         }
+        adjust_count ++;
 
         i_star =getIStar(ts_block,block_size,raw_length,theta);
         if(i_star == j_star) break;
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+
       }
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
-//      System.out.println(cur_encoded_result.size());
     }
 
     int remaining_length = length_all - block_num*block_size;
@@ -1164,10 +1154,8 @@ public class Reger {
         ts_block_delta.add(tmp);
       }
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
-
       encoded_result.addAll(cur_encoded_result);
     }
-
     return encoded_result;
   }
 
@@ -1191,7 +1179,7 @@ public class Reger {
     else{
       zero_number = 9 - remain_length % 8;
     }
-    block_num = 1;
+
     for(int k = 0; k < block_num; k++){
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
@@ -1203,13 +1191,13 @@ public class Reger {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2Float(encoded, decode_pos);
+      float theta0_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2Float(encoded, decode_pos);
+      float theta1_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2Float(encoded, decode_pos);
+      float theta0_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2Float(encoded, decode_pos);
+      float theta1_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1228,11 +1216,11 @@ public class Reger {
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 0; i < block_size-1; i++) {
-        int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
+        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
+        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
       }
@@ -1241,8 +1229,6 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-//      System.out.println(time_list);
-//      System.out.println(value_list);
       for (int i=0;i<block_size-1;i++){
         int ti = (time_list.get(i) - time0) * td_common  + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
@@ -1250,9 +1236,7 @@ public class Reger {
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
-
       quickSort(ts_block, 0, 0, block_size-1);
-//      System.out.println(ts_block);
       data.addAll(ts_block);
     }
 
@@ -1277,13 +1261,13 @@ public class Reger {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2Float(encoded, decode_pos);
+      float theta0_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2Float(encoded, decode_pos);
+      float theta1_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2Float(encoded, decode_pos);
+      float theta0_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2Float(encoded, decode_pos);
+      float theta1_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1301,11 +1285,12 @@ public class Reger {
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < remain_length-1; i++) {
-        int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
+      for (int i = 0; i < remain_length+zero_number-1; i++) {
+        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
-        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
+
+        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
       }
@@ -1314,16 +1299,17 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-      for (int i = 0; i < remain_length - 1; i++) {
-        int ti = (time_list.get(i) - time0) * td_common + time0;
+      for (int i=0;i<remain_length+zero_number-1;i++){
+        int ti = (time_list.get(i) - time0) * td_common  + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
 
-      quickSort(ts_block, 0, 0, remain_length - 1);
-      for (int i = 0; i < remain_length; i++) {
+      quickSort(ts_block, 0, 0, remain_length+zero_number-1);
+
+      for(int i = zero_number; i < remain_length+zero_number; i++){
         data.add(ts_block.get(i));
       }
     }
@@ -1335,8 +1321,9 @@ public class Reger {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
+//    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
 //    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\tradeoff_q30";
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
     dataset_block_size.add(512);
@@ -1386,8 +1373,8 @@ public class Reger {
 //    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-//    for(int file_i=0;file_i<1;file_i++){
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=6;file_i<7;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1405,6 +1392,7 @@ public class Reger {
               "Encoding Algorithm",
               "Encoding Time",
               "Decoding Time",
+              "q",
               "Points",
               "Compressed Size",
               "Compression Ratio"
@@ -1414,6 +1402,7 @@ public class Reger {
       assert tempList != null;
 
       for (File f : tempList) {
+        System.out.println(f.toPath());
         InputStream inputStream = Files.newInputStream(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
@@ -1429,34 +1418,30 @@ public class Reger {
           data.add(tmp);
         }
         inputStream.close();
+        for(int q=30;q>=0;q-=2){
         long encodeTime = 0;
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
-        int repeatTime2 = 1;
-        for (int i = 0; i < repeatTime; i++) {
-          long s = System.nanoTime();
-          ArrayList<Byte> buffer = new ArrayList<>();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
-            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i));
-          long e = System.nanoTime();
-          encodeTime += ((e - s)/repeatTime2);
-          compressed_size += buffer.size();
-          double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
-          ratio += ratioTmp;
-          s = System.nanoTime();
-//          for(int repeat=0;repeat<1;repeat++)
-//            data_decoded = ReorderingRegressionDecoder(buffer);
-//          for(int p=0;p< data.size();p++){
-//            if(!Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1)) ){
-////              System.out.println("sbbbb");
-////              System.out.println(data.get(p).get(1));
-////              System.out.println(data_decoded.get(p).get(1));
-//            }
-//          }//||  Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1))
-          e = System.nanoTime();
-          decodeTime += ((e-s)/repeatTime2);
-        }
+        int repeatTime2 = 200;
+          for (int i = 0; i < repeatTime; i++) {
+            long s = System.nanoTime();
+            ArrayList<Byte> buffer = new ArrayList<>();
+            for(int repeat=0;repeat<repeatTime2;repeat++)
+              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),q);
+            long e = System.nanoTime();
+            encodeTime += ((e - s)/repeatTime2);
+            compressed_size += buffer.size();
+            double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
+            ratio += ratioTmp;
+            s = System.nanoTime();
+//            for(int repeat=0;repeat<repeatTime2;repeat++)
+//              data_decoded = ReorderingRegressionDecoder(buffer);
+            e = System.nanoTime();
+            decodeTime += ((e-s)/repeatTime2);
+          }
+
+
 
         ratio /= repeatTime;
         compressed_size /= repeatTime;
@@ -1468,12 +1453,14 @@ public class Reger {
                 "REGER",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
+                String.valueOf(q),
                 String.valueOf(data.size()),
                 String.valueOf(compressed_size),
                 String.valueOf(ratio)
         };
         System.out.println(ratio);
         writer.writeRecord(record);
+        }
       }
       writer.close();
     }
