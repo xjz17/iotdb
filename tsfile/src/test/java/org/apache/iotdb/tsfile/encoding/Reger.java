@@ -65,7 +65,7 @@ public class Reger {
     return dest;
   }
 
-  public static float bytes2float(ArrayList<Byte> b, int index) {
+  public static float bytes2Float(ArrayList<Byte> b, int index) {
     int l;
     l = b.get(index);
     l &= 0xff;
@@ -270,8 +270,8 @@ public class Reger {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = ts_block.get(j).get(0) - (int) ( theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = ts_block.get(j).get(1) - (int) ( theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - (int) ((double)theta0_r + (double)theta1_r * (double)ts_block.get(j-1).get(0));
+      int epsilon_v = ts_block.get(j).get(1) - (int) ((double)theta0_v + (double)theta1_v * (double)ts_block.get(j-1).get(1));
 
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
@@ -285,13 +285,18 @@ public class Reger {
       ts_block_delta.add(tmp);
     }
 
+    timestamp_delta_min-=1;
+    value_delta_min-=1;
+
     int max_interval = Integer.MIN_VALUE;
     int max_interval_i = -1;
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
-      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
+      int epsilon_r = ts_block.get(j).get(0)
+              - (int) ((double) (theta0_r + timestamp_delta_min) + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+      int epsilon_v = ts_block.get(j).get(1)
+              - (int) ((double) (theta0_v + value_delta_min) + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
       if(epsilon_r>max_interval){
         max_interval = epsilon_r;
         max_interval_i = j;
@@ -1189,13 +1194,13 @@ public class Reger {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2float(encoded, decode_pos);
+      float theta0_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2float(encoded, decode_pos);
+      float theta1_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2float(encoded, decode_pos);
+      float theta0_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2float(encoded, decode_pos);
+      float theta1_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1214,11 +1219,11 @@ public class Reger {
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 0; i < block_size-1; i++) {
-        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
         time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
         value_list.set(i,vi);
         vi_pre = vi;
       }
@@ -1259,13 +1264,13 @@ public class Reger {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2float(encoded, decode_pos);
+      float theta0_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2float(encoded, decode_pos);
+      float theta1_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2float(encoded, decode_pos);
+      float theta0_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2float(encoded, decode_pos);
+      float theta1_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1283,12 +1288,11 @@ public class Reger {
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < remain_length+zero_number-1; i++) {
-        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+      for (int i = 0; i < remain_length-1; i++) {
+        int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
         time_list.set(i,ti);
         ti_pre = ti;
-
-        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
         value_list.set(i,vi);
         vi_pre = vi;
       }
@@ -1297,17 +1301,16 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-      for (int i=0;i<remain_length+zero_number-1;i++){
-        int ti = (time_list.get(i) - time0) * td_common  + time0;
+      for (int i = 0; i < remain_length - 1; i++) {
+        int ti = (time_list.get(i) - time0) * td_common + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
 
-      quickSort(ts_block, 0, 0, remain_length+zero_number-1);
-
-      for(int i = zero_number; i < remain_length+zero_number; i++){
+      quickSort(ts_block, 0, 0, remain_length - 1);
+      for (int i = 0; i < remain_length; i++) {
         data.add(ts_block.get(i));
       }
     }
