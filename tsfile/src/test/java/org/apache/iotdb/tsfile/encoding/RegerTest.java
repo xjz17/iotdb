@@ -295,6 +295,9 @@ public class RegerTest {
       ts_block_delta.add(tmp);
     }
 
+    value_delta_min-=1;
+    timestamp_delta_min-=1;
+
     int max_interval = Integer.MIN_VALUE;
     int max_interval_i = -1;
     int max_value = Integer.MIN_VALUE;
@@ -1145,73 +1148,70 @@ public class RegerTest {
       ArrayList<ArrayList<Integer>> ts_block_delta =
           getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready, theta);
 
-      //      // value-order
-      //      quickSort(ts_block, 1, 0, block_size - 1);
-      //      ArrayList<Integer> reorder_length = new ArrayList<>();
-      //      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      //      ArrayList<Float> theta_reorder = new ArrayList<>();
-      //      ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
-      // getEncodeBitsRegression(ts_block, block_size, reorder_length, i_star_ready_reorder,
-      // theta_reorder);
-      //
-      //      int i_star;
-      //      int j_star;
-      //      if (raw_length.get(0) <= reorder_length.get(0)) {
-      //        quickSort(ts_block, 0, 0, block_size - 1);
-      //        count_raw++;
-      //        i_star = getIStar(ts_block, block_size, 0, theta);
-      //      } else {
-      //        raw_length = reorder_length;
-      //        theta = theta_reorder;
-      //        quickSort(ts_block, 1, 0, block_size - 1);
-      //        count_reorder++;
-      //        i_star = getIStar(ts_block, block_size, 1, theta);
-      //      }
-      //      j_star = getJStar(ts_block, i_star, block_size, raw_length, 0, theta);
-      //
-      //      int adjust_count = 0;
-      //      while (j_star != -1 && i_star != -1) {
-      //        if (adjust_count < block_size / 2 && adjust_count <= 33) {
-      //          adjust_count++;
-      //        } else {
-      //          break;
-      //        }
-      //        ArrayList<ArrayList<Integer>> old_ts_block =
-      //            (ArrayList<ArrayList<Integer>>) ts_block.clone();
-      //        ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
-      //
-      //        ArrayList<Integer> tmp_tv = ts_block.get(i_star);
-      //        if (j_star < i_star) {
-      //          for (int u = i_star - 1; u >= j_star; u--) {
-      //            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-      //            tmp_tv_cur.add(ts_block.get(u).get(0));
-      //            tmp_tv_cur.add(ts_block.get(u).get(1));
-      //            ts_block.set(u + 1, tmp_tv_cur);
-      //          }
-      //        } else {
-      //          for (int u = i_star + 1; u < j_star; u++) {
-      //            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-      //            tmp_tv_cur.add(ts_block.get(u).get(0));
-      //            tmp_tv_cur.add(ts_block.get(u).get(1));
-      //            ts_block.set(u - 1, tmp_tv_cur);
-      //          }
-      //          j_star--;
-      //        }
-      //        ts_block.set(j_star, tmp_tv);
-      //
-      //        getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,
-      // theta);
-      //        if (old_length.get(1) + old_length.get(2) < raw_length.get(1) + raw_length.get(2)) {
-      //          ts_block = old_ts_block;
-      //          break;
-      //        }
-      //
-      //        i_star = getIStar(ts_block, block_size, raw_length, theta);
-      //        if (i_star == j_star) break;
-      //        j_star = getJStar(ts_block, i_star, block_size, raw_length, 0, theta);
-      //      }
-      //      ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length,
-      // i_star_ready_reorder, theta);
+      // value-order
+      quickSort(ts_block, 1, 0, block_size - 1);
+      ArrayList<Integer> reorder_length = new ArrayList<>();
+      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+      ArrayList<Float> theta_reorder = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression(ts_block, block_size,
+              reorder_length, i_star_ready_reorder, theta_reorder);
+
+      int i_star;
+      int j_star;
+      if (raw_length.get(0) <= reorder_length.get(0)) {
+        quickSort(ts_block, 0, 0, block_size - 1);
+        count_raw++;
+        i_star = getIStar(ts_block, block_size, 0, theta);
+      } else {
+        raw_length = reorder_length;
+        theta = theta_reorder;
+        quickSort(ts_block, 1, 0, block_size - 1);
+        count_reorder++;
+        i_star = getIStar(ts_block, block_size, 1, theta);
+      }
+      j_star = getJStar(ts_block, i_star, block_size, raw_length, 0, theta);
+
+      int adjust_count = 0;
+      while (j_star != -1 && i_star != -1) {
+        if (adjust_count < block_size / 2 && adjust_count <= 33) {
+          adjust_count++;
+        } else {
+          break;
+        }
+        ArrayList<ArrayList<Integer>> old_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+        ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
+
+        ArrayList<Integer> tmp_tv = ts_block.get(i_star);
+        if (j_star < i_star) {
+          for (int u = i_star - 1; u >= j_star; u--) {
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u + 1, tmp_tv_cur);
+          }
+        } else {
+          for (int u = i_star + 1; u < j_star; u++) {
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u - 1, tmp_tv_cur);
+          }
+          j_star--;
+        }
+        ts_block.set(j_star, tmp_tv);
+
+        getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+        if (old_length.get(1) + old_length.get(2) < raw_length.get(1) + raw_length.get(2)) {
+          ts_block = old_ts_block;
+          break;
+        }
+
+        i_star = getIStar(ts_block, block_size, raw_length, theta);
+        if (i_star == j_star)
+          break;
+        j_star = getJStar(ts_block, i_star, block_size, raw_length, 0, theta);
+      }
+      ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
 
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
       encoded_result.addAll(cur_encoded_result);
@@ -1361,11 +1361,7 @@ public class RegerTest {
         time_list.set(i, ti);
         ti_pre = ti;
 
-        int vi =
-            (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        //        if((double) theta0_v + (double) theta1_v * vi_pre < 0){
-        //          vi-=1;
-        //        }
+        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
         value_list.set(i, vi);
         vi_pre = vi;
       }
@@ -1449,11 +1445,7 @@ public class RegerTest {
         int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
         time_list.set(i, ti);
         ti_pre = ti;
-        int vi =
-            (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        if ((double) theta0_v + (double) theta1_v * vi_pre < 0) {
-          vi -= 1;
-        }
+        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
         value_list.set(i, vi);
         vi_pre = vi;
       }
@@ -1583,7 +1575,7 @@ public class RegerTest {
           decodeTime += ((e - s) / repeatTime2);
 
           int count = 0;
-          for (int j = 0; j < 1000; j++) {
+          for (int j = 0; j < data.size(); j++) {
             if (!data.get(j).get(0).equals(data_decoded.get(j).get(0))
                 || !data.get(j).get(1).equals(data_decoded.get(j).get(1))) {
               System.out.print(j);
@@ -1593,9 +1585,6 @@ public class RegerTest {
               System.out.println(data_decoded.get(j));
               count += 1;
             }
-          }
-          if (count > 500) {
-            System.out.println(f.toPath());
           }
         }
 

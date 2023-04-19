@@ -289,6 +289,9 @@ public class Reger {
       ts_block_delta.add(tmp);
     }
 
+    timestamp_delta_min-=1;
+    value_delta_min-=1;
+
     int max_interval = Integer.MIN_VALUE;
     int max_interval_i = -1;
     int max_value = Integer.MIN_VALUE;
