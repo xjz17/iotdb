@@ -65,7 +65,7 @@ public class Reger {
     return dest;
   }
 
-  public static float bytes2Float(ArrayList<Byte> b, int index) {
+  public static float bytes2float(ArrayList<Byte> b, int index) {
     int l;
     l = b.get(index);
     l &= 0xff;
@@ -1171,7 +1171,7 @@ public class Reger {
     return encoded_result;
   }
 
-  public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded){
+  public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded) {
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
     int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -1182,17 +1182,15 @@ public class Reger {
     int block_num = length_all / block_size;
     int remain_length = length_all - block_num * block_size;
     int zero_number;
-    if(remain_length % 8 == 0){
+    if (remain_length % 8 == 0) {
       zero_number = 1;
-    }
-    else if (remain_length % 8 == 1){
+    } else if (remain_length % 8 == 1) {
       zero_number = 0;
-    }
-    else{
+    } else {
       zero_number = 9 - remain_length % 8;
     }
-    block_num = 1;
-    for(int k = 0; k < block_num; k++){
+
+    for (int k = 0; k < block_num; k++) {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
 
@@ -1203,23 +1201,23 @@ public class Reger {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2Float(encoded, decode_pos);
+      float theta0_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2Float(encoded, decode_pos);
+      float theta1_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2Float(encoded, decode_pos);
+      float theta0_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2Float(encoded, decode_pos);
+      float theta1_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,block_size);
+      time_list = decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, block_size);
       decode_pos += max_bit_width_time * (block_size - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
+      value_list = decodebitPacking(encoded, decode_pos, max_bit_width_value, 0, block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
       int td_common = bytes2Integer(encoded, decode_pos, 4);
@@ -1227,13 +1225,13 @@ public class Reger {
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < block_size-1; i++) {
+      for (int i = 0; i < block_size - 1; i++) {
         int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
-        time_list.set(i,ti);
+        time_list.set(i, ti);
         ti_pre = ti;
 
         int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        value_list.set(i,vi);
+        value_list.set(i, vi);
         vi_pre = vi;
       }
 
@@ -1241,22 +1239,18 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-//      System.out.println(time_list);
-//      System.out.println(value_list);
-      for (int i=0;i<block_size-1;i++){
-        int ti = (time_list.get(i) - time0) * td_common  + time0;
+      for (int i = 0; i < block_size - 1; i++) {
+        int ti = (time_list.get(i) - time0) * td_common + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
-
-      quickSort(ts_block, 0, 0, block_size-1);
-//      System.out.println(ts_block);
+      quickSort(ts_block, 0, 0, block_size - 1);
       data.addAll(ts_block);
     }
 
-    if(remain_length == 1){
+    if (remain_length == 1) {
       int timestamp_end = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int value_end = bytes2Integer(encoded, decode_pos, 4);
@@ -1266,7 +1260,7 @@ public class Reger {
       ts_block_end.add(value_end);
       data.add(ts_block_end);
     }
-    if(remain_length != 0 && remain_length != 1){
+    if (remain_length != 0 && remain_length != 1) {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
 
@@ -1277,36 +1271,39 @@ public class Reger {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2Float(encoded, decode_pos);
+      float theta0_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2Float(encoded, decode_pos);
+      float theta1_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2Float(encoded, decode_pos);
+      float theta0_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2Float(encoded, decode_pos);
+      float theta1_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,remain_length+zero_number);
-      decode_pos += max_bit_width_time * (remain_length+zero_number - 1) / 8;
+      time_list =
+              decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, remain_length + zero_number);
+      decode_pos += max_bit_width_time * (remain_length + zero_number - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,remain_length+zero_number);
-      decode_pos += max_bit_width_value * (remain_length+zero_number - 1) / 8;
+      value_list =
+              decodebitPacking(
+                      encoded, decode_pos, max_bit_width_value, 0, remain_length + zero_number);
+      decode_pos += max_bit_width_value * (remain_length + zero_number - 1) / 8;
 
       int td_common = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < remain_length-1; i++) {
+      for (int i = 0; i < remain_length - 1; i++) {
         int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
-        time_list.set(i,ti);
+        time_list.set(i, ti);
         ti_pre = ti;
         int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        value_list.set(i,vi);
+        value_list.set(i, vi);
         vi_pre = vi;
       }
 
