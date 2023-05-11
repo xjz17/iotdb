@@ -9,51 +9,56 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Map;
 
 public class EncodeTest {
 
-  public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
+  public static void main(@NotNull String[] args) throws IOException {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\Metro-Traffic_ratio.csv");
+        input_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1");
+    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1.csv");
     dataset_map_td.add(3600);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\Nifty-Stocks_ratio.csv");
-    dataset_map_td.add(86400);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\USGS-Earthquakes_ratio.csv");
-    dataset_map_td.add(50);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\Cyber-Vehicle_ratio.csv");
-    dataset_map_td.add(10);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\TH-Climate_ratio.csv");
-    dataset_map_td.add(3);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\TY-Transport_ratio.csv");
-    dataset_map_td.add(5);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\TY-Fuel_ratio.csv");
-    dataset_map_td.add(60);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\GW-Magnetic_ratio.csv");
-    dataset_map_td.add(100);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\Metro-Traffic_ratio.csv");
+//    dataset_map_td.add(3600);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\Nifty-Stocks_ratio.csv");
+//    dataset_map_td.add(86400);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\USGS-Earthquakes_ratio.csv");
+//    dataset_map_td.add(50);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\Cyber-Vehicle_ratio.csv");
+//    dataset_map_td.add(10);
+//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\TH-Climate_ratio.csv");
+//    dataset_map_td.add(3);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\TY-Transport_ratio.csv");
+//    dataset_map_td.add(5);
+//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\TY-Fuel_ratio.csv");
+//    dataset_map_td.add(60);
+//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\GW-Magnetic_ratio.csv");
+//    dataset_map_td.add(100);
 
 //    for(int file_i=7;file_i<8;file_i++){
     for(int file_i=0;file_i<input_path_list.size();file_i++){
@@ -63,7 +68,7 @@ public class EncodeTest {
 
     // speed
     int repeatTime = 1; // set repeat time
-    String dataTypeName = "int"; // set dataType
+    String dataTypeName = "double"; // set dataType
     //    if (args.length >= 2) inputPath = args[1];
     //    if (args.length >= 3) Output = args[2];
 
@@ -98,7 +103,7 @@ public class EncodeTest {
       "Decoding Time",
       "Compress Time",
       "Uncompress Time",
-            "Points",
+//            "Points",
       "Compressed Size",
       "Compression Ratio"
     };
@@ -107,7 +112,7 @@ public class EncodeTest {
     assert tempList != null;
     int fileRepeat = 0;
     ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 1; i++) {
       columnIndexes.add(i, i);}
     for (File f : tempList) {
       fileRepeat += 1;
@@ -118,13 +123,23 @@ public class EncodeTest {
 
       for (int index : columnIndexes) {
         // add a column to "data"
+//        System.out.println(index);
+        int max_precision = 0;
         loader.readHeaders();
         data.clear();
-//        int sb = 0;&&sb<256
         while (loader.readRecord()) {
-          data.add(loader.getValues()[index]);
-//          sb++;
+          String v = loader.getValues()[index];
+          int ind = v.indexOf(".");
+          if (ind > -1) {
+            int len = v.substring(ind + 1).length();
+            if (len > max_precision) {
+              max_precision = len;
+            }
+          }
+          data.add(v);
+
         }
+        System.out.println(max_precision);
         inputStream.close();
 
         switch (dataTypeName) {
@@ -379,8 +394,16 @@ public class EncodeTest {
                     // test decode time
                     ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
                     s = System.nanoTime();
+                    int i_de =0;
                     while (decoder.hasNext(ebuffer)) {
-                      decoder.readDouble(ebuffer);
+                      double v = decoder.readDouble(ebuffer);
+//                      if(v!=Double.parseDouble(data.get(i_de))){
+//                        System.out.println(v);
+//                        System.out.println(data.get(i_de));
+//                        System.out.println("noequal");
+//                        System.out.println(encoding);
+//                      };
+//                      i_de++;
                     }
                     e = System.nanoTime();
                     decodeTime += (e - s);
@@ -417,14 +440,21 @@ public class EncodeTest {
             {
               TSDataType dataType = TSDataType.FLOAT;
               ArrayList<Float> tmp = new ArrayList<>();
-              for (String value : data) {
-                tmp.add(Float.valueOf(value));
+              data.removeIf(String::isEmpty);
+              for(int i=0;i<data.size();i++){
+                tmp.add(Float.valueOf(data.get(i)));
               }
 
               // Iterate over each encoding algorithm
               for (TSEncoding encoding : encodingList) {
-                Encoder encoder =
-                    TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+                Encoder encoder;
+//                if(encoding == TSEncoding.TS_2DIFF){
+//                  Map<String, String> props = null;
+//                  props.put(Encoder.MAX_POINT_NUMBER, String.valueOf(max_precision));
+//                  TSEncodingBuilder.Ts2Diff.setMaxPointNumber(max_precision);
+//                }
+                encoder=TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+
                 Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
 
                 long encodeTime = 0;
