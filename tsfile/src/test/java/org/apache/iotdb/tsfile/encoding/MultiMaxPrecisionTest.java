@@ -29,6 +29,13 @@ public class MultiMaxPrecisionTest {
             return 32 - Integer.numberOfLeadingZeros(num);
     }
 
+    public static int getBitWith(long num) {
+        if (num == 0)
+            return 1;
+        else
+            return 64 - Long.numberOfLeadingZeros(num);
+    }
+
     public static byte[] int2Bytes(int integer) {
         byte[] bytes = new byte[4];
         bytes[0] = (byte) (integer >> 24);
@@ -169,21 +176,21 @@ public class MultiMaxPrecisionTest {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer = new ArrayList<>();
 //                    System.out.println(data.get(0));
-//                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
-//                        buffer = MultiMaxPrecisionTest(data, 1025, max_precision);
-//                    }
-                    int encode_elem_length = MultiMaxPrecisionTest(data, 1025, max_precision);
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                        buffer = MultiMaxPrecisionTest(data, 1025, max_precision);
+                    }
+                    //int encode_elem_length = MultiMaxPrecisionTest(data, 1025, max_precision);
                     long e = System.nanoTime();
 
                     encodeTime += ((e - s) / repeatTime2);
 
-//                    compressed_size += buffer.size();
-//                    double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
-//                    ratio += ratioTmp;
-
-                    compressed_size += encode_elem_length;
-                    double ratioTmp = (double) encode_elem_length / (double) (data.size()*Double.BYTES);
+                    compressed_size += buffer.size();
+                    double ratioTmp = (double) buffer.size() / (double) (data.size()*Double.BYTES);
                     ratio += ratioTmp;
+
+//                    compressed_size += encode_elem_length;
+//                    double ratioTmp = (double) encode_elem_length / (double) (data.size()*Double.BYTES);
+//                    ratio += ratioTmp;
 
                     s = System.nanoTime();
                     //for(int repeat=0;repeat<repeatTime2;repeat++) {
@@ -207,6 +214,8 @@ public class MultiMaxPrecisionTest {
                         String.valueOf(compressed_size),
                         String.valueOf(ratio)
                 };
+                System.out.print("ratio: ");
+                System.out.println(ratio);
                 writer.writeRecord(record);
                 break;
             }
@@ -214,7 +223,68 @@ public class MultiMaxPrecisionTest {
         }
     }
 
-    private static int MultiMaxPrecisionTest(ArrayList<Double> data, int block_size, int max_precision) throws IOException {
+    private static ArrayList<Byte> MultiMaxPrecisionTest(ArrayList<Double> data, int block_size, int max_precision) throws IOException {
+        int length_all = data.size();
+        int encoded_length_all = 0;
+        byte[] length_all_bytes = int2Bytes(length_all);
+
+        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
+        for (byte b : length_all_bytes)
+            encoded_result.add(b);
+        encoded_length_all += 4;
+
+        int block_num = length_all / block_size;
+
+        // encode block size (Integer)
+        byte[] block_size_byte = int2Bytes(block_size);
+        for (byte b : block_size_byte)
+            encoded_result.add(b);
+        encoded_length_all += 4;
+
+        for (int i = 0; i < block_num; i++) {
+            int min = Integer.MAX_VALUE;
+            int max = Integer.MIN_VALUE;
+            ArrayList<Integer> tmp = new ArrayList<>();
+
+            for(int j = 0; j < block_size; j++){
+                double value = data.get(block_num*block_size+i);
+                int value_int = (int) ( value * pow(10,max_precision) );
+                tmp.add(value_int);
+            }
+
+            int value0 = tmp.get(0);
+            for (int j = 0; j < block_size - 1; j++) {
+                int value_diff = tmp.get(j+1) - tmp.get(j);
+                tmp.set(j, value_diff);
+                if(value_diff < min){
+                    min = value_diff;
+                }
+            }
+
+            for (int j = 0; j < block_size - 1; j++) {
+                int value_diff_d = tmp.get(j) - min;
+                tmp.set(j, value_diff_d);
+                if(value_diff_d > max){
+                    max = value_diff_d;
+                }
+            }
+
+            int max_width = getBitWith(max);
+
+            byte[] value0_byte = int2Bytes(value0);
+            for (byte b : value0_byte) encoded_result.add(b);
+
+            byte[] max_width_byte = int2Bytes(max_width);
+            for (byte b : max_width_byte) encoded_result.add(b);
+            byte[] value_bytes = bitPacking(tmp, max_width);
+            for (byte b : value_bytes) encoded_result.add(b);
+
+            encoded_length_all += max_width * block_size;
+        }
+        return encoded_result;
+    }
+
+    private static int MultiMaxPrecisionTest2(ArrayList<Double> data, int block_size, int max_precision) throws IOException {
         int length_all = data.size();
         int encoded_length_all = 0;
         byte[] length_all_bytes = int2Bytes(length_all);
@@ -247,10 +317,6 @@ public class MultiMaxPrecisionTest {
         }
         encoder.flush(buffer);
         byte[] elems = buffer.toByteArray();
-
-//        for (int i = 0; i < block_num; i++) {
-//
-//        }
 
         //double ratio = (double) encoded_length_all / (double) (data.size()*Double.BYTES);
         double ratio = (double) elems.length / (double) (data.size()*Double.BYTES);
