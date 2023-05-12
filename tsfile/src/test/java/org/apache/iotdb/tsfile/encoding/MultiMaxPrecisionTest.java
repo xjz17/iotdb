@@ -2,9 +2,13 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,10 +17,14 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import static java.lang.Math.pow;
+
 public class MultiMaxPrecisionTest {
     static double log2_10 = Math.log(10) / Math.log(2);
+
     public static int getBitWith(int num) {
-        if (num == 0) return 1;
+        if (num == 0)
+            return 1;
         else
             return 32 - Integer.numberOfLeadingZeros(num);
     }
@@ -29,6 +37,7 @@ public class MultiMaxPrecisionTest {
         bytes[3] = (byte) integer;
         return bytes;
     }
+
     public static byte[] bitPacking(ArrayList<Integer> numbers, int bit_width) {
         int block_num = numbers.size() / 8;
         byte[] result = new byte[bit_width * block_num];
@@ -43,6 +52,7 @@ public class MultiMaxPrecisionTest {
         }
         return result;
     }
+
     public static byte[] double2Bytes(double dou){
         long value = Double.doubleToRawLongBits(dou);
         byte[] bytes= new byte[8];
@@ -51,16 +61,20 @@ public class MultiMaxPrecisionTest {
         }
         return bytes;
     }
+
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
-        input_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1");
-        output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test_ratio_elf.csv");
+        //input_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1");
+        //output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test_ratio_elf.csv");
 
-        double value = 8.85;
-        long longBits = Double.doubleToLongBits(value);
-        String binaryString = Long.toBinaryString(longBits);
-        System.out.println(binaryString);
+        input_path_list.add("E:\\thu\\Lab\\31-1\\data0512");
+        output_path_list.add("E:\\thu\\Lab\\31-1\\result0512\\test_ratio_double.csv");
+
+//        double value = 8.85;
+//        long longBits = Double.doubleToLongBits(value);
+//        String binaryString = Long.toBinaryString(longBits);
+//        System.out.println(binaryString);
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
@@ -75,29 +89,30 @@ public class MultiMaxPrecisionTest {
 
             // select encoding algorithms
             TSEncoding[] encodingList = {
-//            TSEncoding.PLAIN ,
-                    TSEncoding.TS_2DIFF,
-//                    TSEncoding.CHIMP,
-                    TSEncoding.GORILLA,
+                //TSEncoding.PLAIN ,
+                TSEncoding.TS_2DIFF,
+                //TSEncoding.CHIMP,
+                //TSEncoding.GORILLA,
             };
+
             // select compression algorithms
             CompressionType[] compressList = {
                     CompressionType.UNCOMPRESSED,
-                    //            CompressionType.LZ4,
-                    //            CompressionType.GZIP,
-                    //            CompressionType.SNAPPY
+                    //CompressionType.LZ4,
+                    //CompressionType.GZIP,
+                    //CompressionType.SNAPPY
             };
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
             String[] head = {
                     "Input Direction",
                     "Column Index",
-                    "Encoding Algorithm",
-                    "Compress Algorithm",
+//                    "Encoding Algorithm",
+//                    "Compress Algorithm",
                     "Encoding Time",
                     "Decoding Time",
-                    "Compress Time",
-                    "Uncompress Time",
+//                    "Compress Time",
+//                    "Uncompress Time",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -110,8 +125,9 @@ public class MultiMaxPrecisionTest {
 //            for (int i = 0; i < 2; i++) {
 //                columnIndexes.add(i, i);
 //            }
-            for (File f : tempList) {
 
+            for (File f : tempList) {
+                System.out.println(f.toString());
                 InputStream inputStream = Files.newInputStream(f.toPath());
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Double> data = new ArrayList<>();
@@ -125,7 +141,6 @@ public class MultiMaxPrecisionTest {
                 while (loader.readRecord()) {
 //                    System.out.println(loader.getValues()[1]);
                     data_str.add(loader.getValues()[0]);
-
                 }
                 data_str.removeIf(String::isEmpty);
                 for (String f_str:data_str){
@@ -147,22 +162,33 @@ public class MultiMaxPrecisionTest {
                 double ratio = 0;
                 double compressed_size = 0;
                 int repeatTime2 = 1;
+                System.out.print("max precision: ");
                 System.out.println(max_precision);
                 for (int i = 0; i < repeatTime; i++) {
+
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer = new ArrayList<>();
 //                    System.out.println(data.get(0));
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        buffer = MultiMaxPrecisionTest(data, 1025, max_precision);
+//                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+//                        buffer = MultiMaxPrecisionTest(data, 1025, max_precision);
+//                    }
+                    int encode_elem_length = MultiMaxPrecisionTest(data, 1025, max_precision);
                     long e = System.nanoTime();
+
                     encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += buffer.size();
-                    double ratioTmp =
-                            (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
+
+//                    compressed_size += buffer.size();
+//                    double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
+//                    ratio += ratioTmp;
+
+                    compressed_size += encode_elem_length;
+                    double ratioTmp = (double) encode_elem_length / (double) (data.size()*Double.BYTES);
                     ratio += ratioTmp;
+
                     s = System.nanoTime();
-//          for(int repeat=0;repeat<repeatTime2;repeat++)
-//            data_decoded = ReorderingRegressionDecoder(buffer);
+                    //for(int repeat=0;repeat<repeatTime2;repeat++) {
+                    //    data_decoded = ReorderingRegressionDecoder(buffer);
+                    //}
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }
@@ -181,37 +207,57 @@ public class MultiMaxPrecisionTest {
                         String.valueOf(compressed_size),
                         String.valueOf(ratio)
                 };
-//                System.out.println(ratio);
                 writer.writeRecord(record);
                 break;
             }
             writer.close();
         }
     }
-    private static ArrayList<Byte> MultiMaxPrecisionTest(ArrayList<Double> data, int block_size, int max_precision) {
-        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
+
+    private static int MultiMaxPrecisionTest(ArrayList<Double> data, int block_size, int max_precision) throws IOException {
         int length_all = data.size();
         int encoded_length_all = 0;
         byte[] length_all_bytes = int2Bytes(length_all);
-        for (byte b : length_all_bytes) encoded_result.add(b);
+
+        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
+        for (byte b : length_all_bytes)
+            encoded_result.add(b);
         encoded_length_all += 4;
 
         int block_num = length_all / block_size;
 
         // encode block size (Integer)
         byte[] block_size_byte = int2Bytes(block_size);
-        for (byte b : block_size_byte) encoded_result.add(b);
+        for (byte b : block_size_byte)
+            encoded_result.add(b);
         encoded_length_all += 4;
 
-        for (int i = 0; i < block_num; i++) {
+        Encoder encoder = TSEncodingBuilder
+                .getEncodingBuilder(TSEncoding.TS_2DIFF)
+                .getEncoder(TSDataType.INT32);
 
+        ArrayList<Integer> tmp = new ArrayList<>();
+        for (Double value : data) {
+            tmp.add((int) ( value * pow(10,max_precision) ));
         }
 
-        double ratio = (double) encoded_length_all / (double) (data.size()*Double.BYTES);
-        System.out.println("ratio");
-        System.out.println(ratio);
-        return encoded_result;
-    }
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        for (int val : tmp) {
+            encoder.encode(val, buffer);
+        }
+        encoder.flush(buffer);
+        byte[] elems = buffer.toByteArray();
 
+//        for (int i = 0; i < block_num; i++) {
+//
+//        }
+
+        //double ratio = (double) encoded_length_all / (double) (data.size()*Double.BYTES);
+        double ratio = (double) elems.length / (double) (data.size()*Double.BYTES);
+
+        System.out.print("ratio: ");
+        System.out.println(ratio);
+        return elems.length;
+    }
 
 }
