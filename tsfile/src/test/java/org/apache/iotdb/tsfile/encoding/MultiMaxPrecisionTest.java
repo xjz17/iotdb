@@ -247,7 +247,7 @@ public class MultiMaxPrecisionTest {
             ArrayList<Integer> tmp = new ArrayList<>();
 
             for(int j = 0; j < block_size; j++){
-                double value = data.get(block_num*block_size+i);
+                double value = data.get(i * block_size + j);
                 int value_int = (int) ( value * pow(10,max_precision) );
                 tmp.add(value_int);
             }
