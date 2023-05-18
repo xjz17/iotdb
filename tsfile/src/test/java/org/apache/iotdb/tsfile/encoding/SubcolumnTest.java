@@ -54,13 +54,13 @@ public class SubcolumnTest {
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
-        input_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1");
+        input_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\2");
         output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test_ratio_elf.csv");
 
-        double value = 8.85;
-        long longBits = Double.doubleToLongBits(value);
-        String binaryString = Long.toBinaryString(longBits);
-        System.out.println(binaryString);
+//        double value = 8.85;
+//        long longBits = Double.doubleToLongBits(value);
+//        String binaryString = Long.toBinaryString(longBits);
+//        System.out.println(binaryString);
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
@@ -147,7 +147,7 @@ public class SubcolumnTest {
                 double ratio = 0;
                 double compressed_size = 0;
                 int repeatTime2 = 1;
-                System.out.println(max_precision);
+//                System.out.println(max_precision);
                 for (int i = 0; i < repeatTime; i++) {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer = new ArrayList<>();
@@ -183,7 +183,7 @@ public class SubcolumnTest {
                 };
 //                System.out.println(ratio);
                 writer.writeRecord(record);
-                break;
+//                break;
             }
             writer.close();
         }
@@ -213,12 +213,19 @@ public class SubcolumnTest {
             byte[] start_value_byte = double2Bytes(start_value);
             for (byte b : start_value_byte) encoded_result.add(b);
             long longBits = Double.doubleToLongBits(start_value);
-            String binaryString = Long.toBinaryString(longBits);
+            StringBuilder binaryString = new StringBuilder(Long.toBinaryString(longBits));
             ArrayList<Boolean> sign = new ArrayList<Boolean>();
             ArrayList<Integer> exp = new ArrayList<Integer>();
             ArrayList<Long> mantissa = new ArrayList<Long>();
             ArrayList<Long> mantissa_int = new ArrayList<Long>();
+            ArrayList<String> no_sign_str = new ArrayList<String>();
 
+            if(binaryString.length()==64){
+                sign.add(true);
+                binaryString = new StringBuilder(binaryString.substring(1));
+            }else {
+                sign.add(false);
+            }
             int max_precision_v = 0;
             int before_exp = Integer.parseInt(binaryString.substring(0,11),2);
             encoded_length_all += 8;
@@ -228,14 +235,22 @@ public class SubcolumnTest {
             for (int j=1;j<block_size;j++){
                 double d = data.get(block_size*i+j);
                 longBits = Double.doubleToLongBits(d);
-                binaryString = Long.toBinaryString(longBits);
+                binaryString = new StringBuilder(Long.toBinaryString(longBits));
 
-                if(binaryString.length()==64){
+                if(binaryString.length()!=64){
+                    int len_k = 64-binaryString.length();
+                    for(int k=0;k < len_k;k++){
+                        binaryString.insert(0, "0");
+                    }
+                }
+                if(binaryString.charAt(0)=='0'){
                     sign.add(true);
-                    binaryString = binaryString.substring(1);
                 }else {
                     sign.add(false);
                 }
+                binaryString = new StringBuilder(binaryString.substring(1));
+
+                no_sign_str.add(String.valueOf(binaryString));
 
                 int cur_exp = Integer.parseInt(binaryString.substring(0,11),2);
 
@@ -245,14 +260,26 @@ public class SubcolumnTest {
                 if(cur_exp<min_exp){
                     min_exp = cur_exp;
                 }
+
                 exp.add(cur_exp);
+
 //                exp.add(cur_exp ^ before_exp);
                 before_exp = cur_exp;
 
-                cur_exp -= 1023;
+//                cur_exp -= 1023;
 
                 String v = Double.toString(d);
                 int ind = v.indexOf(".");
+                String sub_v = v.substring(ind+1);
+
+                int idex = -1;
+                for (int k_i = 0; k_i < sub_v.length(); k_i++) {
+                   if (sub_v.charAt(k_i) != '0') {
+                       idex = k_i;
+                       break;
+                   }
+                }
+                ind += idex;
                 if (ind > -1) {
                     int len = (int) ((double)v.substring(ind + 1).length() * log2_10);
                     if (len > max_precision_v) {
@@ -270,16 +297,25 @@ public class SubcolumnTest {
             for (int j=1;j<block_size;j++){
                 double d = data.get(block_size*i+j);
                 longBits = Double.doubleToLongBits(d);
-                binaryString = Long.toBinaryString(longBits);
+                binaryString = new StringBuilder(Long.toBinaryString(longBits));
                 int cur_exp = exp.get(j-1)-1023;
 
 //                long intager = (0xffffffffffffffffL << (64 - (long)cur_exp))>>12) ^ longBits;
                 String intstring;
+//                System.out.println(cur_exp);
+                if(binaryString.length()!=64){
+                    int len_k = 64-binaryString.length();
+                    for(int k=0;k < len_k;k++){
+                        binaryString.insert(0, "0");
+                    }
+                }
+                binaryString = new StringBuilder(binaryString.substring(1));
 
-                if(binaryString.length()==64){
-                    intstring = binaryString.substring(12,12+cur_exp);
-                }else {
+
+                if(cur_exp>0){
                     intstring = binaryString.substring(11,11+cur_exp);
+                }else {
+                    intstring = "0";// binaryString.substring(11,11+ max_precision_v +cur_exp);
                 }
 //                System.out.println(intstring);
                 long cur_int = Long.parseLong(intstring,2);
@@ -292,38 +328,38 @@ public class SubcolumnTest {
                 if(cur_int < min_int){
                     min_int = cur_int;
                 }
-//                System.out.println(cur_exp);
-                if(binaryString.length()==64){
-                    binaryString = binaryString.substring(12,12+max_precision_v+cur_exp);
-                }else {
-                    binaryString = binaryString.substring(11,11+max_precision_v+cur_exp);
-                }
-                mantissa.add(Long.parseLong(binaryString,2));
+//                binaryString = new StringBuilder(binaryString.substring(11, 11 + max_precision_v + cur_exp));
+
+//                mantissa.add(Long.parseLong(binaryString.toString(),2));
+
                 encoded_length_all_bit += (max_precision_v);
             }
-
+//            System.out.println(encoded_length_all_bit/8);
             encoded_length_all +=(encoded_length_all_bit/8);
 //            System.out.println("encoded_length_all");
 //            System.out.println(encoded_length_all);
 
 
-            if (max_exp - min_exp == 0){
-//                System.out.println((double)Math.log(max_exp-1023) /(double) Math.log(2));
-                encoded_length_all += ((double)Math.log(max_exp-1023) /(double) Math.log(2));
-            }
-
-            else{
-//                System.out.println((double)Math.log(max_exp-min_exp) /(double) Math.log(2)+1);
-                encoded_length_all +=( ( (double)Math.log(max_exp-min_exp) /(double) Math.log(2)+1)*block_size);
-            }
-
+//            if (max_exp - min_exp == 0){
+////                System.out.println((double)Math.log(max_exp-1023) /(double) Math.log(2));
+//                encoded_length_all += ((double)Math.log(max_exp-1023) /(double) Math.log(2));
+//            }
+//
+//            else{
+////                System.out.println((double)Math.log(max_exp-min_exp) /(double) Math.log(2)+1);
+//                encoded_length_all +=( ( (double)Math.log(max_exp-min_exp) /(double) Math.log(2)+1)*block_size);
+//            }
+//            System.out.println(encoded_length_all);
 //            System.out.println("max_int,min_int:");
 //            System.out.println(max_int);
 //            System.out.println(min_int);
-
-            if (max_int - min_int == 0)
-                encoded_length_all += ((double)Math.log(max_int) /(double) Math.log(2));
-            else
+            if (max_exp - min_exp != 0){
+//                System.out.println((double)Math.log(max_exp-min_exp) /(double) Math.log(2)+1);
+                encoded_length_all +=( ( Math.log(max_exp-min_exp) / Math.log(2) +1)*block_size);
+            }
+            if (max_int - min_int != 0)
+//                encoded_length_all += ((double)Math.log(max_int) /(double) Math.log(2));
+//            else
                 encoded_length_all +=( ( (double)Math.log(max_int-min_int) /(double) Math.log(2)+1/8)*((double)block_size));
 
             for (int j=0;j<block_size-1;j++) {
@@ -336,7 +372,7 @@ public class SubcolumnTest {
 //        System.out.println(encoded_length_all);
 //        double ratio = (double) encoded_length_all / (double) (1025*Double.BYTES);
         double ratio = (double) encoded_length_all / (double) (data.size()*Double.BYTES);
-        System.out.println("ratio");
+//        System.out.println("ratio");
         System.out.println(ratio);
         return encoded_result;
     }

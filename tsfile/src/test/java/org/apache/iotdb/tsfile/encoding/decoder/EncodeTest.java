@@ -24,8 +24,8 @@ public class EncodeTest {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
-        input_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1");
-    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\elfdata\\1.csv");
+        input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\synthetic");
+    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\ts2diff.csv");
     dataset_map_td.add(3600);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
@@ -68,7 +68,7 @@ public class EncodeTest {
 
     // speed
     int repeatTime = 1; // set repeat time
-    String dataTypeName = "double"; // set dataType
+    String dataTypeName = "int"; // set dataType
     //    if (args.length >= 2) inputPath = args[1];
     //    if (args.length >= 3) Output = args[2];
 
@@ -79,11 +79,11 @@ public class EncodeTest {
     TSEncoding[] encodingList = {
 //            TSEncoding.PLAIN ,
             TSEncoding.TS_2DIFF,
-            TSEncoding.RLE ,
-            TSEncoding.SPRINTZ,
-            TSEncoding.GORILLA,
-            TSEncoding.RLBE,
-            TSEncoding.RAKE
+//            TSEncoding.RLE ,
+//            TSEncoding.SPRINTZ,
+//            TSEncoding.GORILLA,
+//            TSEncoding.RLBE,
+//            TSEncoding.RAKE
     };
     // select compression algorithms
     CompressionType[] compressList = {
@@ -112,7 +112,7 @@ public class EncodeTest {
     assert tempList != null;
     int fileRepeat = 0;
     ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 2; i++) {
       columnIndexes.add(i, i);}
     for (File f : tempList) {
       fileRepeat += 1;
@@ -129,17 +129,16 @@ public class EncodeTest {
         data.clear();
         while (loader.readRecord()) {
           String v = loader.getValues()[index];
-          int ind = v.indexOf(".");
-          if (ind > -1) {
-            int len = v.substring(ind + 1).length();
-            if (len > max_precision) {
-              max_precision = len;
-            }
-          }
+//          int ind = v.indexOf(".");
+//          if (ind > -1) {
+//            int len = v.substring(ind + 1).length();
+//            if (len > max_precision) {
+//              max_precision = len;
+//            }
+//          }
           data.add(v);
-
         }
-        System.out.println(max_precision);
+//        System.out.println(max_precision);
         inputStream.close();
 
         switch (dataTypeName) {
@@ -341,6 +340,7 @@ public class EncodeTest {
             {
               TSDataType dataType = TSDataType.DOUBLE;
               ArrayList<Double> tmp = new ArrayList<>();
+              data.removeIf(String::isEmpty);
               for (String value : data) {
                 tmp.add(Double.valueOf(value));
               }
@@ -432,6 +432,7 @@ public class EncodeTest {
                     String.valueOf(ratio)
                   };
                   writer.writeRecord(record);
+                  System.out.println(ratio);
                 }
               }
               break;
