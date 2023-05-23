@@ -24,7 +24,7 @@ public class EncodeTest {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
-        input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\synthetic");
+        input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\synthetic_diffvar");
     output_path_list.add("C:\\Users\\xiaoj\\Desktop\\ts2diff.csv");
     dataset_map_td.add(3600);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
@@ -115,6 +115,7 @@ public class EncodeTest {
     for (int i = 0; i < 2; i++) {
       columnIndexes.add(i, i);}
     for (File f : tempList) {
+      System.out.println(f);
       fileRepeat += 1;
       InputStream inputStream = Files.newInputStream(f.toPath());
       CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -147,7 +148,7 @@ public class EncodeTest {
               TSDataType dataType = TSDataType.INT32; // set TSDataType
               ArrayList<Integer> tmp = new ArrayList<>();
               for (String value : data) {
-                tmp.add(Integer.valueOf(value));
+                tmp.add(Float.valueOf(value).intValue());
               }
               // Iterate over each encoding algorithm
               for (TSEncoding encoding : encodingList) {

@@ -14,15 +14,14 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerTest {
   public static int getBitWith(int num){
     if(num==0)
       return 1;
     else
       return 32 - Integer.numberOfLeadingZeros(num);
   }
-  public static byte[] int2Bytes(int integer)
-  {
+  public static byte[] int2Bytes(int integer)  {
     byte[] bytes = new byte[4];
     bytes[0] = (byte) (integer >> 24);
     bytes[1] = (byte) (integer >> 16);
@@ -1008,7 +1007,7 @@ public class Reger {
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size, String dir) throws IOException {
     block_size ++;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
@@ -1019,11 +1018,22 @@ public class Reger {
     // encode block size (Integer)
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
+    ArrayList<ArrayList<Integer>> data_bit_width = new ArrayList<>();
+    String Output_before =dir+"-before.csv";
+    String Output_after =dir+"-after.csv";
+    CsvWriter writer_before = new CsvWriter(Output_before, ',', StandardCharsets.UTF_8);
+    CsvWriter writer_after = new CsvWriter(Output_after, ',', StandardCharsets.UTF_8);
+    String[] head = {
+            "Timestamp bit width",
+            "Value bit width"
+    };
+    writer_before.writeRecord(head); // write header to output file
+    writer_after.writeRecord(head);
 
     int count_raw = 0;
     int count_reorder = 0;
-//    for(int i=0;i<1;i++){
-    for(int i=0;i<block_num;i++){
+    for(int i=0;i<1;i++){
+//    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -1043,6 +1053,25 @@ public class Reger {
       ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
+      for (int j=1;j< ts_block_delta.size();j++) {
+        ArrayList<Integer> integers = ts_block_delta.get(j);
+        head = new String[]{
+                String.valueOf(getBitWith(abs(ts_block.get(j).get(0)-ts_block.get(j-1).get(0)))),
+                String.valueOf(getBitWith(abs(ts_block.get(j).get(1)-ts_block.get(j-1).get(1)))),
+//                String.valueOf(getBitWith(abs(integers.get(0)+raw_length.get(3)))),
+//                String.valueOf(getBitWith(abs(integers.get(1)+raw_length.get(4))))
+        };
+        writer_before.writeRecord(head);
+      }
+//      ArrayList<Integer> bitwidth_row = new ArrayList<>();
+//      bitwidth_row.add(raw_length.get(1));
+//      bitwidth_row.add(raw_length.get(2));
+//      data_bit_width.add(bitwidth_row);
+
+
+//      System.out.println(raw_length.get(1));
+//      System.out.println(raw_length.get(2));
+
 //      System.out.println(ts_block_delta);
 
       // value-order
@@ -1055,6 +1084,17 @@ public class Reger {
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
 //      System.out.println(ts_block_delta_reorder);
+      for (int j=1;j< ts_block_delta_reorder.size();j++) {
+        ArrayList<Integer> integers = ts_block.get(j);
+
+        head = new String[]{
+                String.valueOf(getBitWith(abs(ts_block.get(j).get(0)-ts_block.get(j-1).get(0)))),
+                String.valueOf(getBitWith(abs(ts_block.get(j).get(1)-ts_block.get(j-1).get(1)))),
+//                String.valueOf(getBitWith(abs(integers.get(0)+reorder_length.get(3)))),
+//                String.valueOf(getBitWith(abs(integers.get(1)+reorder_length.get(4))))
+        };
+        writer_after.writeRecord(head);
+      }
 
       int i_star;
       int j_star;
@@ -1112,11 +1152,13 @@ public class Reger {
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
       }
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
+
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
 //      System.out.println(cur_encoded_result.size());
     }
-
+    writer_before.close();
+    writer_after.close();
     int remaining_length = length_all - block_num*block_size;
     if(remaining_length==1){
       byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
@@ -1345,38 +1387,58 @@ public class Reger {
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
+    String bit_width_str = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
+    ArrayList<String> bit_width_str_list = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\example");
+
+    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\reorder.csv");
     dataset_block_size.add(1024);
-//    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
+    bit_width_str_list.add(bit_width_str+"test");
+
 ////    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+//    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
 //    dataset_block_size.add(512);
+//    bit_width_str_list.add(bit_width_str+"Metro-Traffic");
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
 //    output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
 //    dataset_block_size.add(256);
+//    bit_width_str_list.add(bit_width_str+"Nifty-Stocks");
+//
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
 //    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
 //    dataset_block_size.add(512);
+//    bit_width_str_list.add(bit_width_str+"USGS-Earthquakes");
+//
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
 //    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
 //    dataset_block_size.add(128);
+//    bit_width_str_list.add(bit_width_str+"Cyber-Vehicle");
+//
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
 //    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
 //    dataset_block_size.add(512);
+//    bit_width_str_list.add(bit_width_str+"TH-Climate");
+//
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
 //    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
 //    dataset_block_size.add(512);
+//    bit_width_str_list.add(bit_width_str+"TY-Transport");
+//
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
 //    output_path_list.add(parent_dir +  "\\TY-Fuel_ratio.csv");
 //    dataset_block_size.add(64);
+//    bit_width_str_list.add(bit_width_str+"TY-Fuel");
+//
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add(parent_dir +  "\\GW-Magnetic_ratio.csv");
 //    dataset_block_size.add(128);
+//    bit_width_str_list.add(bit_width_str+"GW-Magnetic");
 
 //    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
@@ -1455,7 +1517,7 @@ public class Reger {
           long s = System.nanoTime();
           ArrayList<Byte> buffer = new ArrayList<>();
           for(int repeat=0;repeat<repeatTime2;repeat++)
-            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i));
+            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),bit_width_str_list.get(file_i));
           long e = System.nanoTime();
           encodeTime += ((e - s)/repeatTime2);
           compressed_size += buffer.size();
@@ -1491,6 +1553,7 @@ public class Reger {
         };
         System.out.println(ratio);
         writer.writeRecord(record);
+        break;
       }
       writer.close();
     }

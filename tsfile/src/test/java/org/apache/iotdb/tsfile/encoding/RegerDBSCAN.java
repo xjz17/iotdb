@@ -9,12 +9,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerDBSCAN {
   public static int getBitWith(int num){
     if(num==0)
       return 1;
@@ -1016,19 +1017,100 @@ public class Reger {
     for(byte b : length_all_bytes) encoded_result.add(b);
     int block_num = length_all/block_size;
 
+    int bits_encoded_data = 0;
+    bits_encoded_data+=32;
     // encode block size (Integer)
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
-
+    bits_encoded_data+=32;
     int count_raw = 0;
     int count_reorder = 0;
 //    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+      List<DBSCAN.Point> points = new ArrayList<>();
+      int[] minVals = new int[2];
+      int[] maxVals = new int[2];
+      int[] spread = new int[2];
+      for (int col = 0; col < 2; col++) {
+        minVals[col] = Integer.MAX_VALUE;
+        maxVals[col] = Integer.MIN_VALUE;
+      }
       for(int j=0;j<block_size;j++){
+//        System.out.println(data.get(j+i*block_size).get(1));
+        points.add(new DBSCAN.Point(data.get(j+i*block_size).get(0),data.get(j+i*block_size).get(1)));
+
+//        if (data.get(j+i*block_size).get(0) < minVals[0]) {
+//          minVals[0] = data.get(j+i*block_size).get(0);
+//        }
+//        if (data.get(j+i*block_size).get(0) > maxVals[0]) {
+//          maxVals[0] = data.get(j+i*block_size).get(0);
+//        }
+//        if (data.get(j+i*block_size).get(1) < minVals[1]) {
+//          minVals[1] = data.get(j+i*block_size).get(1);
+//        }
+//        if (data.get(j+i*block_size).get(1) > maxVals[1]) {
+//          maxVals[1] = data.get(j+i*block_size).get(1);
+//        }
+//
+//        points.add(new DBSCAN.Point(data.get(j+i*block_size).get(0),data.get(j+i*block_size).get(1)));
+
         ts_block.add(data.get(j+i*block_size));
         ts_block_reorder.add(data.get(j+i*block_size));
+      }
+//      spread[0] = maxVals[0] - minVals[0];
+//      spread[1] = maxVals[1] - minVals[1];
+//      for(int j=0;j<points.size();j++){
+//        points.set(j,new DBSCAN.Point((double)(points.get(j).getX()-minVals[0])/(double)spread[0],(double)(points.get(j).getY()-minVals[1])/(double)spread[1]));
+//      }
+      System.out.println(points.size());
+      DBSCAN dbscan = new DBSCAN(points, 10, 8);
+      List<List<DBSCAN.Point>> clusters = dbscan.run();
+//
+//      System.out.println(clusters.size());
+//      System.out.println(clusters.get(0).size());
+      // 打印结果
+      for (int j = 0; j < clusters.size(); j++) {
+
+        System.out.println("Cluster " + (j + 1) + ":");
+        List<DBSCAN.Point> clusterPoints = clusters.get(j);
+        for (DBSCAN.Point p : clusterPoints) {
+          System.out.println("(" + p.getX() + ", " + p.getY() + ")");
+        }
+        System.out.println(clusterPoints.size());
+        if(clusterPoints.size()<8){
+          bits_encoded_data+=(64*clusterPoints.size());
+        }else{
+          ArrayList<ArrayList<Integer>> ts_block_cluster = new ArrayList<>();
+          for (DBSCAN.Point clusterPoint : clusterPoints) {
+            ArrayList<Integer> tmp = new ArrayList<>();
+            tmp.add(clusterPoint.getX());
+            tmp.add(clusterPoint.getY());
+            ts_block_cluster.add(tmp);
+          }
+//          quickSort(ts_block_cluster,0,0,ts_block_cluster.size()-1);
+          ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+          ArrayList<Integer> i_star_ready = new ArrayList<>();
+          ArrayList<Float> theta = new ArrayList<>();
+          ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block_cluster,  ts_block_cluster.size(), raw_length,i_star_ready,theta);
+
+          quickSort(ts_block_cluster,1,0,ts_block_cluster.size()-1);
+
+//      System.out.println(ts_block);
+          ArrayList<Integer> reorder_length = new ArrayList<>();
+          ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+          ArrayList<Float> theta_reorder = new ArrayList<>();
+          ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block_cluster,  ts_block_cluster.size(), reorder_length,
+                  i_star_ready_reorder,theta_reorder);
+//          System.out.println(raw_length.get(0));
+//          System.out.println(reorder_length.get(0));
+          if(raw_length.get(0)<=reorder_length.get(0)){
+            bits_encoded_data+=(raw_length.get(0));
+          }else {
+            bits_encoded_data+=(reorder_length.get(0));
+          }
+        }
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
@@ -1183,7 +1265,8 @@ public class Reger {
 
       encoded_result.addAll(cur_encoded_result);
     }
-
+    double ratio = (double) bits_encoded_data/(double)(length_all*64);
+    System.out.println(ratio);
     return encoded_result;
   }
 
@@ -1348,10 +1431,10 @@ public class Reger {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
-    dataset_block_size.add(1024);
-//    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\synthetic_diffvar");
+//    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\reorder.csv");
+//    dataset_block_size.add(1024);
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
 ////    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
@@ -1359,9 +1442,9 @@ public class Reger {
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
 //    output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
 //    dataset_block_size.add(256);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-//    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
-//    dataset_block_size.add(512);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
+    dataset_block_size.add(512);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
 //    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
 //    dataset_block_size.add(128);
@@ -1491,6 +1574,7 @@ public class Reger {
         };
         System.out.println(ratio);
         writer.writeRecord(record);
+        break;
       }
       writer.close();
     }
