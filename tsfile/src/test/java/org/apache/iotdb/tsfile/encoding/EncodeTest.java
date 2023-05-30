@@ -1,22 +1,25 @@
-package org.apache.iotdb.tsfile.encoding.decoder;
-
-import org.apache.iotdb.tsfile.compress.ICompressor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.encoder.*;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Map;
 
 public class EncodeTest {
 
@@ -24,10 +27,20 @@ public class EncodeTest {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
-        input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\CS-Sensors");
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Vehicle-Charge");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\Vehicle-Charge_ratio.csv");
+//    dataset_map_td.add(1);
+
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\EPM-Education");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\java_ratio\\CS-Sensors_ratio.csv");
+            "\\compression_ratio\\java_ratio\\EPM-Education_ratio.csv");
     dataset_map_td.add(1);
+
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\CS-Sensors");
+//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\compression_ratio\\java_ratio\\CS-Sensors_ratio.csv");
+//    dataset_map_td.add(1);
 //        input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
 //    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\ts2diff.csv");
 //    dataset_map_td.add(1);
@@ -152,7 +165,7 @@ public class EncodeTest {
               TSDataType dataType = TSDataType.INT32; // set TSDataType
               ArrayList<Integer> tmp = new ArrayList<>();
               for (String value : data) {
-                tmp.add(Float.valueOf(value).intValue());
+                tmp.add(Integer.valueOf(value));
               }
               // Iterate over each encoding algorithm
               for (TSEncoding encoding : encodingList) {

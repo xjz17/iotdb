@@ -160,6 +160,13 @@ public class Reger {
       while (low < high && (arr.get(low).get(index) < tmp.get(index) || (Objects.equals(arr.get(low).get(index), tmp.get(index)) && arr.get(low).get(index^1) <= tmp.get(index^1)))) {
         low++;
       }
+//      while (low < high && (arr.get(high).get(index) >= tmp.get(index))) {
+//        high--;
+//      }
+//      arr.set(low,arr.get(high));
+//      while (low < high && (arr.get(low).get(index) <= tmp.get(index))) {
+//        low++;
+//      }
       arr.set(high,arr.get(low));
     }
     arr.set(low,tmp);
@@ -289,6 +296,9 @@ public class Reger {
       int epsilon_r = ts_block.get(j).get(0) - (int) ((double)theta0_r + (double)theta1_r * (double)ts_block.get(j-1).get(0));
       int epsilon_v = ts_block.get(j).get(1) - (int) ((double)theta0_v + (double)theta1_v * (double)ts_block.get(j-1).get(1));
 
+//      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
+//      int epsilon_v = ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
+
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
       }
@@ -309,6 +319,8 @@ public class Reger {
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
+//      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+//      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       int epsilon_r = ts_block.get(j).get(0)
               - (int) ((double) (theta0_r + timestamp_delta_min) + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
       int epsilon_v = ts_block.get(j).get(1)
@@ -1106,7 +1118,7 @@ public class Reger {
           ts_block = old_ts_block;
           break;
         }
-
+//        System.out.println("adjust_count" + adjust_count);
         i_star =getIStar(ts_block,block_size,raw_length,theta);
         if(i_star == j_star) break;
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
@@ -1345,38 +1357,49 @@ public class Reger {
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
+//    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
+//    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
+//    dataset_block_size.add(1024);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\EPM-Education");
+    output_path_list.add( parent_dir + "\\EPM-Education_ratio.csv");
+    dataset_block_size.add(512);
+
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Vehicle-Charge");
+    output_path_list.add( parent_dir + "\\Vehicle-Charge_ratio.csv");
+    dataset_block_size.add(512);
+
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\CS-Sensors");
+    output_path_list.add( parent_dir + "\\CS-Sensors_ratio.csv");
     dataset_block_size.add(1024);
-//    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
-////    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-//    output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
-//    dataset_block_size.add(512);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-//    output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
-//    dataset_block_size.add(256);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-//    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
-//    dataset_block_size.add(512);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-//    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
-//    dataset_block_size.add(128);
-//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-//    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
-//    dataset_block_size.add(512);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-//    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
-//    dataset_block_size.add(512);
-//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-//    output_path_list.add(parent_dir +  "\\TY-Fuel_ratio.csv");
-//    dataset_block_size.add(64);
-//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-//    output_path_list.add(parent_dir +  "\\GW-Magnetic_ratio.csv");
-//    dataset_block_size.add(128);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+    output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
+    dataset_block_size.add(512);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+    output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
+    dataset_block_size.add(256);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
+    dataset_block_size.add(512);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
+    dataset_block_size.add(128);
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
+    dataset_block_size.add(512);
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
+    dataset_block_size.add(512);
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add(parent_dir +  "\\TY-Fuel_ratio.csv");
+    dataset_block_size.add(64);
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+    output_path_list.add(parent_dir +  "\\GW-Magnetic_ratio.csv");
+    dataset_block_size.add(128);
 
 //    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
@@ -1402,8 +1425,8 @@ public class Reger {
 //    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-//    for(int file_i=0;file_i<1;file_i++){
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=0;file_i<1;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1441,8 +1464,10 @@ public class Reger {
         data.clear();
         while (loader.readRecord()) {
           ArrayList<Integer> tmp = new ArrayList<>();
-          tmp.add(Float.valueOf(loader.getValues()[0]).intValue());
-          tmp.add(Float.valueOf(loader.getValues()[1]).intValue());
+          tmp.add(Integer.valueOf(loader.getValues()[0]));
+          tmp.add(Integer.valueOf(loader.getValues()[1]));
+//          tmp.add(Float.valueOf(loader.getValues()[0]).intValue());
+//          tmp.add(Float.valueOf(loader.getValues()[1]).intValue());
           data.add(tmp);
         }
         inputStream.close();
