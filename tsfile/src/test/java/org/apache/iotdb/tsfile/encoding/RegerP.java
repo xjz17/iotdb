@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerP {
   public static int getBitWith(int num){
     if(num==0)
       return 1;
@@ -1507,7 +1507,7 @@ public class Reger {
 
         String[] record = {
                 f.toString(),
-                "REGER",
+                "REGERP",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(data.size()),

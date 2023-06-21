@@ -1279,44 +1279,44 @@ public class RegerDelta {
 //    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
 //    dataset_block_size.add(1024);
 
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\EPM-Education");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\EPM-Education");
     output_path_list.add( parent_dir + "\\EPM-Education_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Vehicle-Charge");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Vehicle-Charge");
     output_path_list.add( parent_dir + "\\Vehicle-Charge_ratio.csv");
     dataset_block_size.add(512);
 
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\CS-Sensors");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
     output_path_list.add( parent_dir + "\\CS-Sensors_ratio.csv");
     dataset_block_size.add(1024);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Metro-Traffic");
     output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Nifty-Stocks");
     output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
     dataset_block_size.add(256);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\USGS-Earthquakes");
     output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Cyber-Vehicle");
     output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
     dataset_block_size.add(128);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TH-Climate");
     output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Transport");
     output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Fuel");
     output_path_list.add(parent_dir +  "\\TY-Fuel_ratio.csv");
     dataset_block_size.add(64);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\GW-Magnetic");
     output_path_list.add(parent_dir +  "\\GW-Magnetic_ratio.csv");
     dataset_block_size.add(128);
 
 
-    for(int file_i=0;file_i<1;file_i++){
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       System.out.println(inputPath);

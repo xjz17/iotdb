@@ -12,7 +12,7 @@ import java.util.*;
 
 import static java.lang.Math.abs;
 
-public class TopKTS2DIFFAbsoluteDeltaTest {
+public class TotalReorderAbsoluteDeltaTest {
   public static int getBitWith(int num){
     if(num==0)
       return 1;
@@ -1335,7 +1335,48 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
 
     return encoded_result;
   }
-  public static long ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size,double threshold) throws IOException {
+
+  public static int getTotalBitWidth(ArrayList<ArrayList<Integer>> ts_block_delta){
+//    ArrayList<ArrayList<Integer>> ts_block_bit_width = new ArrayList<>();
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+    for (ArrayList<Integer> integers : ts_block_delta) {
+      int tmp0 = getBitWith(integers.get(0));
+      if(tmp0 > timestamp_delta_max) timestamp_delta_max = tmp0;
+      int tmp1 = getBitWith(integers.get(1));
+      if(tmp1 > value_delta_max) value_delta_max = tmp1;
+    }
+    return timestamp_delta_max+value_delta_max;
+  }
+  private static ArrayList<ArrayList<Integer>> permute(ArrayList<ArrayList<Integer>> nums) {
+    ArrayList<ArrayList<Integer>> result = new ArrayList<>();
+    int tmp_ts_block_bits_max = Integer.MAX_VALUE;
+    permuteHelper(nums, 0,tmp_ts_block_bits_max, result);
+    return result;
+  }
+
+  private static void permuteHelper(ArrayList<ArrayList<Integer>> nums, int start,int tmp_ts_block_bits_max, ArrayList<ArrayList<Integer>> result) {
+    if (start >= nums.size()) {
+//      result.add(new ArrayList<>(nums));
+      ArrayList<Integer> raw_length = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta = getDeltaTsBlock(nums,raw_length);
+      int tmp_ts_block_bits = getTotalBitWidth(ts_block_delta);
+      if(tmp_ts_block_bits_max > tmp_ts_block_bits){
+        tmp_ts_block_bits_max = tmp_ts_block_bits;
+        result = nums;
+      }
+
+      return;
+    }
+    System.out.println(result);
+    for (int i = start; i < nums.size(); i++) {
+      Collections.swap(nums, start, i);
+      permuteHelper(nums, start + 1,tmp_ts_block_bits_max, result);
+      Collections.swap(nums, start, i); // backtrack
+    }
+  }
+
+  public static long ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size,double threshold,String dataset_name) throws IOException {
     block_size ++;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
@@ -1351,13 +1392,13 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
     bits_encoded_data+=32;
 
 
-//    for(int i=0;i<1;i++){
-    for(int i=0;i<block_num;i++){
+    for(int i=0;i<1;i++){
+//    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
         ts_block.add(data.get(j+i*block_size));
-//        ts_block_reorder.add(data.get(j+i*block_size));
+        ts_block_reorder.add(data.get(j+i*block_size));
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
@@ -1367,23 +1408,37 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
 //      splitTimeStamp3(ts_block_reorder,result2_reorder);
 //      System.out.println(result2);
       quickSort(ts_block,0,0,block_size-1);
+      ArrayList<ArrayList<Integer>> result_permute = permute(ts_block);
+//      int tmp_ts_block_bits_max = Integer.MAX_VALUE;
+//      ArrayList<ArrayList<Integer>> cur_order_block = new ArrayList<>();
+//      for(ArrayList<ArrayList<Integer>> ts_block_tmp:result_permute){
+//        ArrayList<Integer> raw_length = new ArrayList<>();
+//        ArrayList<ArrayList<Integer>> ts_block_delta = getDeltaTsBlock(ts_block,raw_length);
+//        int tmp_ts_block_bits = getTotalBitWidth(ts_block_delta);
+//        if(tmp_ts_block_bits_max > tmp_ts_block_bits){
+//          tmp_ts_block_bits_max = tmp_ts_block_bits;
+//          cur_order_block = ts_block_tmp;
+//        }
+//      }
 
 
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
 //      ArrayList<Integer> i_star_ready = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+
+
 //      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,   i_star_ready);
 //      ArrayList<Integer> bitwidth_time = getSumBitWidth(ts_block);
 
-//      printTSBlock(ts_block,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\0.csv");
-//      quickSort(ts_block_reorder,1,0,block_size-1);
+      printTSBlock(ts_block,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"+dataset_name+"0.csv");
+      quickSort(ts_block_reorder,1,0,block_size-1);
 
-//      printTSBlock(ts_block_reorder,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\1.csv");
+      printTSBlock(ts_block_reorder,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"+dataset_name+"1.csv");
 
 //      for(int alpha=1;alpha < 10;alpha++){
 
-//      printTSBlock(ts_block,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
+      printTSBlock(result_permute,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"+dataset_name+"2.csv");
       ts_block_delta = getAbsDeltaTsBlock(ts_block,raw_length);
       ArrayList<ArrayList<Integer>> ts_block_bit_width = getBitWith(ts_block_delta);
       int numCols = ts_block_bit_width.get(0).size();
@@ -1441,69 +1496,6 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
 //      encoded_result.addAll(cur_encoded_result);
     }
 
-//    int remaining_length = length_all - block_num*block_size;
-//    if(remaining_length==1){
-//      byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
-//      for(byte b : timestamp_end_bytes) encoded_result.add(b);
-//      byte[] value_end_bytes = int2Bytes(data.get(data.size()-1).get(1));
-//      for(byte b : value_end_bytes) encoded_result.add(b);
-//    }
-//    if(remaining_length!=0 && remaining_length!=1){
-//      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
-//
-//      for(int j=block_num*block_size;j<length_all;j++){
-//        ts_block.add(data.get(j));
-//        ts_block_reorder.add(data.get(j));
-//      }
-//      ArrayList<Integer> result2 = new ArrayList<>();
-//      splitTimeStamp3(ts_block,result2);
-//
-//      quickSort(ts_block,0,0,remaining_length-1);
-//
-//      // time-order
-//      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-//      ArrayList<Integer> i_star_ready = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
-//              i_star_ready);
-//
-//      // value-order
-//      quickSort(ts_block,1,0,remaining_length-1);
-//      ArrayList<Integer> reorder_length = new ArrayList<>();
-//      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
-//              i_star_ready_reorder);
-//
-//      if(raw_length.get(0)<=reorder_length.get(0)){
-//        quickSort(ts_block,0,0,remaining_length-1);
-//        count_raw ++;
-//      }
-//      else{
-//        raw_length = reorder_length;
-//        quickSort(ts_block,1,0,remaining_length-1);
-//        count_reorder ++;
-//      }
-//      ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder);
-//      int supple_length;
-//      if(remaining_length % 8 == 0){
-//        supple_length = 1;
-//      }
-//      else if (remaining_length % 8 == 1){
-//        supple_length = 0;
-//      }
-//      else{
-//        supple_length = 9 - remaining_length % 8;
-//      }
-//      for(int s = 0;s<supple_length;s++){
-//        ArrayList<Integer> tmp = new ArrayList<>();
-//        tmp.add(0);
-//        tmp.add(0);
-//        ts_block_delta.add(tmp);
-//      }
-//      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
-//      encoded_result.addAll(cur_encoded_result);
-//    }
-//    System.out.println("bits_encoded_data:"+bits_encoded_data);
     double ratio = (double) bits_encoded_data/(double)(length_all*64);
     System.out.println(threshold+" ratio : "+ratio);
     return bits_encoded_data;
@@ -1668,7 +1660,7 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    System.out.println("TS2DIFF-Top-K");
+    System.out.println("Full Reordering");
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
@@ -1685,7 +1677,7 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
     dataset_name.add("Vehicle-Charge");
     dataset_name.add("EPM-Education");
 
-    String input = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+    String input = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\";
     String output =  "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\top_k_ts2diff\\";
 
     for(int i = 0;i<dataset_name.size();i++){
@@ -1695,8 +1687,8 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
     }
 
 
-//    for(int file_i=4;file_i<5;file_i++){
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=4;file_i<5;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       System.out.println(inputPath);
@@ -1741,7 +1733,7 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
           data.add(tmp);
         }
         inputStream.close();
-        for(double threshold=0.05;threshold<0.1;threshold+=0.1){
+        for(double threshold=0;threshold<0.001;threshold+=0.01){
         long encodeTime = 0;
         long decodeTime = 0;
         double ratio = 0;
@@ -1752,7 +1744,7 @@ public class TopKTS2DIFFAbsoluteDeltaTest {
           long buffer_bits= 0;
 //          ArrayList<Byte> buffer = new ArrayList<>();
             for(int repeat=0;repeat<repeatTime2;repeat++)
-              buffer_bits = ReorderingDeltaEncoder( data, dataset_block_size.get(file_i), threshold);
+              buffer_bits = ReorderingDeltaEncoder( data, dataset_block_size.get(file_i), threshold,dataset_name.get(file_i));
 //              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),threshold);
 
 

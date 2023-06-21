@@ -1745,8 +1745,8 @@ public class Delta2EdgesAbsolute {
     dataset_block_size.add(512);
     dataset_block_size.add(512);
 
-    for(int file_i=input_path_list.size()-1;file_i<input_path_list.size();file_i++){
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=4;file_i<5;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       System.out.println(inputPath);

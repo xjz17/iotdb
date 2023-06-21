@@ -8,18 +8,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.Stack;
+import java.util.*;
 
 import static java.lang.Math.abs;
 
-public class Reger {
+public class RegerDeltaTopK {
   public static int getBitWith(int num){
-    if(num==0)
-      return 1;
-    else
-      return 32 - Integer.numberOfLeadingZeros(num);
+    return 32 - Integer.numberOfLeadingZeros(num);
   }
   public static byte[] int2Bytes(int integer)
   {
@@ -160,13 +155,6 @@ public class Reger {
       while (low < high && (arr.get(low).get(index) < tmp.get(index) || (Objects.equals(arr.get(low).get(index), tmp.get(index)) && arr.get(low).get(index^1) <= tmp.get(index^1)))) {
         low++;
       }
-//      while (low < high && (arr.get(high).get(index) >= tmp.get(index))) {
-//        high--;
-//      }
-//      arr.set(low,arr.get(high));
-//      while (low < high && (arr.get(low).get(index) <= tmp.get(index))) {
-//        low++;
-//      }
       arr.set(high,arr.get(low));
     }
     arr.set(low,tmp);
@@ -245,46 +233,10 @@ public class Reger {
   }
 
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                                                                      ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
+                                                                      ArrayList<Integer> result, ArrayList<Integer> i_star){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-    theta.clear();
-
-    long sum_X_r = 0;
-    long sum_Y_r = 0;
-    long sum_squ_X_r = 0;
-    long sum_squ_XY_r = 0;
-    long sum_X_v = 0;
-    long sum_Y_v = 0;
-    long sum_squ_X_v = 0;
-    long sum_squ_XY_v = 0;
-
-    for(int i=1;i<block_size;i++){
-      sum_X_r += (ts_block.get(i-1).get(0));
-      sum_X_v += ts_block.get(i-1).get(1);
-      sum_Y_r += (ts_block.get(i).get(0));
-      sum_Y_v += ts_block.get(i).get(1);
-      sum_squ_X_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i-1).get(0)));
-      sum_squ_X_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i-1).get(1));
-      sum_squ_XY_r += ((long) (ts_block.get(i-1).get(0)) *(ts_block.get(i).get(0)));
-      sum_squ_XY_v += ((long) ts_block.get(i - 1).get(1) *ts_block.get(i).get(1));
-    }
-
-    int m_reg = block_size -1;
-    float theta0_r = 0.0F;
-    float theta1_r = 1.0F;
-    if(m_reg*sum_squ_X_r != sum_X_r*sum_X_r ){
-      theta0_r = (float) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (float) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
-      theta1_r = (float) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (float) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
-    }
-
-    float theta0_v = 0.0F;
-    float theta1_v = 1.0F;
-    if(m_reg*sum_squ_X_v != sum_X_v*sum_X_v ){
-      theta0_v = (float) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
-      theta1_v = (float) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
-    }
 
     ArrayList<Integer> tmp0 = new ArrayList<>();
     tmp0.add(ts_block.get(0).get(0));
@@ -293,11 +245,8 @@ public class Reger {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = ts_block.get(j).get(0) - (int) ((double)theta0_r + (double)theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = ts_block.get(j).get(1) - (int) ((double)theta0_v + (double)theta1_v * (double)ts_block.get(j-1).get(1));
-
-//      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
-//      int epsilon_v = ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
+      int epsilon_v = ts_block.get(j).get(1) - ts_block.get(j-1).get(1);
 
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
@@ -311,20 +260,13 @@ public class Reger {
       ts_block_delta.add(tmp);
     }
 
-    timestamp_delta_min-=1;
-    value_delta_min-=1;
-
     int max_interval = Integer.MIN_VALUE;
     int max_interval_i = -1;
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
-//      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-//      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-      int epsilon_r = ts_block.get(j).get(0)
-              - (int) ((double) (theta0_r + timestamp_delta_min) + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
-      int epsilon_v = ts_block.get(j).get(1)
-              - (int) ((double) (theta0_v + value_delta_min) + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       if(epsilon_r>max_interval){
         max_interval = epsilon_r;
         max_interval_i = j;
@@ -353,18 +295,13 @@ public class Reger {
     result.add(timestamp_delta_min);
     result.add(value_delta_min);
 
-    theta.add(theta0_r);
-    theta.add(theta1_r);
-    theta.add(theta0_v);
-    theta.add(theta1_v);
-
     i_star.add(max_interval_i);
     i_star.add(max_value_i);
 
     return ts_block_delta;
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int alpha, int block_size,
-                             ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
+                             ArrayList<Integer> raw_length, int index){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int raw_timestamp_delta_max = Integer.MIN_VALUE;
@@ -374,10 +311,6 @@ public class Reger {
     int raw_bit_width_timestamp = 0;
     int raw_bit_width_value = 0;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
     ArrayList<Integer> max_index = new ArrayList<>();
@@ -387,8 +320,8 @@ public class Reger {
       return j_star;
     }
     for(int i = 1;i<block_size;i++){
-      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (float)ts_block.get(i-1).get(0));
-      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+      int delta_t_i =  ts_block.get(i).get(0) -ts_block.get(i-1).get(0);
+      int delta_v_i =  ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
       if(delta_t_i < timestamp_delta_min){
         timestamp_delta_min = delta_t_i;
       }
@@ -405,8 +338,8 @@ public class Reger {
       }
     }
     for(int i = 1;i<block_size;i++){
-      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (float)ts_block.get(i-1).get(0));
-      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+      int delta_t_i =  ts_block.get(i).get(0) -ts_block.get(i-1).get(0);
+      int delta_v_i =  ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
 
       if(i != alpha && (delta_t_i == raw_timestamp_delta_max || delta_v_i == raw_value_delta_max )){
         max_index.add(i);
@@ -418,7 +351,7 @@ public class Reger {
     if(alpha==0){
       for(int j = 2;j<block_size;j++){
         if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
-        ArrayList<Integer> b = adjust0(ts_block,alpha,j,theta);
+        ArrayList<Integer> b = adjust0(ts_block,alpha,j);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
           raw_bit_width_value = b.get(1);
@@ -429,7 +362,7 @@ public class Reger {
           j_star_list.add(j);
         }
       }
-      ArrayList<Integer> b = adjust0n1(ts_block,theta);
+      ArrayList<Integer> b = adjust0n1(ts_block);
       if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
         raw_bit_width_timestamp = b.get(0);
         raw_bit_width_value = b.get(1);
@@ -444,7 +377,7 @@ public class Reger {
     else if(alpha == block_size-1){
       for(int j = 1;j<block_size-1;j++){
         if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
-        ArrayList<Integer> b = adjustn(ts_block,alpha,j,theta);
+        ArrayList<Integer> b = adjustn(ts_block,alpha,j);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
           raw_bit_width_value = b.get(1);
@@ -455,7 +388,7 @@ public class Reger {
           j_star_list.add(j);
         }
       }
-      ArrayList<Integer> b = adjustn0(ts_block,theta);
+      ArrayList<Integer> b = adjustn0(ts_block);
       if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value)){
         raw_bit_width_timestamp = b.get(0);
         raw_bit_width_value = b.get(1);
@@ -470,7 +403,7 @@ public class Reger {
       for(int j = 1;j<block_size;j++){
         if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         if(alpha != j && (alpha+1) !=j){
-          ArrayList<Integer> b = adjustAlphaToJ(ts_block,alpha,j,theta);
+          ArrayList<Integer> b = adjustAlphaToJ(ts_block,alpha,j);
           if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
             raw_bit_width_timestamp = b.get(0);
             raw_bit_width_value = b.get(1);
@@ -481,7 +414,7 @@ public class Reger {
           }
         }
       }
-      ArrayList<Integer> b = adjustTo0(ts_block,alpha,theta);
+      ArrayList<Integer> b = adjustTo0(ts_block,alpha);
       if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
         raw_bit_width_timestamp = b.get(0);
         raw_bit_width_value = b.get(1);
@@ -491,7 +424,7 @@ public class Reger {
       else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
         j_star_list.add(0);
       }
-      b = adjustTon(ts_block,alpha,theta);
+      b = adjustTon(ts_block,alpha);
       if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
         raw_bit_width_timestamp = b.get(0);
         raw_bit_width_value = b.get(1);
@@ -509,7 +442,7 @@ public class Reger {
     return j_star;
   }
 
-  private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha) {
     int block_size = ts_block.size();
     assert alpha != block_size-1;
     assert alpha != 0;
@@ -519,24 +452,20 @@ public class Reger {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     for(int i=1;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if( i == (alpha+1)){
-        timestamp_delta_i =  ts_block.get(alpha+1).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i = ts_block.get(alpha+1).get(1) - (int) (theta0_v - theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) -  ts_block.get(alpha-1).get(0);
+        value_delta_i = ts_block.get(alpha+1).get(1) - ts_block.get(alpha-1).get(1);
       } else if (i == alpha){
-        timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(0).get(0) - ts_block.get(alpha).get(0);
+        value_delta_i = ts_block.get(0).get(1) - ts_block.get(alpha).get(1);
       }
       else{
-        timestamp_delta_i = ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-        value_delta_i =  ts_block.get(i).get(1) - (int) (theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i = ts_block.get(i).get(0) - ts_block.get(i - 1).get(0);
+        value_delta_i =  ts_block.get(i).get(1) - ts_block.get(i - 1).get(1);
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -556,7 +485,7 @@ public class Reger {
     b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
-  private static ArrayList<Integer> adjustTon(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustTon(ArrayList<ArrayList<Integer>> ts_block, int alpha) {
     int block_size = ts_block.size();
     assert alpha != block_size-1;
     assert alpha != 0;
@@ -565,25 +494,21 @@ public class Reger {
     int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
-
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    
 
     for(int i=1;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if( i == (alpha+1)){
-        timestamp_delta_i = ts_block.get(alpha+1).get(0) - (int) ( theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i =  ts_block.get(alpha+1).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha+1).get(0) - ts_block.get(alpha-1).get(0);
+        value_delta_i =  ts_block.get(alpha+1).get(1) -   ts_block.get(alpha-1).get(1);
       } else if (i == alpha){
-        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha).get(0) -    ts_block.get(block_size-1).get(0);
+        value_delta_i =  ts_block.get(alpha).get(1) -   ts_block.get(block_size-1).get(1);
       }
       else{
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-        value_delta_i = ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) -    ts_block.get(i - 1).get(0);
+        value_delta_i = ts_block.get(i).get(1) -   ts_block.get(i - 1).get(1);
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -605,7 +530,7 @@ public class Reger {
     return b;
   }
 
-  private static ArrayList<Integer> adjustAlphaToJ(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustAlphaToJ(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j) {
 
     int block_size = ts_block.size();
     assert alpha != block_size-1;
@@ -618,26 +543,22 @@ public class Reger {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     for(int i=1;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if(i==j){
-        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i = ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (float)  ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(j).get(0) -    ts_block.get(alpha).get(0);
+        value_delta_i = ts_block.get(j).get(1) -   ts_block.get(alpha).get(1);
       } else if (i == alpha){
-        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (float)  ts_block.get(j-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha).get(0) -    ts_block.get(j-1).get(0);
+        value_delta_i =  ts_block.get(alpha).get(1) -    ts_block.get(j-1).get(1);
       } else if (i == alpha+1) {
-        timestamp_delta_i =  ts_block.get(alpha+1).get(0) -(int) (theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i =  ts_block.get(alpha+1).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) -   ts_block.get(alpha-1).get(0);
+        value_delta_i =  ts_block.get(alpha+1).get(1) -  ts_block.get(alpha-1).get(1);
       } else {
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i-1).get(0));
-        value_delta_i = ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) -    ts_block.get(i-1).get(0);
+        value_delta_i = ts_block.get(i).get(1) -  ts_block.get(i-1).get(1);
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -659,23 +580,19 @@ public class Reger {
   }
 
   // adjust n to 0
-  private static ArrayList<Integer> adjustn0(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustn0(ArrayList<ArrayList<Integer>> ts_block) {
     int block_size = ts_block.size();
     ArrayList<Integer> b = new ArrayList<>();
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     for(int i=1;i<block_size-1;i++){
       int timestamp_delta_i;
       int value_delta_i;
-      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-      value_delta_i =   ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+      timestamp_delta_i = ts_block.get(i).get(0) -     ts_block.get(i - 1).get(0);
+      value_delta_i =   ts_block.get(i).get(1) -  ts_block.get(i - 1).get(1);
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
@@ -692,8 +609,8 @@ public class Reger {
     }
     int timestamp_delta_i;
     int value_delta_i;
-    timestamp_delta_i =   ts_block.get(0).get(0) -(int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
-    value_delta_i =  ts_block.get(0).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
+    timestamp_delta_i =   ts_block.get(0).get(0) -   ts_block.get(block_size - 1).get(0);
+    value_delta_i =  ts_block.get(0).get(1) -  ts_block.get(block_size - 1).get(1);
     if(timestamp_delta_i>timestamp_delta_max){
       timestamp_delta_max = timestamp_delta_i;
     }
@@ -712,7 +629,7 @@ public class Reger {
   }
 
   // adjust n to no 0
-  private static ArrayList<Integer> adjustn(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustn(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j) {
     int block_size = ts_block.size();
     assert alpha == block_size-1;
     assert j != 0;
@@ -722,20 +639,16 @@ public class Reger {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     for(int i=1;i<block_size-1;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if(i!=j){
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(i - 1).get(0));
-        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) -     ts_block.get(i - 1).get(0);
+        value_delta_i =  ts_block.get(i).get(1) -  ts_block.get(i - 1).get(1);
       } else {
-        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i =  ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(j).get(0) -    ts_block.get(alpha).get(0);
+        value_delta_i =  ts_block.get(j).get(1) -  ts_block.get(alpha).get(1);
         if(timestamp_delta_i>timestamp_delta_max){
           timestamp_delta_max = timestamp_delta_i;
         }
@@ -748,8 +661,8 @@ public class Reger {
         if(value_delta_i <value_delta_min){
           value_delta_min = value_delta_i;
         }
-        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha).get(0) -    ts_block.get(j-1).get(0);
+        value_delta_i =  ts_block.get(alpha).get(1) -  ts_block.get(j-1).get(1);
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -787,7 +700,7 @@ public class Reger {
   }
 
   // adjust 0 to n
-  private static ArrayList<Integer> adjust0n1(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjust0n1(ArrayList<ArrayList<Integer>> ts_block) {
     int block_size = ts_block.size();
     ArrayList<Integer> b = new ArrayList<>();
     int timestamp_delta_min = Integer.MAX_VALUE;
@@ -795,16 +708,12 @@ public class Reger {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     for(int i=2;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
-      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-      value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+      timestamp_delta_i = ts_block.get(i).get(0) -     ts_block.get(i - 1).get(0);
+      value_delta_i =  ts_block.get(i).get(1) -  ts_block.get(i - 1).get(1);
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
@@ -820,8 +729,8 @@ public class Reger {
     }
     int timestamp_delta_i;
     int value_delta_i;
-    timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
-    value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
+    timestamp_delta_i =  ts_block.get(0).get(0) -    ts_block.get(block_size - 1).get(0);
+    value_delta_i = ts_block.get(0).get(1) -   ts_block.get(block_size - 1).get(1);
     if(timestamp_delta_i>timestamp_delta_max){
       timestamp_delta_max = timestamp_delta_i;
     }
@@ -840,7 +749,7 @@ public class Reger {
   }
 
   // adjust 0 to no n
-  private static ArrayList<Integer> adjust0(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjust0(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j) {
     int block_size = ts_block.size();
     assert alpha == 0;
     assert j != block_size;
@@ -851,20 +760,16 @@ public class Reger {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     for(int i=2;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if(i!=j){
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(i - 1).get(0));
-        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) -     ts_block.get(i - 1).get(0);
+        value_delta_i =  ts_block.get(i).get(1) -  ts_block.get(i - 1).get(1);
       } else {
-        timestamp_delta_i =   ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(alpha).get(0));
-        value_delta_i =  ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =   ts_block.get(j).get(0) -     ts_block.get(alpha).get(0);
+        value_delta_i =  ts_block.get(j).get(1) -   ts_block.get(alpha).get(1);
         if(timestamp_delta_i>timestamp_delta_max){
           timestamp_delta_max = timestamp_delta_i;
         }
@@ -877,8 +782,8 @@ public class Reger {
         if(value_delta_i <value_delta_min){
           value_delta_min = value_delta_i;
         }
-        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha).get(0) -    ts_block.get(j-1).get(0);
+        value_delta_i =  ts_block.get(alpha).get(1) -  ts_block.get(j-1).get(1);
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -900,7 +805,7 @@ public class Reger {
   }
 
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             int index,ArrayList<Float> theta){
+                             int index){
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
     int timestamp_delta_max_index = -1;
@@ -908,14 +813,10 @@ public class Reger {
 
     int i_star = 0;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     if(index==0){
       for(int j = 1;j<block_size;j++){
-        int epsilon_v_j =ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+        int epsilon_v_j =ts_block.get(j).get(1) - ts_block.get(j-1).get(1);
         if(epsilon_v_j > value_delta_max){
           value_delta_max = epsilon_v_j;
           value_delta_max_index =j;
@@ -925,7 +826,7 @@ public class Reger {
       i_star = value_delta_max_index;
     } else if (index==1) {
       for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = ts_block.get(j).get(0) -  (int)( theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
+        int epsilon_r_j = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
         if(epsilon_r_j > timestamp_delta_max){
           timestamp_delta_max = epsilon_r_j;
           timestamp_delta_max_index = j;
@@ -937,7 +838,7 @@ public class Reger {
     return i_star;
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             ArrayList<Integer> raw_length, ArrayList<Float> theta){
+                             ArrayList<Integer> raw_length){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
@@ -945,17 +846,13 @@ public class Reger {
     int timestamp_delta_max_index = -1;
     int value_delta_max_index = -1;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
 
     int i_star_bit_width = 33;
     int i_star = 0;
 
     for(int j = 1;j<block_size;j++){
-      int epsilon_r_j =  ts_block.get(j).get(0) - (int)( theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-      int epsilon_v_j =  ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+      int epsilon_r_j =  ts_block.get(j).get(0) -  ts_block.get(j-1).get(0);
+      int epsilon_v_j =  ts_block.get(j).get(1) - ts_block.get(j-1).get(1);
 
       if(epsilon_r_j>timestamp_delta_max){
         timestamp_delta_max = epsilon_r_j;
@@ -984,7 +881,7 @@ public class Reger {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
+                                             ArrayList<Integer> raw_length,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 
     // encode interval0 and value0
@@ -994,14 +891,10 @@ public class Reger {
     for (byte b : value0_byte) encoded_result.add(b);
 
     // encode theta
-    byte[] theta0_r_byte = float2bytes(theta.get(0)+raw_length.get(3));
-    for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta1_r_byte = float2bytes(theta.get(1));
-    for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = float2bytes(theta.get(2)+raw_length.get(4));
-    for (byte b : theta0_v_byte) encoded_result.add(b);
-    byte[] theta1_v_byte = float2bytes(theta.get(3));
-    for (byte b : theta1_v_byte) encoded_result.add(b);
+    byte[] timestamp_min_byte = int2Bytes(raw_length.get(3));
+    for (byte b : timestamp_min_byte) encoded_result.add(b);
+    byte[] value_min_byte = int2Bytes(raw_length.get(4));
+    for (byte b : value_min_byte) encoded_result.add(b);
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
@@ -1020,7 +913,7 @@ public class Reger {
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size) throws IOException {
     block_size ++;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
@@ -1031,9 +924,21 @@ public class Reger {
     // encode block size (Integer)
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
+//    String Output_before ="C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\bit-width-before-test.csv";
+//    String Output_after ="C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\bit-width-after-test.csv";
+//    CsvWriter writer_before = new CsvWriter(Output_before, ',', StandardCharsets.UTF_8);
+//    CsvWriter writer_after = new CsvWriter(Output_after, ',', StandardCharsets.UTF_8);
+//    String[] head = {
+//            "Timestamp bit width",
+//            "Value bit width"
+//    };
+//    writer_before.writeRecord(head); // write header to output file
+//    writer_after.writeRecord(head);
+
 
     int count_raw = 0;
     int count_reorder = 0;
+//    System.out.println(block_num);
 //    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
@@ -1042,47 +947,57 @@ public class Reger {
         ts_block.add(data.get(j+i*block_size));
         ts_block_reorder.add(data.get(j+i*block_size));
       }
-
+//      System.out.println("ts_block:"+ts_block);
       ArrayList<Integer> result2 = new ArrayList<>();
-//      result2.add(1);
       splitTimeStamp3(ts_block,result2);
 
+//      System.out.println("result2:"+result2);
+
       quickSort(ts_block,0,0,block_size-1);
-//      System.out.println(ts_block);
+//System.out.println(i);
+
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
-              i_star_ready,theta);
-//      System.out.println(ts_block_delta);
-
+              i_star_ready);
+//      for (int j=1;j< ts_block_delta.size();j++) {
+//        ArrayList<Integer> integers = ts_block_delta.get(j);
+//        head = new String[]{
+//                String.valueOf(getBitWith(integers.get(0))),
+//                String.valueOf(getBitWith(integers.get(1)))
+//        };
+//        writer_before.writeRecord(head);
+//      }
       // value-order
       quickSort(ts_block,1,0,block_size-1);
-
-//      System.out.println(ts_block);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Float> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
-              i_star_ready_reorder,theta_reorder);
-//      System.out.println(ts_block_delta_reorder);
+              i_star_ready_reorder);
+//      for (int j=1;j< ts_block_delta_reorder.size();j++) {
+//        ArrayList<Integer> integers = ts_block_delta_reorder.get(j);
+//        head = new String[]{
+//                String.valueOf(integers.get(0)),
+//                String.valueOf(getBitWith(integers.get(1)))
+//        };
+//        writer_after.writeRecord(head);
+//      }
 
       int i_star;
       int j_star;
       if(raw_length.get(0)<=reorder_length.get(0)){
         quickSort(ts_block,0,0,block_size-1);
         count_raw ++;
-        i_star =getIStar(ts_block,block_size,0,theta);
+        i_star =getIStar(ts_block,block_size,0);
       }
       else{
         raw_length = reorder_length;
-        theta = theta_reorder;
         quickSort(ts_block,1,0,block_size-1);
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size,1,theta);
+        i_star =getIStar(ts_block,block_size,1);
       }
-      j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+      j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
 
       int adjust_count = 0;
       while(j_star!=-1 && i_star !=-1){
@@ -1113,22 +1028,23 @@ public class Reger {
         }
         ts_block.set(j_star,tmp_tv);
 
-        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
+        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder);
         if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
           ts_block = old_ts_block;
           break;
         }
-//        System.out.println("adjust_count" + adjust_count);
-        i_star =getIStar(ts_block,block_size,raw_length,theta);
-        if(i_star == j_star) break;
-        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-      }
-      ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
-      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
-      encoded_result.addAll(cur_encoded_result);
-//      System.out.println(cur_encoded_result.size());
-    }
 
+        i_star =getIStar(ts_block,block_size,raw_length);
+        if(i_star == j_star) break;
+        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+      }
+      ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
+      encoded_result.addAll(cur_encoded_result);
+    }
+//    System.out.println("encoded_result:"+(encoded_result.size()*8));
+//    writer_before.close();
+//    writer_after.close();
     int remaining_length = length_all - block_num*block_size;
     if(remaining_length==1){
       byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
@@ -1152,17 +1068,15 @@ public class Reger {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
-              i_star_ready,theta);
+              i_star_ready);
 
       // value-order
       quickSort(ts_block,1,0,remaining_length-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Float> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
-              i_star_ready_reorder,theta_reorder);
+              i_star_ready_reorder);
 
       if(raw_length.get(0)<=reorder_length.get(0)){
         quickSort(ts_block,0,0,remaining_length-1);
@@ -1170,11 +1084,10 @@ public class Reger {
       }
       else{
         raw_length = reorder_length;
-        theta = theta_reorder;
         quickSort(ts_block,1,0,remaining_length-1);
         count_reorder ++;
       }
-      ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,theta);
+      ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder);
       int supple_length;
       if(remaining_length % 8 == 0){
         supple_length = 1;
@@ -1191,15 +1104,13 @@ public class Reger {
         tmp.add(0);
         ts_block_delta.add(tmp);
       }
-      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
-
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
       encoded_result.addAll(cur_encoded_result);
     }
-
     return encoded_result;
   }
 
-  public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded) {
+  public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded){
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
     int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -1210,15 +1121,17 @@ public class Reger {
     int block_num = length_all / block_size;
     int remain_length = length_all - block_num * block_size;
     int zero_number;
-    if (remain_length % 8 == 0) {
+    if(remain_length % 8 == 0){
       zero_number = 1;
-    } else if (remain_length % 8 == 1) {
+    }
+    else if (remain_length % 8 == 1){
       zero_number = 0;
-    } else {
+    }
+    else{
       zero_number = 9 - remain_length % 8;
     }
 
-    for (int k = 0; k < block_num; k++) {
+    for(int k = 0; k < block_num; k++){
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
 
@@ -1240,12 +1153,12 @@ public class Reger {
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      time_list = decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, block_size);
+      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,block_size);
       decode_pos += max_bit_width_time * (block_size - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list = decodebitPacking(encoded, decode_pos, max_bit_width_value, 0, block_size);
+      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
       int td_common = bytes2Integer(encoded, decode_pos, 4);
@@ -1253,13 +1166,13 @@ public class Reger {
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < block_size - 1; i++) {
-        int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
-        time_list.set(i, ti);
+      for (int i = 0; i < block_size-1; i++) {
+        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        value_list.set(i, vi);
+        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        value_list.set(i,vi);
         vi_pre = vi;
       }
 
@@ -1267,18 +1180,18 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-      for (int i = 0; i < block_size - 1; i++) {
-        int ti = (time_list.get(i) - time0) * td_common + time0;
+      for (int i=0;i<block_size-1;i++){
+        int ti = (time_list.get(i) - time0) * td_common  + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
-      quickSort(ts_block, 0, 0, block_size - 1);
+      quickSort(ts_block, 0, 0, block_size-1);
       data.addAll(ts_block);
     }
 
-    if (remain_length == 1) {
+    if(remain_length == 1){
       int timestamp_end = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int value_end = bytes2Integer(encoded, decode_pos, 4);
@@ -1288,7 +1201,7 @@ public class Reger {
       ts_block_end.add(value_end);
       data.add(ts_block_end);
     }
-    if (remain_length != 0 && remain_length != 1) {
+    if(remain_length != 0 && remain_length != 1){
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
 
@@ -1310,28 +1223,26 @@ public class Reger {
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      time_list =
-              decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, remain_length + zero_number);
-      decode_pos += max_bit_width_time * (remain_length + zero_number - 1) / 8;
+      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,remain_length+zero_number);
+      decode_pos += max_bit_width_time * (remain_length+zero_number - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list =
-              decodebitPacking(
-                      encoded, decode_pos, max_bit_width_value, 0, remain_length + zero_number);
-      decode_pos += max_bit_width_value * (remain_length + zero_number - 1) / 8;
+      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,remain_length+zero_number);
+      decode_pos += max_bit_width_value * (remain_length+zero_number - 1) / 8;
 
       int td_common = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < remain_length - 1; i++) {
-        int ti = (int) ((double) theta0_r + (double) theta1_r * (double) ti_pre) + time_list.get(i);
-        time_list.set(i, ti);
+      for (int i = 0; i < remain_length+zero_number-1; i++) {
+        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        time_list.set(i,ti);
         ti_pre = ti;
-        int vi = (int) ((double) theta0_v + (double) theta1_v * (double) vi_pre) + value_list.get(i);
-        value_list.set(i, vi);
+
+        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        value_list.set(i,vi);
         vi_pre = vi;
       }
 
@@ -1339,22 +1250,446 @@ public class Reger {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-      for (int i = 0; i < remain_length - 1; i++) {
-        int ti = (time_list.get(i) - time0) * td_common + time0;
+      for (int i=0;i<remain_length+zero_number-1;i++){
+        int ti = (time_list.get(i) - time0) * td_common  + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
 
-      quickSort(ts_block, 0, 0, remain_length - 1);
-      for (int i = 0; i < remain_length; i++) {
+      quickSort(ts_block, 0, 0, remain_length+zero_number-1);
+
+      for(int i = zero_number; i < remain_length+zero_number; i++){
         data.add(ts_block.get(i));
       }
     }
     return data;
   }
+  public static ArrayList<ArrayList<Integer>> getBitWith(ArrayList<ArrayList<Integer>> ts_block){
+    ArrayList<ArrayList<Integer>> ts_block_bit_width = new ArrayList<>();
+    for (ArrayList<Integer> integers : ts_block) {
+      ArrayList<Integer> bit_width = new ArrayList<>();
+      bit_width.add(getBitWith(integers.get(0)));
+      bit_width.add(getBitWith(integers.get(1)));
+      ts_block_bit_width.add((bit_width));
+    }
+    return ts_block_bit_width;
+  }
 
+  public static ArrayList<ArrayList<Integer>> getAbsDeltaTsBlock(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> result){
+    ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+    ArrayList<Integer> tmp = new ArrayList<>();
+    tmp.add(ts_block.get(0).get(0));
+    tmp.add(ts_block.get(0).get(1));
+    ts_block_delta.add(tmp);
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    for (int i=1;i<ts_block.size();i++) {
+      int epsilon_r = abs(ts_block.get(i).get(0) - ts_block.get(i-1).get(0));
+      int epsilon_v = abs(ts_block.get(i).get(1) - ts_block.get(i-1).get(1));
+
+      tmp = new ArrayList<>();
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
+      ts_block_delta.add(tmp);
+    }
+
+    return ts_block_delta;
+  }
+
+  public static int getBitwidthDeltaTsBlock(ArrayList<ArrayList<Integer>> outlier_top_k){
+    int bit_num = 0;
+    int block_size = outlier_top_k.size();
+    bit_num+=(10*block_size);
+    ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+    for (ArrayList<Integer> integers : outlier_top_k) {
+      int epsilon_r = integers.get(1);
+      int epsilon_v = integers.get(2);
+      if (epsilon_r < timestamp_delta_min) {
+        timestamp_delta_min = epsilon_r;
+      }
+      if (epsilon_v < value_delta_min) {
+        value_delta_min = epsilon_v;
+      }
+      if (epsilon_r > timestamp_delta_max) {
+        timestamp_delta_max = epsilon_r;
+      }
+      if (epsilon_v > value_delta_max) {
+        value_delta_max = epsilon_v;
+      }
+    }
+    bit_num+=(block_size*getBitWith(timestamp_delta_max-timestamp_delta_min));
+    bit_num+=(block_size*getBitWith(value_delta_max-value_delta_min));
+    return bit_num;
+  }
+  public static ArrayList<ArrayList<Integer>> getDeltaTsBlock(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> result,
+                                                              ArrayList<Integer> outlier_top_k_index,ArrayList<ArrayList<Integer>> outlier_top_k){
+    ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+    ArrayList<Integer> tmp = new ArrayList<>();
+    tmp.add(ts_block.get(0).get(0));
+    tmp.add(ts_block.get(0).get(1));
+    ts_block_delta.add(tmp);
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    for (int i=1;i<ts_block.size();i++) {
+      int epsilon_r;
+      int epsilon_v;
+      if(outlier_top_k_index.contains(i)){
+        epsilon_r = 0;
+        epsilon_v = 0;
+        tmp = new ArrayList<>();
+        tmp.add(i);
+        tmp.add(ts_block.get(i).get(0) - ts_block.get(i-1).get(0));
+        tmp.add(ts_block.get(i).get(1) - ts_block.get(i-1).get(1));
+        outlier_top_k.add(tmp);
+      }else{
+        epsilon_r = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+        epsilon_v = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+      }
+      if(epsilon_r<timestamp_delta_min){
+        timestamp_delta_min = epsilon_r;
+      }
+      if(epsilon_v<value_delta_min){
+        value_delta_min = epsilon_v;
+      }
+      tmp = new ArrayList<>();
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
+      ts_block_delta.add(tmp);
+    }
+    for(int j=ts_block.size()-1;j>0;j--) {
+
+      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
+      tmp = new ArrayList<>();
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
+      ts_block_delta.set(j,tmp);
+    }
+    result.add(timestamp_delta_min);
+    result.add(value_delta_min);
+
+    return ts_block_delta;
+  }
+  public static ArrayList<Byte> encodeDeltaTsBlock(ArrayList<ArrayList<Integer>> ts_block_delta,ArrayList<Integer> result){
+    ArrayList<Byte> encoded_result = new ArrayList<>();
+
+    // encode interval0 and value0
+    byte[] interval0_byte = int2Bytes(ts_block_delta.get(0).get(0));
+    for (byte b : interval0_byte) encoded_result.add(b);
+    byte[] value0_byte = int2Bytes(ts_block_delta.get(0).get(1));
+    for (byte b : value0_byte) encoded_result.add(b);
+
+    // encode min delta
+    byte[] min_interval_byte = int2Bytes(result.get(0));
+    for (byte b : min_interval_byte) encoded_result.add(b);
+    byte[] min_value_byte = int2Bytes(result.get(1));
+    for (byte b : min_value_byte) encoded_result.add(b);
+
+
+    int max_interval = Integer.MIN_VALUE;
+    int max_value = Integer.MIN_VALUE;
+    int block_size = ts_block_delta.size();
+
+
+    for(int j=block_size-1;j>0;j--) {
+      int epsilon_r = ts_block_delta.get(j).get(0);
+      int epsilon_v = ts_block_delta.get(j).get(1);
+      if(epsilon_r>max_interval){
+        max_interval = epsilon_r;
+      }
+      if(epsilon_v>max_value){
+        max_value = epsilon_v;
+      }
+    }
+
+    // encode max bit width
+    byte[] timestamp_min_byte = int2Bytes(getBitWith(max_interval));
+    for (byte b : timestamp_min_byte) encoded_result.add(b);
+    byte[] value_min_byte = int2Bytes(getBitWith(max_value));
+    for (byte b : value_min_byte) encoded_result.add(b);
+
+    // encode interval
+    byte[] timestamp_bytes = bitPacking(ts_block_delta,0,getBitWith(max_interval));
+    for (byte b : timestamp_bytes) encoded_result.add(b);
+//
+//    // encode value
+//    byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
+//    for (byte b : max_bit_width_value_byte) encoded_result.add(b);
+    byte[] value_bytes = bitPacking(ts_block_delta,1,getBitWith(max_value));
+    for (byte b : value_bytes) encoded_result.add(b);
+//
+//    byte[] td_common_byte = int2Bytes(result2.get(0));
+//    for (byte b: td_common_byte) encoded_result.add(b);
+
+    return encoded_result;
+  }
+
+  public static long getOutlier(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length, double threshold){
+    ArrayList<ArrayList<Integer>> ts_block_delta = getAbsDeltaTsBlock(ts_block,raw_length);
+    ArrayList<ArrayList<Integer>> ts_block_bit_width = getBitWith(ts_block_delta);
+    long block_size = ts_block.size();
+    long bits_encoded_data = 0;
+    int numCols = ts_block_bit_width.get(0).size();
+    ArrayList<ArrayList<Integer>> transposedList = new ArrayList<>();
+    for (int numCol = 0; numCol < numCols; numCol++) {
+      ArrayList<Integer> newRow = new ArrayList<>();
+      for (ArrayList<Integer> integers : ts_block_bit_width) {
+        newRow.add(integers.get(numCol));
+      }
+      transposedList.add(newRow);
+    }
+    ArrayList<ArrayList<Integer>> outlier_top_k = new ArrayList<>();
+    ArrayList<Integer> outlier_top_k_index = new ArrayList<>();
+    for(ArrayList<Integer> ts_block_bit_width_column:  transposedList){
+      HashMap<Integer, Integer> frequencyMap = new HashMap<>();
+      HashSet<Integer> uniqueSet = new HashSet<>(ts_block_bit_width_column);
+      ArrayList<Integer> uniqueList = new ArrayList<>(uniqueSet);
+      uniqueList.sort(Collections.reverseOrder());
+      for (Integer value : uniqueSet) {
+        int frequency = Collections.frequency(ts_block_bit_width_column, value);
+        frequencyMap.put(value, frequency);
+      }
+      int sum_frequency = 0;
+//        int top_k_ul = 0;
+      ArrayList<Integer> top_k_uniqueList = new ArrayList<>();
+      for (int value : uniqueList) {
+        sum_frequency += frequencyMap.get(value);
+        if ((double) sum_frequency / (double) block_size > threshold) {
+//            top_k_ul = ul - 1;
+          break;
+        }
+        top_k_uniqueList.add(value);
+      }
+      for(int j=1;j<ts_block_bit_width_column.size();j++){
+        if(top_k_uniqueList.contains(ts_block_bit_width_column.get(j)) && !outlier_top_k_index.contains(j)){
+          outlier_top_k_index.add(j);
+        }
+      }
+//
+//        System.out.println("top_k_uniqueList="+top_k_uniqueList);
+//        System.out.println("frequencyMap="+frequencyMap);
+    }
+    ts_block_delta = getDeltaTsBlock(ts_block, raw_length, outlier_top_k_index, outlier_top_k);
+//      printTSBlock(ts_block_delta,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
+
+//      System.out.println(outlier_top_k);
+    ArrayList<Byte> cur_encoded_result = encodeDeltaTsBlock(ts_block_delta,raw_length);
+//    encoded_result.addAll(cur_encoded_result);
+    //      ts_block_delta = getEncodeBitsRegression(ts_block, ts_block.size(), raw_length, i_star_ready);
+    bits_encoded_data += (cur_encoded_result.size()* 8L);
+//      System.out.println("bits_encoded_data:"+bits_encoded_data);
+    bits_encoded_data += getBitwidthDeltaTsBlock(outlier_top_k);
+
+    return bits_encoded_data;
+  }
+
+  public static long ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size,double threshold) throws IOException {
+    block_size ++;
+    ArrayList<Byte> encoded_result=new ArrayList<Byte>();
+    int length_all = data.size();
+    byte[] length_all_bytes = int2Bytes(length_all);
+    for(byte b : length_all_bytes) encoded_result.add(b);
+    long bits_encoded_data = 0;
+    bits_encoded_data+=32;
+    int block_num = length_all/block_size;
+
+    // encode block size (Integer)
+    byte[] block_size_byte = int2Bytes(block_size);
+    for (byte b : block_size_byte) encoded_result.add(b);
+    bits_encoded_data+=32;
+
+
+//    for(int i=0;i<1;i++){
+    for(int i=0;i<block_num;i++){
+      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+      for(int j=0;j<block_size;j++){
+        ts_block.add(data.get(j+i*block_size));
+//        ts_block_reorder.add(data.get(j+i*block_size));
+      }
+
+//      ArrayList<Integer> result2_reorder = new ArrayList<>();
+
+//      splitTimeStamp3(ts_block,result2);
+//      splitTimeStamp3(ts_block_reorder,result2_reorder);
+//      System.out.println(result2);
+
+
+      // time-order
+      // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+      //      ArrayList<Integer> i_star_ready = new ArrayList<>();
+      //      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,   i_star_ready);
+//      ArrayList<Integer> bitwidth_time = getSumBitWidth(ts_block);
+
+//      printTSBlock(ts_block,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\0.csv");
+//      quickSort(ts_block_reorder,1,0,block_size-1);
+
+//      printTSBlock(ts_block_reorder,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\1.csv");
+
+//      for(int alpha=1;alpha < 10;alpha++){
+
+//      printTSBlock(ts_block,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
+      ArrayList<Integer> result2 = new ArrayList<>();
+//      result2.add(1);
+      splitTimeStamp3(ts_block,result2);
+
+      quickSort(ts_block,0,0,block_size-1);
+//      System.out.println(ts_block);
+      // time-order
+      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+      ArrayList<Integer> i_star_ready = new ArrayList<>();
+      ArrayList<Float> theta = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
+              i_star_ready);
+//      System.out.println(ts_block_delta);
+
+      // value-order
+      quickSort(ts_block,1,0,block_size-1);
+
+//      System.out.println(ts_block);
+      ArrayList<Integer> reorder_length = new ArrayList<>();
+      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+      ArrayList<Float> theta_reorder = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
+              i_star_ready_reorder);
+//      System.out.println(ts_block_delta_reorder);
+
+      int i_star;
+      int j_star;
+      if(raw_length.get(0)<=reorder_length.get(0)){
+        quickSort(ts_block,0,0,block_size-1);
+//        count_raw ++;
+        i_star =getIStar(ts_block,block_size,0);
+      }
+      else{
+        raw_length = reorder_length;
+        theta = theta_reorder;
+        quickSort(ts_block,1,0,block_size-1);
+//        count_reorder ++;
+        i_star =getIStar(ts_block,block_size,1);
+      }
+      j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+
+      int adjust_count = 0;
+      while(j_star!=-1 && i_star !=-1){
+        if(adjust_count < block_size/2 && adjust_count <= 33){
+          adjust_count ++;
+        }else {
+          break;
+        }
+        ArrayList<ArrayList<Integer>> old_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+        ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
+
+        ArrayList<Integer> tmp_tv = ts_block.get(i_star);
+        if(j_star<i_star){
+          for(int u=i_star-1;u>=j_star;u--){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u+1,tmp_tv_cur);
+          }
+        }else{
+          for(int u=i_star+1;u<j_star;u++){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u-1,tmp_tv_cur);
+          }
+          j_star --;
+        }
+        ts_block.set(j_star,tmp_tv);
+
+        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder);
+        if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
+          ts_block = old_ts_block;
+          break;
+        }
+//        System.out.println("adjust_count" + adjust_count);
+        i_star =getIStar(ts_block,block_size,raw_length);
+        if(i_star == j_star) break;
+        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+      }
+
+      bits_encoded_data += getOutlier( ts_block, raw_length, threshold);
+
+//      System.out.println("bits_encoded_data:"+bits_encoded_data);
+//      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
+//      encoded_result.addAll(cur_encoded_result);
+    }
+
+//    int remaining_length = length_all - block_num*block_size;
+//    if(remaining_length==1){
+//      byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
+//      for(byte b : timestamp_end_bytes) encoded_result.add(b);
+//      byte[] value_end_bytes = int2Bytes(data.get(data.size()-1).get(1));
+//      for(byte b : value_end_bytes) encoded_result.add(b);
+//    }
+//    if(remaining_length!=0 && remaining_length!=1){
+//      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+//
+//      for(int j=block_num*block_size;j<length_all;j++){
+//        ts_block.add(data.get(j));
+//        ts_block_reorder.add(data.get(j));
+//      }
+//      ArrayList<Integer> result2 = new ArrayList<>();
+//      splitTimeStamp3(ts_block,result2);
+//
+//      quickSort(ts_block,0,0,remaining_length-1);
+//
+//      // time-order
+//      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+//      ArrayList<Integer> i_star_ready = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
+//              i_star_ready);
+//
+//      // value-order
+//      quickSort(ts_block,1,0,remaining_length-1);
+//      ArrayList<Integer> reorder_length = new ArrayList<>();
+//      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
+//              i_star_ready_reorder);
+//
+//      if(raw_length.get(0)<=reorder_length.get(0)){
+//        quickSort(ts_block,0,0,remaining_length-1);
+//        count_raw ++;
+//      }
+//      else{
+//        raw_length = reorder_length;
+//        quickSort(ts_block,1,0,remaining_length-1);
+//        count_reorder ++;
+//      }
+//      ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder);
+//      int supple_length;
+//      if(remaining_length % 8 == 0){
+//        supple_length = 1;
+//      }
+//      else if (remaining_length % 8 == 1){
+//        supple_length = 0;
+//      }
+//      else{
+//        supple_length = 9 - remaining_length % 8;
+//      }
+//      for(int s = 0;s<supple_length;s++){
+//        ArrayList<Integer> tmp = new ArrayList<>();
+//        tmp.add(0);
+//        tmp.add(0);
+//        ts_block_delta.add(tmp);
+//      }
+//      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
+//      encoded_result.addAll(cur_encoded_result);
+//    }
+//    System.out.println("bits_encoded_data:"+bits_encoded_data);
+    double ratio = (double) bits_encoded_data/(double)(length_all*64);
+    System.out.println(threshold+" ratio : "+ratio);
+    return bits_encoded_data;
+  }
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
     String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
@@ -1362,44 +1697,76 @@ public class Reger {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-//    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
-//    dataset_block_size.add(1024);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\EPM-Education");
-    output_path_list.add( parent_dir + "\\EPM-Education_ratio.csv");
-    dataset_block_size.add(512);
+    ArrayList<String> dataset_name= new ArrayList<>();
+    dataset_name.add("Metro-Traffic");
+    dataset_name.add("Nifty-Stocks");
+    dataset_name.add("USGS-Earthquakes");
+    dataset_name.add("Cyber-Vehicle");
+    dataset_name.add("TH-Climate");
+    dataset_name.add("TY-Transport");
+    dataset_name.add("TY-Fuel");
+    dataset_name.add("GW-Magnetic");
+    dataset_name.add("CS-Sensors");
+    dataset_name.add("Vehicle-Charge");
+    dataset_name.add("EPM-Education");
 
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Vehicle-Charge");
-    output_path_list.add( parent_dir + "\\Vehicle-Charge_ratio.csv");
-    dataset_block_size.add(512);
+    String input = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\";
+    String output =  "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\delta_top_k\\";
 
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
-    output_path_list.add( parent_dir + "\\CS-Sensors_ratio.csv");
-    dataset_block_size.add(1024);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Metro-Traffic");
-    output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
+    for(int i = 0;i<dataset_name.size();i++){
+      input_path_list.add(input + dataset_name.get(i));
+      output_path_list.add(output + dataset_name.get(i) +"_ratio.csv");
+//      dataset_block_size.add(256);
+    }
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Nifty-Stocks");
-    output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
     dataset_block_size.add(256);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\USGS-Earthquakes");
-    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Cyber-Vehicle");
-    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
     dataset_block_size.add(128);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TH-Climate");
-    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Transport");
-    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
     dataset_block_size.add(512);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Fuel");
-    output_path_list.add(parent_dir +  "\\TY-Fuel_ratio.csv");
     dataset_block_size.add(64);
-    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\GW-Magnetic");
-    output_path_list.add(parent_dir +  "\\GW-Magnetic_ratio.csv");
     dataset_block_size.add(128);
+    dataset_block_size.add(1024);
+    dataset_block_size.add(512);
+    dataset_block_size.add(512);
+////    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
+////    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
+////    dataset_block_size.add(1024);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\EPM-Education");
+//    output_path_list.add( parent_dir + "\\EPM-Education_ratio.csv");
+//    dataset_block_size.add(512);
+//
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Vehicle-Charge");
+//    output_path_list.add( parent_dir + "\\Vehicle-Charge_ratio.csv");
+//    dataset_block_size.add(512);
+//
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
+//    output_path_list.add( parent_dir + "\\CS-Sensors_ratio.csv");
+//    dataset_block_size.add(1024);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Metro-Traffic");
+//    output_path_list.add( parent_dir + "\\Metro-Traffic_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Nifty-Stocks");
+//    output_path_list.add(parent_dir+ "\\Nifty-Stocks_ratio.csv");
+//    dataset_block_size.add(256);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\USGS-Earthquakes");
+//    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Cyber-Vehicle");
+//    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
+//    dataset_block_size.add(128);
+//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TH-Climate");
+//    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Transport");
+//    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Fuel");
+//    output_path_list.add(parent_dir +  "\\TY-Fuel_ratio.csv");
+//    dataset_block_size.add(64);
+//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\GW-Magnetic");
+//    output_path_list.add(parent_dir +  "\\GW-Magnetic_ratio.csv");
+//    dataset_block_size.add(128);
 
 //    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test_small\\Metro-Traffic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
@@ -1444,6 +1811,7 @@ public class Reger {
               "Encoding Algorithm",
               "Encoding Time",
               "Decoding Time",
+              "threshold",
               "Points",
               "Compressed Size",
               "Compression Ratio"
@@ -1471,22 +1839,27 @@ public class Reger {
           data.add(tmp);
         }
         inputStream.close();
-        long encodeTime = 0;
-        long decodeTime = 0;
-        double ratio = 0;
-        double compressed_size = 0;
-        int repeatTime2 = 1;
-        for (int i = 0; i < repeatTime; i++) {
-          long s = System.nanoTime();
-          ArrayList<Byte> buffer = new ArrayList<>();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
-            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i));
-          long e = System.nanoTime();
-          encodeTime += ((e - s)/repeatTime2);
-          compressed_size += buffer.size();
-          double ratioTmp =(double) buffer.size()/(double) (data.size() * Integer.BYTES*2);
-          ratio += ratioTmp;
-          s = System.nanoTime();
+        for(double threshold=0.0;threshold<0.201;threshold+=0.01) {
+          long encodeTime = 0;
+          long decodeTime = 0;
+          double ratio = 0;
+          double compressed_size = 0;
+          int repeatTime2 = 1;
+          for (int i = 0; i < repeatTime; i++) {
+            long s = System.nanoTime();
+            long buffer_bits= 0;
+            ArrayList<Byte> buffer = new ArrayList<>();
+            for (int repeat = 0; repeat < repeatTime2; repeat++)
+              buffer_bits = ReorderingDeltaEncoder( data, dataset_block_size.get(file_i), threshold);
+//              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),threshold);
+
+
+            long e = System.nanoTime();
+            encodeTime += ((e - s)/repeatTime2);
+            compressed_size += buffer_bits;
+            double ratioTmp =  (double) buffer_bits / (double) (data.size() * Integer.BYTES*2 *8);
+            ratio += ratioTmp;
+            s = System.nanoTime();
 //          for(int repeat=0;repeat<1;repeat++)
 //            data_decoded = ReorderingRegressionDecoder(buffer);
 //          for(int p=0;p< data.size();p++){
@@ -1496,28 +1869,31 @@ public class Reger {
 ////              System.out.println(data_decoded.get(p).get(1));
 //            }
 //          }//||  Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1))
-          e = System.nanoTime();
-          decodeTime += ((e-s)/repeatTime2);
+            e = System.nanoTime();
+            decodeTime += ((e - s) / repeatTime2);
+          }
+
+          ratio /= repeatTime;
+          compressed_size /= repeatTime;
+          encodeTime /= repeatTime;
+          decodeTime /= repeatTime;
+
+          String[] record = {
+                  f.toString(),
+                  "REGER-Delta-Top-K",
+                  String.valueOf(encodeTime),
+                  String.valueOf(decodeTime),
+                  String.valueOf(threshold),
+                  String.valueOf(data.size()),
+                  String.valueOf(compressed_size),
+                  String.valueOf(ratio)
+          };
+          System.out.println(ratio);
+          writer.writeRecord(record);
         }
-
-        ratio /= repeatTime;
-        compressed_size /= repeatTime;
-        encodeTime /= repeatTime;
-        decodeTime /= repeatTime;
-
-        String[] record = {
-                f.toString(),
-                "REGER",
-                String.valueOf(encodeTime),
-                String.valueOf(decodeTime),
-                String.valueOf(data.size()),
-                String.valueOf(compressed_size),
-                String.valueOf(ratio)
-        };
-        System.out.println(ratio);
-        writer.writeRecord(record);
       }
       writer.close();
     }
   }
+
 }
