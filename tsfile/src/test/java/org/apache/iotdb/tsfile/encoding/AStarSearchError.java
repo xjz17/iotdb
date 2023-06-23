@@ -1,7 +1,11 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import org.apache.iotdb.tsfile.encoding.AStarSearch;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import it.unimi.dsi.fastutil.ints.IntIntPair;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +15,7 @@ import java.nio.file.Files;
 import java.util.*;
 
 import static java.lang.Math.abs;
+import static org.apache.iotdb.tsfile.encoding.AStarSearch.findOptimalOrder;
 
 public class AStarSearchError {
   public static int getBitWith(int num) {
@@ -1490,12 +1495,15 @@ public class AStarSearchError {
     bits_encoded_data += 32;
 
     for (int i = 0; i < 1; i++) {
-      //    for(int i=0;i<block_num;i++){
+//    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+      ObjectArrayList<IntIntPair> input =
+              new ObjectArrayList<>(block_size);
       for (int j = 0; j < block_size; j++) {
         ts_block.add(data.get(j + i * block_size));
         ts_block_reorder.add(data.get(j + i * block_size));
+        input.add(IntIntPair.of(data.get(j + i * block_size).get(0),data.get(j + i * block_size).get(1)));
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
@@ -1505,7 +1513,19 @@ public class AStarSearchError {
       splitTimeStamp3(ts_block_reorder, result2_reorder);
       //      System.out.println(result2);
       quickSort(ts_block, 0, 0, block_size - 1);
-      ArrayList<ArrayList<Integer>> resultOptimal = null;//findOptimalOrder(ts_block);
+
+
+      IntArrayList resultOptimal = findOptimalOrder(input);
+      ArrayList<ArrayList<Integer>> reorder_a_star = new ArrayList<>();
+      for(int index:resultOptimal){
+        System.out.print("\t("+ts_block.get(index).get(0)+","+ts_block.get(index).get(1)+")");
+        ArrayList<Integer> tmp=new ArrayList<>();
+        tmp.add(ts_block.get(index).get(0));
+        tmp.add(ts_block.get(index).get(1));
+        reorder_a_star.add(tmp);
+      }
+//      System.out.println(resultOptimal);
+
       //      ArrayList<ArrayList<ArrayList<Integer>>> result_permute = permute(ts_block);
       //      System.out.println(result_permute.size());
       //      for(ArrayList<ArrayList<Integer>> tmp : result_permute )
@@ -1549,7 +1569,7 @@ public class AStarSearchError {
       //      for(int alpha=1;alpha < 10;alpha++){
       if (i == 0)
         printTSBlock(
-            resultOptimal,
+                reorder_a_star,
             "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
                 + dataset_name
                 + "2.csv");
@@ -1603,7 +1623,7 @@ public class AStarSearchError {
       // printTSBlock(ts_block_delta,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
       //
       ////      System.out.println(outlier_top_k);
-      ts_block_delta = getDeltaTsBlock(resultOptimal, raw_length);
+      ts_block_delta = getDeltaTsBlock(reorder_a_star, raw_length);
       ArrayList<Byte> cur_encoded_result = encodeDeltaTsBlock(ts_block_delta, raw_length);
       encoded_result.addAll(cur_encoded_result);
       //      ts_block_delta = getEncodeBitsRegression(ts_block, ts_block.size(), raw_length,
@@ -1809,18 +1829,18 @@ public class AStarSearchError {
     }
     dataset_block_size.add(512);
     dataset_block_size.add(256);
-    dataset_block_size.add(512);
+    dataset_block_size.add(512); // A_star slow!!!
     dataset_block_size.add(128);
-    dataset_block_size.add(512);
+    dataset_block_size.add(512); // A_star slow!!!
     dataset_block_size.add(512);
     dataset_block_size.add(64);
     dataset_block_size.add(128);
-    dataset_block_size.add(32);
+    dataset_block_size.add(256);
     dataset_block_size.add(512);
     dataset_block_size.add(512);
 
-    //    for(int file_i=8;file_i<9;file_i++){
-    for (int file_i = 2; file_i < input_path_list.size(); file_i++) {
+        for(int file_i=input_path_list.size()-2;file_i<input_path_list.size()-1;file_i++){
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       System.out.println(inputPath);
@@ -1913,7 +1933,7 @@ public class AStarSearchError {
             String.valueOf(compressed_size / 8),
             String.valueOf(ratio)
           };
-          //        System.out.println(ratio);
+                  System.out.println("ratio"+ratio);
           writer.writeRecord(record);
         }
         break;
