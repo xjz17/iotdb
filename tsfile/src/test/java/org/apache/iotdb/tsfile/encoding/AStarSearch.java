@@ -48,9 +48,9 @@ public class AStarSearch {
   private static class Node {
     TreePSet<Integer> set;
     int lastID;
-    int g;
-    int h;
-    int f;
+    long g;
+    long h;
+    long f;
     HashCode hashA;
     Node parent;
 
@@ -122,7 +122,7 @@ public class AStarSearch {
     init(input);
     indexOccurred = new int[N];
 
-    ObjectHeapPriorityQueue<Node> openQueue = new ObjectHeapPriorityQueue<>(Comparator.comparingInt(node -> node.f));
+    ObjectHeapPriorityQueue<Node> openQueue = new ObjectHeapPriorityQueue<>(Comparator.comparingLong(node -> node.f));
 
     LongOpenHashSet[] uA = new LongOpenHashSet[N];
 
@@ -157,7 +157,7 @@ public class AStarSearch {
         continue;
 
       uA[now.set.size()].add(now.hashA.asLong());
-      now.printNode();
+//      now.printNode();
 
       int extended=0;
       for(int next:nearestID.get(now.lastID))if(!now.set.contains(next)){
@@ -171,6 +171,17 @@ public class AStarSearch {
 
     return null;
   }
+
+  public static ArrayList<ArrayList<Integer>> findOptimalOrder(ArrayList<ArrayList<Integer>> input){
+    ObjectArrayList<IntIntPair> a =
+        new ObjectArrayList<>(input.size());
+    for(ArrayList<Integer> p:input)a.add(IntIntPair.of(p.get(0),p.get(1)));
+    IntArrayList index = findOptimalOrder(a);
+    ArrayList<ArrayList<Integer>> ans=new ArrayList<>();
+    for(int id:index)ans.add(input.get(id));
+    return ans;
+  }
+
 
   private static boolean isGoal(ArrayList<Integer> sequence, int block_size) {
     int size = sequence.size();

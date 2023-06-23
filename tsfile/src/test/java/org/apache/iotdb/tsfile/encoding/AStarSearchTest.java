@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.util.*;
 
 import static java.lang.Math.abs;
+import static org.apache.iotdb.tsfile.encoding.AStarSearch.findOptimalOrder;
 
 public class AStarSearchTest {
   public static int count = 0;
@@ -1655,7 +1656,7 @@ public class AStarSearchTest {
       splitTimeStamp3(ts_block_reorder, result2_reorder);
       //      System.out.println(result2);
       quickSort(ts_block, 0, 0, block_size - 1);
-      ArrayList<ArrayList<Integer>> resultOptimal = null;//findOptimalOrder(ts_block);
+      ArrayList<ArrayList<Integer>> resultOptimal = findOptimalOrder(ts_block);
 
       //      ArrayList<ArrayList<ArrayList<Integer>>> result_permute = permute(ts_block);
       System.out.println("count=" + count);
@@ -1684,27 +1685,27 @@ public class AStarSearchTest {
       //      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,
       // block_size, raw_length,   i_star_ready);
       //      ArrayList<Integer> bitwidth_time = getSumBitWidth(ts_block);
-      if (i == 0) {
-        printTSBlock(
-            ts_block,
-            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_bit_width\\"
-                + dataset_name
-                + "0.csv");
-        quickSort(ts_block_reorder, 1, 0, block_size - 1);
-
-        printTSBlock(
-            ts_block_reorder,
-            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_bit_width\\"
-                + dataset_name
-                + "1.csv");
-      }
-      //      for(int alpha=1;alpha < 10;alpha++){
-      if (i == 0)
-        printTSBlock(
-            resultOptimal,
-            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_bit_width\\"
-                + dataset_name
-                + "2.csv");
+//      if (i == 0) {
+//        printTSBlock(
+//            ts_block,
+//            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_bit_width\\"
+//                + dataset_name
+//                + "0.csv");
+//        quickSort(ts_block_reorder, 1, 0, block_size - 1);
+//
+//        printTSBlock(
+//            ts_block_reorder,
+//            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_bit_width\\"
+//                + dataset_name
+//                + "1.csv");
+//      }
+//      //      for(int alpha=1;alpha < 10;alpha++){
+//      if (i == 0)
+//        printTSBlock(
+//            resultOptimal,
+//            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_bit_width\\"
+//                + dataset_name
+//                + "2.csv");
 
       //      ts_block_delta = getAbsDeltaTsBlock(result_permute.get(0),raw_length);
       //      ArrayList<ArrayList<Integer>> ts_block_bit_width = getBitWith(ts_block_delta);
@@ -1950,9 +1951,9 @@ public class AStarSearchTest {
     dataset_name.add("EPM-Education");
 
     String input =
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+        "D:\\Study\\Lab\\iotdb\\Compress-xjz\\reorder_test\\iotdb_test_small\\";
     String output =
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\a_star_rubbish\\";
+        "D:\\Study\\Lab\\iotdb\\Compress-xjz\\reorder_test\\result_evaluation\\compression_ratio\\a_star_rubbish\\";
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input + dataset_name.get(i));
@@ -1971,8 +1972,8 @@ public class AStarSearchTest {
     dataset_block_size.add(512);
     dataset_block_size.add(512);
 
-    for (int file_i = 8; file_i < 9; file_i++) {
-      //    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for (int file_i = 9; file_i < 10; file_i++) {
+//          for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       System.out.println(inputPath);
