@@ -18,14 +18,19 @@ public class AStarSearch {
   static IntArrayList PX,PY;
   static ObjectArrayList<IntArrayList> nearestID;
   static int N;
-  static final int EXTEND_K = 2;
+  static final int EXTEND_K = 1;
   // control this to limit the number of new nodes in extension
   // due to the wrong H, when EXTEND_K = 1, a suboptimal solution (a simple greedy) will be found quickly.
   static int[] indexOccurred;
   static int occurTIME=0;
-
+  public static int getBitWith(int num) {
+    if (num == 0) return 1;
+    else return 32 - Integer.numberOfLeadingZeros(num);
+  }
   static int getDis(int x1,int y1,int x2,int y2){return Math.abs(x1-x2)+Math.abs(y1-y2);}
-  static int getDis(int a,int b){return Math.abs(PX.getInt(a)-PX.getInt(b))+Math.abs(PY.getInt(a)-PY.getInt(b));}
+  static int getDis(int a,int b){return  Math.abs(PX.getInt(a)-PX.getInt(b))+Math.abs(PY.getInt(a)-PY.getInt(b));}
+//  static int getDis(int x1,int y1,int x2,int y2){return getBitWith(Math.abs(x1-x2))+getBitWith(Math.abs(y1-y2));}
+//  static int getDis(int a,int b){return getBitWith( Math.abs(PX.getInt(a)-PX.getInt(b)))+getBitWith(Math.abs(PY.getInt(a)-PY.getInt(b)));}
   static void init(ObjectArrayList<IntIntPair> input) {
     PX=new IntArrayList();PY=new IntArrayList();
     for(IntIntPair pair:input) {
