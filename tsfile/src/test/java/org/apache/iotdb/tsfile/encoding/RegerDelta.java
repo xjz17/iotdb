@@ -294,7 +294,6 @@ public class RegerDelta {
       tmp.add(epsilon_v);
       ts_block_delta.set(j, tmp);
     }
-
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
 
@@ -871,6 +870,7 @@ public class RegerDelta {
     }
     timestamp_delta_max -= timestamp_delta_min;
     value_delta_max -= value_delta_min;
+
     if (value_delta_max <= timestamp_delta_max) i_star = timestamp_delta_max_index;
     else i_star = value_delta_max_index;
     return i_star;
@@ -940,7 +940,7 @@ public class RegerDelta {
     int count_raw = 0;
     int count_reorder = 0;
     //    System.out.println(block_num);
-    //    for(int i=0;i<1;i++){
+//        for(int i=33;i<34;i++){
     for (int i = 0; i < block_num; i++) {
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -998,11 +998,16 @@ public class RegerDelta {
         count_reorder++;
         i_star = getIStar(ts_block, block_size, 1);
       }
+
       j_star = getJStar(ts_block, i_star, block_size, raw_length, 0);
 
-      int adjust_count = 0;
+//      System.out.println("i_star"+i_star);
+//          System.out.println("j_star"+j_star);
+
+
+          int adjust_count = 0;
       while (j_star != -1 && i_star != -1) {
-        if (adjust_count < block_size / 2 && adjust_count <= 33) {
+        if (adjust_count < block_size / 2 || adjust_count <= 33) {
           adjust_count++;
         } else {
           break;
@@ -1039,15 +1044,20 @@ public class RegerDelta {
         i_star = getIStar(ts_block, block_size, raw_length);
         if (i_star == j_star) break;
         j_star = getJStar(ts_block, i_star, block_size, raw_length, 0);
+//        System.out.println("i_star"+i_star);
+//        System.out.println("j_star"+j_star);
+
       }
       ts_block_delta =
           getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder);
+//      System.out.println(ts_block);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, result2);
       encoded_result.addAll(cur_encoded_result);
+
+//      System.out.println("encoded_result: "+(encoded_result.size()*8));
     }
-    //    System.out.println("encoded_result:"+(encoded_result.size()*8));
-    //    writer_before.close();
-    //    writer_after.close();
+
+
     int remaining_length = length_all - block_num * block_size;
     if (remaining_length == 1) {
       byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - 1).get(0));
@@ -1326,7 +1336,7 @@ public class RegerDelta {
     output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv");
     dataset_block_size.add(128);
 
-    //    for(int file_i=0;file_i<1;file_i++){
+//        for(int file_i=0;file_i<1;file_i++){
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
@@ -1408,6 +1418,7 @@ public class RegerDelta {
         };
         System.out.println(ratio);
         writer.writeRecord(record);
+        break;
       }
       writer.close();
     }

@@ -326,6 +326,8 @@ public class Reger {
 
       if (epsilon_r < timestamp_delta_min) {
         timestamp_delta_min = epsilon_r;
+//        System.out.println("timestamp_delta_min: "+timestamp_delta_min);
+//        System.out.println("j:"+j);
       }
       if (epsilon_v < value_delta_min) {
         value_delta_min = epsilon_v;
@@ -335,9 +337,9 @@ public class Reger {
       tmp.add(epsilon_v);
       ts_block_delta.add(tmp);
     }
-
-    timestamp_delta_min -= 1;
-    value_delta_min -= 1;
+//
+//    timestamp_delta_min -= 1;
+//    value_delta_min -= 1;
 
     int max_interval = Integer.MIN_VALUE;
     int max_interval_i = -1;
@@ -370,6 +372,10 @@ public class Reger {
       ts_block_delta.set(j, tmp);
     }
 
+//    System.out.println("timestamp_delta_min: "+timestamp_delta_min);
+//    System.out.println("value_delta_min: "+value_delta_min);
+
+//    System.out.println("max_interval: "+max_interval);
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
 
@@ -388,6 +394,7 @@ public class Reger {
     theta.add(theta1_r);
     theta.add(theta0_v);
     theta.add(theta1_v);
+//    System.out.println(theta);
 
     i_star.add(max_interval_i);
     i_star.add(max_value_i);
@@ -1107,6 +1114,8 @@ public class Reger {
       ArrayList<Integer> result2) {
     ArrayList<Byte> encoded_result = new ArrayList<>();
 
+
+//    System.out.println(theta);
     // encode interval0 and value0
     byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
     for (byte b : interval0_byte) encoded_result.add(b);
@@ -1125,12 +1134,14 @@ public class Reger {
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
+//    System.out.println(raw_length.get(1));
     for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
     byte[] timestamp_bytes = bitPacking(ts_block, 0, raw_length.get(1));
     for (byte b : timestamp_bytes) encoded_result.add(b);
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
+//    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block, 1, raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -1156,7 +1167,7 @@ public class Reger {
 
     int count_raw = 0;
     int count_reorder = 0;
-    //    for(int i=0;i<1;i++){
+//        for(int i=116;i<117;i++){
     for (int i = 0; i < block_num; i++) {
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -1206,7 +1217,8 @@ public class Reger {
         i_star = getIStar(ts_block, block_size, 1, theta);
       }
       j_star = getJStar(ts_block, i_star, block_size, raw_length, 0, theta);
-
+//          System.out.println("i_star"+i_star);
+//          System.out.println("j_star"+j_star);
       int adjust_count = 0;
       while (j_star != -1 && i_star != -1) {
         if (adjust_count < block_size / 2 && adjust_count <= 33) {
@@ -1238,22 +1250,31 @@ public class Reger {
         ts_block.set(j_star, tmp_tv);
 
         getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+//        System.out.println("old_length"+old_length);
+//        System.out.println("raw_length"+raw_length);
         if (old_length.get(1) + old_length.get(2) < raw_length.get(1) + raw_length.get(2)) {
           ts_block = old_ts_block;
           break;
         }
         //        System.out.println("adjust_count" + adjust_count);
+//        System.out.println("i_star"+i_star);
         i_star = getIStar(ts_block, block_size, raw_length, theta);
         if (i_star == j_star) break;
         j_star = getJStar(ts_block, i_star, block_size, raw_length, 0, theta);
+//        System.out.println("i_star"+i_star);
+//        System.out.println("j_star"+j_star);
       }
+//          System.out.println("i_star"+i_star);
+//          System.out.println("j_star"+j_star);
+//          System.out.println(ts_block);
+//          System.out.println(theta);
       ts_block_delta =
-          getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+          getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready, theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
       encoded_result.addAll(cur_encoded_result);
-      //      System.out.println(cur_encoded_result.size());
+//      System.out.println("cur_bits:"+(encoded_result.size()*8L));
     }
-
+//    System.out.println("cur_bits:"+(encoded_result.size()*8L));
     int remaining_length = length_all - block_num * block_size;
     if (remaining_length == 1) {
       byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - 1).get(0));
@@ -1484,9 +1505,9 @@ public class Reger {
   }
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String parent_dir =
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
-    //    String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+//    String parent_dir =
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
+        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
@@ -1580,8 +1601,8 @@ public class Reger {
     //
     // output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
     //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-    //    for(int file_i=0;file_i<1;file_i++){
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for(int file_i=0;file_i<1;file_i++){
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1671,6 +1692,7 @@ public class Reger {
         };
         System.out.println(ratio);
         writer.writeRecord(record);
+        break;
       }
       writer.close();
     }

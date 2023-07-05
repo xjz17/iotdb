@@ -1415,16 +1415,6 @@ public class AStarSearchError {
     return timestamp_delta_max + value_delta_max;
   }
 
-  public static ArrayList<ArrayList<ArrayList<Integer>>> permute(
-      ArrayList<ArrayList<Integer>> nums) {
-    ArrayList<ArrayList<ArrayList<Integer>>> result = new ArrayList<>();
-    ArrayList<ArrayList<Integer>> current = new ArrayList<>();
-    boolean[] used = new boolean[nums.size()];
-
-    permuteHelper(nums, used, current, result);
-
-    return result;
-  }
 
   public static ArrayList<Integer> getMaxBitWidthForPrune(ArrayList<ArrayList<Integer>> ts_block) {
     int block_size = ts_block.size();
@@ -1484,50 +1474,7 @@ public class AStarSearchError {
     return max_bit_width;
   }
 
-  private static void permuteHelper(
-      ArrayList<ArrayList<Integer>> nums,
-      boolean[] used,
-      ArrayList<ArrayList<Integer>> current,
-      ArrayList<ArrayList<ArrayList<Integer>>> result) {
-    if (current.size() == nums.size()) {
-      result.add(new ArrayList<>(current));
-      return;
-    }
-    int fn = Integer.MAX_VALUE;
-    int i_cur = 0;
 
-    for (int i = 0; i < nums.size(); i++) {
-      if (used[i]) {
-        continue;
-      }
-
-      current.add(nums.get(i));
-      used[i] = true;
-      ArrayList<ArrayList<Integer>> remaining = new ArrayList<>();
-      for (int j = 0; j < nums.size(); j++) {
-        if (used[j]) {
-          continue;
-        }
-        remaining.add(nums.get(j));
-      }
-
-      ArrayList<Integer> b0 = getSumAbosulte(current);
-      ArrayList<Integer> b1 = getSumAbosulte(remaining);
-      if (b0.get(0) + b0.get(1) + b1.get(0) + b1.get(1) < fn) {
-        i_cur = i;
-        fn = b0.get(0) + b0.get(1) + b1.get(0) + b1.get(1);
-      }
-      used[i] = false;
-      //      used[i] = true;
-      //      permuteHelper(nums, used, current, result);
-      //      used[i] = false;
-      current.remove(current.size() - 1);
-    }
-    current.add(nums.get(i_cur));
-    used[i_cur] = true;
-    permuteHelper(nums, used, current, result);
-    used[i_cur] = false;
-  }
   public static long getOutlier(
           ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> raw_length, double threshold) {
     ArrayList<ArrayList<Integer>> ts_block_delta = getAbsDeltaTsBlock(ts_block, raw_length);
@@ -1596,7 +1543,6 @@ public class AStarSearchError {
     ArrayList<ArrayList<Integer>> ts_block_bit_width = getBitWith(ts_block_delta);
     long block_size = ts_block.size();
     long bits_encoded_data = 0;
-    int numCols = ts_block_bit_width.get(0).size();
     ArrayList<ArrayList<Integer>> transposedList = new ArrayList<>();
 //    for (int numCol = 0; numCol < numCols; numCol++) {
       ArrayList<Integer> newRow = new ArrayList<>();
@@ -1671,8 +1617,8 @@ public class AStarSearchError {
     for (byte b : block_size_byte) encoded_result.add(b);
     bits_encoded_data += 32;
 
-//    for (int i = 0; i < 1; i++) {
-    for(int i=0;i<block_num;i++){
+    for (int i = 0; i < 1; i++) {
+//    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       ObjectArrayList<IntIntPair> input =
@@ -1689,137 +1635,58 @@ public class AStarSearchError {
       splitTimeStamp3(ts_block, result2);
       splitTimeStamp3(ts_block_reorder, result2_reorder);
 
-      //      System.out.println(result2);
       quickSort(ts_block, 0, 0, block_size - 1);
-//      System.out.println(ts_block);
       ArrayList<ArrayList<Integer>> reorder_a_star = findOptimalOrder(ts_block);
-//      IntArrayList resultOptimal = findOptimalOrder(input);
-//      ArrayList<ArrayList<Integer>> reorder_a_star = new ArrayList<>();
-//      for(int index:resultOptimal){
-//        System.out.print("\t("+ts_block.get(index).get(0)+","+ts_block.get(index).get(1)+")");
-//        ArrayList<Integer> tmp=new ArrayList<>();
-//        tmp.add(ts_block.get(index).get(0));
-//        tmp.add(ts_block.get(index).get(1));
-//        reorder_a_star.add(tmp);
-//      }
-//      System.out.println(resultOptimal);
-
-      //      ArrayList<ArrayList<ArrayList<Integer>>> result_permute = permute(ts_block);
-      //      System.out.println(result_permute.size());
-      //      for(ArrayList<ArrayList<Integer>> tmp : result_permute )
-      //        System.out.println(tmp);
-
-      //      int tmp_ts_block_bits_max = Integer.MAX_VALUE;
-      //      ArrayList<ArrayList<Integer>> cur_order_block = new ArrayList<>();
-      //      for(ArrayList<ArrayList<Integer>> ts_block_tmp:result_permute){
-      //        ArrayList<Integer> raw_length = new ArrayList<>();
-      //        ArrayList<ArrayList<Integer>> ts_block_delta = getDeltaTsBlock(ts_block,raw_length);
-      //        int tmp_ts_block_bits = getTotalBitWidth(ts_block_delta);
-      //        if(tmp_ts_block_bits_max > tmp_ts_block_bits){
-      //          tmp_ts_block_bits_max = tmp_ts_block_bits;
-      //          cur_order_block = ts_block_tmp;
-      //        }
-      //      }
 
       // time-order
-      ArrayList<Integer> raw_length =
-          new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-      //      ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+      ArrayList<Integer> raw_length = new ArrayList<>(); 
+      // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
 
-      //      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,
-      // block_size, raw_length,   i_star_ready);
-      //      ArrayList<Integer> bitwidth_time = getSumBitWidth(ts_block);
-      if (i == 0) {
-        printTSBlock(
-            ts_block,
-            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
-                + dataset_name
-                + "0.csv");
-        quickSort(ts_block_reorder, 1, 0, block_size - 1);
 
-        printTSBlock(
-            ts_block_reorder,
-            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
-                + dataset_name
-                + "1.csv");
-      }
-      //      for(int alpha=1;alpha < 10;alpha++){
-      if (i == 0)
-        printTSBlock(
-                reorder_a_star,
-            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
-                + dataset_name
-                + "2.csv");
-
-      double min_threshold = 0;
-      long min_bits = Long.MAX_VALUE;
-      for(int t_or_v=0;t_or_v<2;t_or_v++){
-        for (double thres = 0.0; thres < 0.201; thres += 0.01) {
-          long cur_bits = getOutlier(reorder_a_star, raw_length, thres,t_or_v);
-          if(cur_bits < min_bits){
-            min_bits = cur_bits;
-            min_threshold = thres;
-          }
-        }
-        System.out.println("optimal threshold "+t_or_v+" column of "+dataset_name+": "+min_threshold);
-      }
-
-//      ts_block_delta = getAbsDeltaTsBlock(reorder_a_star,raw_length);
-//      ArrayList<ArrayList<Integer>> ts_block_bit_width = getBitWith(ts_block_delta);
-//      int numCols = ts_block_bit_width.get(0).size();
-//      ArrayList<ArrayList<Integer>> transposedList = new ArrayList<>();
-//      for (int numCol = 0; numCol < numCols; numCol++) {
-//        ArrayList<Integer> newRow = new ArrayList<>();
-//        for (ArrayList<Integer> integers : ts_block_bit_width) {
-//          newRow.add(integers.get(numCol));
-//        }
-//        transposedList.add(newRow);
+//      if (i == 0) {
+//        printTSBlock(
+//            ts_block,
+//            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
+//                + dataset_name
+//                + "0.csv");
+//        quickSort(ts_block_reorder, 1, 0, block_size - 1);
+//
+//        printTSBlock(
+//            ts_block_reorder,
+//            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
+//                + dataset_name
+//                + "1.csv");
+//        printTSBlock(
+//                reorder_a_star,
+//                "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\"
+//                        + dataset_name
+//                        + "2.csv");
 //      }
-//      ArrayList<ArrayList<Integer>> outlier_top_k = new ArrayList<>();
-//      ArrayList<Integer> outlier_top_k_index = new ArrayList<>();
-//      for(ArrayList<Integer> ts_block_bit_width_column:  transposedList){
-//        HashMap<Integer, Integer> frequencyMap = new HashMap<>();
-//        HashSet<Integer> uniqueSet = new HashSet<>(ts_block_bit_width_column);
-//        ArrayList<Integer> uniqueList = new ArrayList<>(uniqueSet);
-//        uniqueList.sort(Collections.reverseOrder());
-//        for (Integer value : uniqueSet) {
-//          int frequency = Collections.frequency(ts_block_bit_width_column, value);
-//          frequencyMap.put(value, frequency);
-//        }
-//        int sum_frequency = 0;
-////        int top_k_ul = 0;
-//        ArrayList<Integer> top_k_uniqueList = new ArrayList<>();
-//        for (int value : uniqueList) {
-//          sum_frequency += frequencyMap.get(value);
-//          if ((double) sum_frequency / (double) block_size > threshold) {
-////            top_k_ul = ul - 1;
-//            break;
-//          }
-//          top_k_uniqueList.add(value);
-//        }
-//        for(int j=1;j<ts_block_bit_width_column.size();j++){
-//          if(top_k_uniqueList.contains(ts_block_bit_width_column.get(j)) &&
-// !outlier_top_k_index.contains(j)){
-//            outlier_top_k_index.add(j);
+
+
+
+//      for(int t_or_v=0;t_or_v<2;t_or_v++){
+//        double min_threshold = 0;
+//        long min_bits = Long.MAX_VALUE;
+//        for (double thres = 0.0; thres < 0.201; thres += 0.01) {
+//          long cur_bits = getOutlier(reorder_a_star, raw_length, thres,t_or_v);
+//          if(cur_bits < min_bits){
+//            min_bits = cur_bits;
+//            min_threshold = thres;
 //          }
 //        }
-//      //
-//      //        System.out.println("top_k_uniqueList="+top_k_uniqueList);
-//      //        System.out.println("frequencyMap="+frequencyMap);
-//            }
-//            ts_block_delta = getDeltaTsBlock(ts_block, raw_length, outlier_top_k_index,
-//       outlier_top_k);
-      ////
-      // printTSBlock(ts_block_delta,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
-      //
-      ////      System.out.println(outlier_top_k);
-      ts_block_delta = getDeltaTsBlock(reorder_a_star, raw_length);
+//        bits_encoded_data += min_bits;
+//        System.out.println("optimal threshold "+t_or_v+" column of "+dataset_name+": "+min_threshold);
+//      }
+
+      ArrayList<ArrayList<Integer>> ts_block_delta = getDeltaTsBlock(reorder_a_star, raw_length);
       ArrayList<Byte> cur_encoded_result = encodeDeltaTsBlock(ts_block_delta, raw_length);
       encoded_result.addAll(cur_encoded_result);
       //      ts_block_delta = getEncodeBitsRegression(ts_block, ts_block.size(), raw_length,
       // i_star_ready);
       bits_encoded_data += (cur_encoded_result.size() * 8L);
+
+
       //      System.out.println("bits_encoded_data:"+bits_encoded_data);
       //      bits_encoded_data += getBitwidthDeltaTsBlock(outlier_top_k);
       //      System.out.println("bits_encoded_data:"+bits_encoded_data);
@@ -1828,7 +1695,7 @@ public class AStarSearchError {
     }
 
     double ratio = (double) bits_encoded_data / (double) (length_all * 64);
-//    System.out.println(threshold + " ratio : " + ratio);
+    System.out.println( " ratio : " + ratio);
     return bits_encoded_data;
   }
 
@@ -2012,7 +1879,7 @@ public class AStarSearchError {
         "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
     String output =
         "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\a_star\\";
-
+//    a_star_rubbish
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input + dataset_name.get(i));
       output_path_list.add(output + dataset_name.get(i) + "_ratio.csv");
@@ -2030,8 +1897,8 @@ public class AStarSearchError {
     dataset_block_size.add(512);
     dataset_block_size.add(512); // when extend_k >1, A_star is too slow!!!
 
-        for(int file_i=10;file_i<11;file_i++){
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for(int file_i=10;file_i<11;file_i++){
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
 //      System.out.println(inputPath);
@@ -2049,7 +1916,7 @@ public class AStarSearchError {
         "Encoding Algorithm",
         "Encoding Time",
         "Decoding Time",
-        "threshold",
+//        "threshold",
         "Points",
         "Compressed Size",
         "Compression Ratio"
@@ -2116,10 +1983,10 @@ public class AStarSearchError {
 
           String[] record = {
             f.toString(),
-            "A-star-search",
+            "A-Star-Search-TopK",
             String.valueOf(encodeTime),
             String.valueOf(decodeTime),
-            String.valueOf(threshold),
+//            String.valueOf(threshold),
             String.valueOf(data.size()),
             String.valueOf(compressed_size / 8),
             String.valueOf(ratio)
@@ -2127,7 +1994,7 @@ public class AStarSearchError {
 //                  System.out.println("ratio"+ratio);
           writer.writeRecord(record);
         }
-        break;
+//        break;
       }
       writer.close();
     }
