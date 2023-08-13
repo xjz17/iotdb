@@ -247,7 +247,8 @@ public class TopKRegerReorderTopK {
             int block_size,
             ArrayList<Integer> result,
             ArrayList<Integer> i_star,
-            ArrayList<Float> theta) {
+            ArrayList<Float> theta,
+            double threshold) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -301,6 +302,10 @@ public class TopKRegerReorderTopK {
         tmp0.add(ts_block.get(0).get(1));
         ts_block_delta.add(tmp0);
 
+        ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
+        ArrayList<Integer> tmp_top_k = new ArrayList<>();
+
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
             int epsilon_r =
@@ -321,6 +326,38 @@ public class TopKRegerReorderTopK {
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
+
+            if (epsilon_r_j_list.size() == 0) {
+                tmp_top_k = new ArrayList<>();
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_r);
+                epsilon_r_j_list.add(tmp_top_k);
+                tmp_top_k = new ArrayList<>();
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_v);
+                epsilon_v_j_list.add(tmp_top_k);
+            } else {
+                tmp_top_k = new ArrayList<>();
+                ;
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_r);
+                // 寻找插入位置
+                int insertIndex = 0;
+                while (insertIndex < epsilon_r_j_list.size() && tmp_top_k.get(1) < epsilon_r_j_list.get(insertIndex).get(1)) {
+                    insertIndex++;
+                }
+                epsilon_r_j_list.add(insertIndex, tmp_top_k);
+                tmp_top_k = new ArrayList<>();
+                ;
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_v);
+                insertIndex = 0;
+                while (insertIndex < epsilon_v_j_list.size() && tmp_top_k.get(1) < epsilon_v_j_list.get(insertIndex).get(1)) {
+                    insertIndex++;
+                }
+                epsilon_v_j_list.add(insertIndex, tmp_top_k);
+            }
+
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
@@ -330,10 +367,24 @@ public class TopKRegerReorderTopK {
         timestamp_delta_min -= 1;
         value_delta_min -= 1;
 
+        int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
+        int timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+//        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
+
+        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
+        int value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+//        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+
+//        b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+//        b.add(getBitWith(value_delta_max - value_delta_min));
+
         int max_interval = Integer.MIN_VALUE;
         int max_interval_i = -1;
         int max_value = Integer.MIN_VALUE;
         int max_value_i = -1;
+
         for (int j = block_size - 1; j > 0; j--) {
             //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
@@ -347,6 +398,7 @@ public class TopKRegerReorderTopK {
                             - (int)
                             ((double) (theta0_v + value_delta_min)
                                     + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
                 max_interval_i = j;
@@ -371,6 +423,8 @@ public class TopKRegerReorderTopK {
         result.add(length);
         result.add(max_bit_width_interval);
         result.add(max_bit_width_value);
+        result.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        result.add(getBitWith(value_delta_topk_max - value_delta_min));
 
         result.add(timestamp_delta_min);
         result.add(value_delta_min);
@@ -580,16 +634,17 @@ public class TopKRegerReorderTopK {
                 value_delta_min = value_delta_i;
             }
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -598,7 +653,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -680,16 +736,19 @@ public class TopKRegerReorderTopK {
                 value_delta_min = value_delta_i;
             }
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -698,7 +757,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -790,16 +850,19 @@ public class TopKRegerReorderTopK {
             }
 
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -808,7 +871,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -872,16 +936,19 @@ public class TopKRegerReorderTopK {
                 value_delta_min = value_delta_i;
             }
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -890,7 +957,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -914,7 +982,8 @@ public class TopKRegerReorderTopK {
         if (value_delta_i < value_delta_min) {
             value_delta_min = value_delta_i;
         }
-        tmp = new ArrayList<>();;
+        tmp = new ArrayList<>();
+        ;
         tmp.add(block_size);
         tmp.add(timestamp_delta_i);
         // 寻找插入位置
@@ -923,7 +992,8 @@ public class TopKRegerReorderTopK {
             insertIndex++;
         }
         epsilon_r_j_list.add(insertIndex, tmp);
-        tmp = new ArrayList<>();;
+        tmp = new ArrayList<>();
+        ;
         tmp.add(block_size);
         tmp.add(value_delta_i);
         insertIndex = 0;
@@ -1014,16 +1084,19 @@ public class TopKRegerReorderTopK {
                 value_delta_min = value_delta_i;
             }
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -1032,7 +1105,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -1108,16 +1182,19 @@ public class TopKRegerReorderTopK {
                 value_delta_min = value_delta_i;
             }
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -1126,7 +1203,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -1150,7 +1228,8 @@ public class TopKRegerReorderTopK {
         if (value_delta_i < value_delta_min) {
             value_delta_min = value_delta_i;
         }
-        tmp = new ArrayList<>();;
+        tmp = new ArrayList<>();
+        ;
         tmp.add(block_size);
         tmp.add(timestamp_delta_i);
         // 寻找插入位置
@@ -1159,7 +1238,8 @@ public class TopKRegerReorderTopK {
             insertIndex++;
         }
         epsilon_r_j_list.add(insertIndex, tmp);
-        tmp = new ArrayList<>();;
+        tmp = new ArrayList<>();
+        ;
         tmp.add(block_size);
         tmp.add(value_delta_i);
         insertIndex = 0;
@@ -1232,16 +1312,19 @@ public class TopKRegerReorderTopK {
                     value_delta_min = value_delta_i;
                 }
                 if (epsilon_r_j_list.size() == 0) {
-                    tmp = new ArrayList<>();;
+                    tmp = new ArrayList<>();
+                    ;
                     tmp.add(i);
                     tmp.add(timestamp_delta_i);
                     epsilon_r_j_list.add(tmp);
-                    tmp = new ArrayList<>();;
+                    tmp = new ArrayList<>();
+                    ;
                     tmp.add(i);
                     tmp.add(value_delta_i);
                     epsilon_v_j_list.add(tmp);
                 } else {
-                    tmp = new ArrayList<>();;
+                    tmp = new ArrayList<>();
+                    ;
                     tmp.add(i);
                     tmp.add(timestamp_delta_i);
                     // 寻找插入位置
@@ -1250,7 +1333,8 @@ public class TopKRegerReorderTopK {
                         insertIndex++;
                     }
                     epsilon_r_j_list.add(insertIndex, tmp);
-                    tmp = new ArrayList<>();;
+                    tmp = new ArrayList<>();
+                    ;
                     tmp.add(i);
                     tmp.add(value_delta_i);
                     insertIndex = 0;
@@ -1274,16 +1358,19 @@ public class TopKRegerReorderTopK {
                 value_delta_min = value_delta_i;
             }
             if (epsilon_r_j_list.size() == 0) {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 epsilon_r_j_list.add(tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 epsilon_v_j_list.add(tmp);
             } else {
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(timestamp_delta_i);
                 // 寻找插入位置
@@ -1292,7 +1379,8 @@ public class TopKRegerReorderTopK {
                     insertIndex++;
                 }
                 epsilon_r_j_list.add(insertIndex, tmp);
-                tmp = new ArrayList<>();;
+                tmp = new ArrayList<>();
+                ;
                 tmp.add(i);
                 tmp.add(value_delta_i);
                 insertIndex = 0;
@@ -1348,6 +1436,10 @@ public class TopKRegerReorderTopK {
         }
 
         return i_star;
+    }
+
+    public static double calculateCost(ArrayList<Integer> b, double threshold) {
+        return threshold * ((double) b.get(2) + (double) b.get(3)) + (double) b.get(0) + (double) b.get(1);
     }
 
     public static int getIStarThreshold(ArrayList<ArrayList<Integer>> ts_block, int block_size, int index, double threshold, ArrayList<Float> theta) {
@@ -1412,7 +1504,7 @@ public class TopKRegerReorderTopK {
         return i_star;
     }
 
-    public static int getIStarThreshold(ArrayList<ArrayList<Integer>> ts_block, int block_size, double threshold,ArrayList<Float> theta) {
+    public static int getIStarThreshold(ArrayList<ArrayList<Integer>> ts_block, int block_size, double threshold, ArrayList<Float> theta) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
@@ -1427,7 +1519,7 @@ public class TopKRegerReorderTopK {
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         int epsilon_r_j = ts_block.get(1).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(0).get(0));
-        int epsilon_v_j = ts_block.get(1).get(1) - - (int) (theta0_v + theta1_v * (float)ts_block.get(0).get(1));
+        int epsilon_v_j = ts_block.get(1).get(1) - -(int) (theta0_v + theta1_v * (float) ts_block.get(0).get(1));
 
         if (epsilon_v_j < value_delta_min) {
             value_delta_min = epsilon_v_j;
@@ -1482,14 +1574,15 @@ public class TopKRegerReorderTopK {
         int max_value_delta = epsilon_v_j_list.get(i_star_index).get(1) - value_delta_min;
 
         if (max_timestamp_delta >= max_value_delta) {
-            i_star =  epsilon_r_j_list.get(i_star_index).get(0);
-        }else{
-            i_star =  epsilon_v_j_list.get(i_star_index).get(0);
+            i_star = epsilon_r_j_list.get(i_star_index).get(0);
+        } else {
+            i_star = epsilon_v_j_list.get(i_star_index).get(0);
         }
 
 
         return i_star;
     }
+
 
     public static int getJStarThreshold(
             ArrayList<ArrayList<Integer>> ts_block,
@@ -1499,8 +1592,11 @@ public class TopKRegerReorderTopK {
             ArrayList<Float> theta) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
-        int raw_timestamp_delta_max = Integer.MIN_VALUE;
-        int raw_value_delta_max = Integer.MIN_VALUE;
+        int raw_timestamp_delta_max = Integer.MIN_VALUE; // topk
+        int raw_value_delta_max = Integer.MIN_VALUE; // topk
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+
         int timestamp_tsdiff_max = Integer.MIN_VALUE;
         int value_tsdiff_max = Integer.MIN_VALUE;
         int raw_timestamp_delta_max_index = -1;
@@ -1548,7 +1644,8 @@ public class TopKRegerReorderTopK {
             if (delta_v_i < value_delta_min) {
                 value_delta_min = delta_v_i;
             }
-            tmp = new ArrayList<>();;
+            tmp = new ArrayList<>();
+            ;
             tmp.add(i);
             tmp.add(delta_t_i);
             // 寻找插入位置
@@ -1557,7 +1654,8 @@ public class TopKRegerReorderTopK {
                 insertIndex++;
             }
             epsilon_r_j_list.add(insertIndex, tmp);
-            tmp = new ArrayList<>();;
+            tmp = new ArrayList<>();
+            ;
             tmp.add(i);
             tmp.add(delta_v_i);
             insertIndex = 0;
@@ -1570,12 +1668,16 @@ public class TopKRegerReorderTopK {
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
         int j_star_t = epsilon_r_j_list.get(j_star_index_t).get(0);
         raw_timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
 //    timestamp_tsdiff_max = raw_timestamp_delta_max - timestamp_delta_min;
 //    int timestamp_tsdiff_max_value = ts_block.get(j_star_t).get(1) - value_delta_min;
 
         int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
         int j_star_v = epsilon_v_j_list.get(j_star_index_v).get(0);
         raw_value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
 //    value_tsdiff_max = raw_value_delta_max - value_delta_min;
 
 
@@ -1590,27 +1692,43 @@ public class TopKRegerReorderTopK {
         }
         raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max - timestamp_delta_min);
         raw_bit_width_value = getBitWith(raw_value_delta_max - value_delta_min);
+
+        ArrayList<Integer> raw_b = new ArrayList<>();
+
+        raw_b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+        raw_b.add(getBitWith(value_delta_max - value_delta_min));
+        raw_b.add(raw_bit_width_timestamp);
+        raw_b.add(raw_bit_width_value);
+
+        double raw_cost = calculateCost(raw_b, threshold);
+
         // alpha == 1
         if (alpha == 0) {
             for (int j = 2; j < block_size; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 ArrayList<Integer> b = adjust0(ts_block, alpha, j, threshold, theta);
-                if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                    raw_bit_width_timestamp = b.get(0);
-                    raw_bit_width_value = b.get(1);
+                if (calculateCost(b, threshold) < raw_cost) {
+                    raw_cost = calculateCost(b, threshold);
+//                if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+//                    raw_bit_width_timestamp = b.get(0);
+//                    raw_bit_width_value = b.get(1);
                     j_star_list.clear();
                     j_star_list.add(j);
-                } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+                } else if (calculateCost(b, threshold) == raw_cost) {
+//                } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                     j_star_list.add(j);
                 }
             }
             ArrayList<Integer> b = adjust0n1(ts_block, threshold, theta);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(block_size);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(block_size);
             }
 
@@ -1619,22 +1737,29 @@ public class TopKRegerReorderTopK {
             for (int j = 1; j < block_size - 1; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 ArrayList<Integer> b = adjustn(ts_block, alpha, j, threshold, theta);
-                if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                    raw_bit_width_timestamp = b.get(0);
-                    raw_bit_width_value = b.get(1);
+                if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                    raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                     j_star_list.clear();
-                    j_star_list.add(j);
-                } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
-                    j_star_list.add(j);
+                    j_star_list.add(block_size);
+                } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+                    j_star_list.add(block_size);
                 }
+
             }
             ArrayList<Integer> b = adjustn0(ts_block, threshold, theta);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+                raw_cost = calculateCost(b, threshold);
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(0);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(0);
             }
         } // alpha != 1 and alpha != n
@@ -1643,32 +1768,41 @@ public class TopKRegerReorderTopK {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 if (alpha != j && (alpha + 1) != j) {
                     ArrayList<Integer> b = adjustAlphaToJ(ts_block, alpha, j, threshold, theta);
-                    if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                        raw_bit_width_timestamp = b.get(0);
-                        raw_bit_width_value = b.get(1);
+                    if (calculateCost(b, threshold) < raw_cost) {
+                        raw_cost = calculateCost(b, threshold);
+//                    if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+//                        raw_bit_width_timestamp = b.get(0);
+//                        raw_bit_width_value = b.get(1);
                         j_star_list.clear();
                         j_star_list.add(j);
-                    } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+                    } else if (calculateCost(b, threshold) == raw_cost) {
+//                    } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                         j_star_list.add(j);
                     }
                 }
             }
             ArrayList<Integer> b = adjustTo0(ts_block, alpha, threshold, theta);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+                raw_cost = calculateCost(b, threshold);
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(0);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(0);
             }
             b = adjustTon(ts_block, alpha, threshold, theta);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+                raw_cost = calculateCost(b, threshold);
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(block_size);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(block_size);
             }
         }
@@ -1773,13 +1907,39 @@ public class TopKRegerReorderTopK {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_r = abs(ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0)));
-            int epsilon_v = abs(ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1)));
+//            int epsilon_r = abs(ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0)));
+//            int epsilon_v = abs(ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1)));
+
+            int epsilon_r = ts_block.get(i).get(0) - (int) ((double) theta0_t + (double) theta1_t * (double) ts_block.get(i - 1).get(0));
+            int epsilon_v = ts_block.get(i).get(1) - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(i - 1).get(1));
+            if(epsilon_r< timestamp_delta_min){
+                timestamp_delta_min = epsilon_r;
+            }
+            if(epsilon_v<value_delta_min){
+                value_delta_min = epsilon_v;
+            }
+
+        }
+        for (int i = 1; i < ts_block.size(); i++) {
+//            int epsilon_r = abs(ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0)));
+//            int epsilon_v = abs(ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1)));
+
+            int epsilon_r =
+                    ts_block.get(i).get(0)
+                            - (int)
+                            ((double) (theta0_t + timestamp_delta_min)
+                                    + (double) theta1_t * (double) ts_block.get(i - 1).get(0));
+            int epsilon_v =
+                    ts_block.get(i).get(1)
+                            - (int)
+                            ((double) (theta0_v + value_delta_min)
+                                    + (double) theta1_v * (double) ts_block.get(i - 1).get(1));
 
             tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
+
         }
 
         return ts_block_delta;
@@ -1809,6 +1969,8 @@ public class TopKRegerReorderTopK {
         ts_block_delta.add(tmp);
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
 
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
@@ -1824,29 +1986,46 @@ public class TopKRegerReorderTopK {
                 epsilon_v = 0;
                 tmp = new ArrayList<>();
                 tmp.add(i);
-                tmp.add(ts_block.get(i).get(0) - (int) ((double) theta0_t + (double) theta1_t * (double) ts_block.get(i - 1).get(0)));
-                tmp.add(ts_block.get(i).get(1) - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(i - 1).get(1)));
+                tmp.add(ts_block.get(i).get(0));
+                tmp.add(ts_block.get(i).get(1));
+//                System.out.println("outlier"+i);
+//                tmp.add(ts_block.get(i).get(0) - (int) ((double) theta0_t + (double) theta1_t * (double) ts_block.get(i - 1).get(0)));
+//                tmp.add(ts_block.get(i).get(1) - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(i - 1).get(1)));
                 outlier_top_k.add(tmp);
             } else {
                 epsilon_r = ts_block.get(i).get(0) - (int) ((double) theta0_t + (double) theta1_t * (double) ts_block.get(i - 1).get(0));
                 epsilon_v = ts_block.get(i).get(1) - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(i - 1).get(1));
-            }
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
+                if (epsilon_r < timestamp_delta_min) {
+                    timestamp_delta_min = epsilon_r;
 //                System.out.println("timestamp_delta_min: "+timestamp_delta_min);
 //                System.out.println("j:"+i);
+                }
+                if (epsilon_v < value_delta_min) {
+                    value_delta_min = epsilon_v;
+                }
             }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
+
             tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
+//            if(epsilon_r>timestamp_delta_max){
+//                timestamp_delta_max = epsilon_r;
+//            }
+//            if(epsilon_v>value_delta_max){
+//                value_delta_max = epsilon_v;
+//            }
         }
+//        System.out.println(outlier_top_k);
+//        System.out.println("timestamp_delta_min in getDeltaTsBlock:"+timestamp_delta_min);
+//        System.out.println("value_delta_min in getDeltaTsBlock:"+value_delta_min);
+
         for (int j = ts_block.size() - 1; j > 0; j--) {
 
-            if (!outlier_top_k_index.contains(j)){
+            if (!outlier_top_k_index.contains(j)) {
+//                if(ts_block_delta.get(j).get(0) == 43){
+////                    System.out.println("ts_block_delta.get(j)"+ts_block_delta.get(j));
+//                }
                 int epsilon_r =
                         ts_block.get(j).get(0)
                                 - (int)
@@ -1862,6 +2041,8 @@ public class TopKRegerReorderTopK {
                 tmp.add(epsilon_v);
                 ts_block_delta.set(j, tmp);
             }
+
+
 //            int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
 //            int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
 
@@ -1870,7 +2051,9 @@ public class TopKRegerReorderTopK {
 //
 //        System.out.println("timestamp_delta_min: "+timestamp_delta_min);
 //        System.out.println("value_delta_min: "+value_delta_min);
-
+//
+//        System.out.println("timestamp_delta_max in getDeltaTsBlock:"+timestamp_delta_max);
+//        System.out.println("value_delta_max in getDeltaTsBlock:"+value_delta_max);
         result.add(timestamp_delta_min);
         result.add(value_delta_min);
 
@@ -1897,15 +2080,20 @@ public class TopKRegerReorderTopK {
 
         for (int j = block_size - 1; j > 0; j--) {
             int epsilon_r = ts_block_delta.get(j).get(t_or_v);
+//            if(epsilon_r==0){
+//                System.out.println(j);
+//                System.out.println(epsilon_r);
+//            }
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
             }
         }
 
-//        System.out.println(max_interval);
+//        System.out.println("max_interval: "+max_interval);
         // encode max bit width
         byte[] timestamp_min_byte = int2Bytes(getBitWith(max_interval));
         for (byte b : timestamp_min_byte) encoded_result.add(b);
+//        System.out.println(t_or_v+" max_bit_width: "+getBitWith(max_interval));
 
         // encode interval
         byte[] timestamp_bytes = bitPacking(ts_block_delta, t_or_v, getBitWith(max_interval));
@@ -1921,8 +2109,9 @@ public class TopKRegerReorderTopK {
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
         int timestamp_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
-        for (ArrayList<Integer> integers : outlier_top_k) {
-            int epsilon_r = integers.get(t_or_v + 1);
+        for (int i = 1; i < block_size; i++) {
+//        for (ArrayList<Integer> integers : outlier_top_k) {
+            int epsilon_r = outlier_top_k.get(i).get(t_or_v + 1) - outlier_top_k.get(i - 1).get(t_or_v + 1);
             if (epsilon_r < timestamp_delta_min) {
                 timestamp_delta_min = epsilon_r;
             }
@@ -1930,7 +2119,7 @@ public class TopKRegerReorderTopK {
                 timestamp_delta_max = epsilon_r;
             }
         }
-        bit_num += ((block_size-1) * getBitWith(timestamp_delta_max - timestamp_delta_min)+32);
+        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 32);
         return bit_num;
     }
 
@@ -1958,6 +2147,7 @@ public class TopKRegerReorderTopK {
                 int frequency = Collections.frequency(ts_block_bit_width_column, value);
                 frequencyMap.put(value, frequency);
             }
+//            System.out.println(frequencyMap);
             int sum_frequency = 0;
             //        int top_k_ul = 0;
             ArrayList<Integer> top_k_uniqueList = new ArrayList<>();
@@ -1980,6 +2170,7 @@ public class TopKRegerReorderTopK {
             //        System.out.println("frequencyMap="+frequencyMap);
         }
         ts_block_delta = getDeltaTsBlock(ts_block, raw_length, outlier_top_k_index, outlier_top_k, theta);
+//        System.out.println(ts_block_delta);
         //
         // printTSBlock(ts_block_delta,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
 
@@ -1988,9 +2179,17 @@ public class TopKRegerReorderTopK {
         //    encoded_result.addAll(cur_encoded_result);
         //      ts_block_delta = getEncodeBitsRegression(ts_block, ts_block.size(), raw_length,
         // i_star_ready);
+//        System.out.println(t_or_v + " cur_encoded_result.size():" + cur_encoded_result.size());
         bits_encoded_data += (cur_encoded_result.size() * 8L);
-        //      System.out.println("bits_encoded_data:"+bits_encoded_data);
+//        System.out.println(t_or_v + "bits_encoded_data:" + bits_encoded_data);
         bits_encoded_data += getBitwidthDeltaTsBlock(outlier_top_k, t_or_v);
+//        if(t_or_v == 1){
+//            System.out.println(raw_length);
+//            System.out.println(outlier_top_k);
+//        }
+
+//        System.out.println(t_or_v + "bits_encoded_data:" + getBitwidthDeltaTsBlock(outlier_top_k, t_or_v));
+
 
         return bits_encoded_data;
     }
@@ -2010,7 +2209,7 @@ public class TopKRegerReorderTopK {
         for (byte b : block_size_byte) encoded_result.add(b);
         bits_encoded_data += 32;
 
-//        for(int i=116;i<117;i++){
+//        for(int i=80;i<81;i++){
         for (int i = 0; i < block_num; i++) {
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -2031,18 +2230,18 @@ public class TopKRegerReorderTopK {
             ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
             ArrayList<Integer> i_star_ready = new ArrayList<>();
             ArrayList<Float> theta = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready, theta);
+            ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready, theta,threshold);
 
             // value-order
             quickSort(ts_block, 1, 0, block_size - 1);
             ArrayList<Integer> reorder_length = new ArrayList<>();
             ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
             ArrayList<Float> theta_reorder = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression(ts_block, block_size, reorder_length, i_star_ready_reorder, theta_reorder);
+            ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression(ts_block, block_size, reorder_length, i_star_ready_reorder, theta_reorder,threshold);
 
             int i_star;
             int j_star;
-            if (raw_length.get(0) <= reorder_length.get(0)) {
+            if (calculateCost(raw_length, threshold) <= calculateCost(reorder_length, threshold) ) {
                 quickSort(ts_block, 0, 0, block_size - 1);
                 i_star = getIStarThreshold(ts_block, block_size, 0, threshold, theta);
             } else {
@@ -2084,9 +2283,9 @@ public class TopKRegerReorderTopK {
                 }
                 ts_block.set(j_star, tmp_tv);
 //                System.out.println("i_star"+i_star);
-                getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+                getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta,threshold);
 
-                if (old_length.get(1) + old_length.get(2) < raw_length.get(1) + raw_length.get(2)) {
+                if ( calculateCost(old_length, threshold) < calculateCost(raw_length, threshold)) {
                     ts_block = old_ts_block;
                     break;
                 }
@@ -2096,21 +2295,24 @@ public class TopKRegerReorderTopK {
 //                System.out.println("i_star"+i_star);
 //                System.out.println("j_star"+j_star);
             }
+//            System.out.println("adjust_count:"+adjust_count);
 //            System.out.println("i_star"+i_star);
 //            System.out.println("j_star"+j_star);
 
 //            System.out.println(ts_block);
-            getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+            getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta,threshold);
+            long cur_bits = 0;
             for (int t_or_v = 0; t_or_v < 2; t_or_v++) {
+//                System.out.println(theta);
+                cur_bits += getOutlier(ts_block, raw_length, threshold, t_or_v, theta);
+//                System.out.println("cur_bits" + cur_bits);
 
-                long cur_bits = getOutlier(ts_block, raw_length, threshold, t_or_v, theta);
-
-                bits_encoded_data += cur_bits;
-             }
+            }
+            bits_encoded_data += cur_bits;
             bits_encoded_data += 32; // outliers block size
 
 //            bits_encoded_data += 32; // others block size
-//            System.out.println("cur_bits:"+bits_encoded_data);
+//            System.out.println("cur_bits:"+cur_bits);
 //      ts_block_delta =
 //          getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder);
 //      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, result2);
@@ -2146,7 +2348,7 @@ public class TopKRegerReorderTopK {
             ArrayList<Integer> i_star_ready = new ArrayList<>();
             ArrayList<Float> theta = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta =
-                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready, theta);
+                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready, theta,threshold);
 
             // value-order
             quickSort(ts_block, 1, 0, remaining_length - 1);
@@ -2155,9 +2357,9 @@ public class TopKRegerReorderTopK {
             ArrayList<Float> theta_reorder = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
                     getEncodeBitsRegression(
-                            ts_block, remaining_length, reorder_length, i_star_ready_reorder, theta_reorder);
+                            ts_block, remaining_length, reorder_length, i_star_ready_reorder, theta_reorder,threshold);
 
-            if (raw_length.get(0) <= reorder_length.get(0)) {
+            if (calculateCost(raw_length, threshold) <= calculateCost(reorder_length, threshold)) {
                 quickSort(ts_block, 0, 0, remaining_length - 1);
             } else {
                 raw_length = reorder_length;
@@ -2166,7 +2368,7 @@ public class TopKRegerReorderTopK {
             }
             ts_block_delta =
                     getEncodeBitsRegression(
-                            ts_block, remaining_length, raw_length, i_star_ready_reorder, theta);
+                            ts_block, remaining_length, raw_length, i_star_ready_reorder, theta,threshold);
             int supple_length;
             if (remaining_length % 8 == 0) {
                 supple_length = 1;
@@ -2190,7 +2392,6 @@ public class TopKRegerReorderTopK {
 
         return bits_encoded_data;
     }
-
     public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded) {
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
         int decode_pos = 0;
@@ -2354,18 +2555,18 @@ public class TopKRegerReorderTopK {
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
+        dataset_name.add("EPM-Education");
+        dataset_name.add("GW-Magnetic");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("Nifty-Stocks");
         dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("CS-Sensors");
         dataset_name.add("Vehicle-Charge");
-        dataset_name.add("EPM-Education");
+        dataset_name.add("Cyber-Vehicle");
         dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("TY-Transport");
 
+        //        dataset_name.add("CS-Sensors");
         String input =
                 "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
 //        String output = "C:\\Users\\xiaoj\\Desktop\\test\\";
@@ -2377,19 +2578,21 @@ public class TopKRegerReorderTopK {
             output_path_list.add(output + dataset_name.get(i) + "_ratio.csv");
             //      dataset_block_size.add(256);
         }
-        dataset_block_size.add(512);
-        dataset_block_size.add(256);
-        dataset_block_size.add(512);
-        dataset_block_size.add(128);
-        dataset_block_size.add(512);
+
         dataset_block_size.add(64);
-        dataset_block_size.add(128);
+        dataset_block_size.add(64);
         dataset_block_size.add(256);
         dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         dataset_block_size.add(512);
+        dataset_block_size.add(256);
+        dataset_block_size.add(256);
+        dataset_block_size.add(64);
         dataset_block_size.add(512);
 
-        for (int file_i = 9; file_i < 10; file_i++) {
+//        dataset_block_size.add(256);
+
+        for (int file_i = 0; file_i < 9; file_i++) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);

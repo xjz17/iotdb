@@ -14,9 +14,9 @@ import static java.lang.Math.abs;
 
 public class TopKRegerDeltaReorderTopK {
     public static int getBitWith(int num) {
-        return 32 - Integer.numberOfLeadingZeros(num);
+        if (num == 0) return 1;
+        else return 32 - Integer.numberOfLeadingZeros(num);
     }
-
     public static byte[] int2Bytes(int integer) {
         byte[] bytes = new byte[4];
         bytes[0] = (byte) (integer >> 24);
@@ -245,7 +245,8 @@ public class TopKRegerDeltaReorderTopK {
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
             ArrayList<Integer> result,
-            ArrayList<Integer> i_star) {
+            ArrayList<Integer> i_star,
+            double threshold) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -254,6 +255,10 @@ public class TopKRegerDeltaReorderTopK {
         tmp0.add(ts_block.get(0).get(0));
         tmp0.add(ts_block.get(0).get(1));
         ts_block_delta.add(tmp0);
+
+        ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
+        ArrayList<Integer> tmp_top_k = new ArrayList<>();
 
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
@@ -266,11 +271,49 @@ public class TopKRegerDeltaReorderTopK {
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
+
+            if (epsilon_r_j_list.size() == 0) {
+                tmp_top_k = new ArrayList<>();
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_r);
+                epsilon_r_j_list.add(tmp_top_k);
+                tmp_top_k = new ArrayList<>();
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_v);
+                epsilon_v_j_list.add(tmp_top_k);
+            } else {
+                tmp_top_k = new ArrayList<>();
+                ;
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_r);
+                // 寻找插入位置
+                int insertIndex = 0;
+                while (insertIndex < epsilon_r_j_list.size() && tmp_top_k.get(1) < epsilon_r_j_list.get(insertIndex).get(1)) {
+                    insertIndex++;
+                }
+                epsilon_r_j_list.add(insertIndex, tmp_top_k);
+                tmp_top_k = new ArrayList<>();
+                ;
+                tmp_top_k.add(j);
+                tmp_top_k.add(epsilon_v);
+                insertIndex = 0;
+                while (insertIndex < epsilon_v_j_list.size() && tmp_top_k.get(1) < epsilon_v_j_list.get(insertIndex).get(1)) {
+                    insertIndex++;
+                }
+                epsilon_v_j_list.add(insertIndex, tmp_top_k);
+            }
+
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
         }
+        int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
+        int timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+//        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
+
+        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
+        int value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
 
         int max_interval = Integer.MIN_VALUE;
         int max_interval_i = -1;
@@ -293,6 +336,7 @@ public class TopKRegerDeltaReorderTopK {
             ts_block_delta.set(j, tmp);
         }
 
+
         int max_bit_width_interval = getBitWith(max_interval);
         int max_bit_width_value = getBitWith(max_value);
 
@@ -303,6 +347,9 @@ public class TopKRegerDeltaReorderTopK {
         result.add(length);
         result.add(max_bit_width_interval);
         result.add(max_bit_width_value);
+        result.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        result.add(getBitWith(value_delta_topk_max - value_delta_min));
+
 
         result.add(timestamp_delta_min);
         result.add(value_delta_min);
@@ -463,6 +510,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<Integer> tmp = new ArrayList<>();
@@ -517,10 +567,16 @@ public class TopKRegerDeltaReorderTopK {
         }
 
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
-        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
 
+        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -535,6 +591,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<Integer> tmp = new ArrayList<>();
@@ -589,9 +648,16 @@ public class TopKRegerDeltaReorderTopK {
             }
         }
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
+
         int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -610,6 +676,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
 
@@ -671,9 +740,16 @@ public class TopKRegerDeltaReorderTopK {
 
         }
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
+
         int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -687,6 +763,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_max = Integer.MIN_VALUE;
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<Integer> tmp = new ArrayList<>();
@@ -760,9 +839,16 @@ public class TopKRegerDeltaReorderTopK {
         }
         epsilon_v_j_list.add(insertIndex, tmp);
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
+
         int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -779,6 +865,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<Integer> tmp = new ArrayList<>();
@@ -844,9 +933,16 @@ public class TopKRegerDeltaReorderTopK {
             }
         }
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
+
         int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -876,6 +972,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<Integer> tmp = new ArrayList<>();
@@ -949,10 +1048,16 @@ public class TopKRegerDeltaReorderTopK {
         epsilon_v_j_list.add(insertIndex, tmp);
 
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
-        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
 
+        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -970,6 +1075,9 @@ public class TopKRegerDeltaReorderTopK {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_topk_max = Integer.MIN_VALUE;
+        int value_delta_topk_max = Integer.MIN_VALUE;
+
         ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
         ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
         ArrayList<Integer> tmp = new ArrayList<>();
@@ -1057,10 +1165,16 @@ public class TopKRegerDeltaReorderTopK {
             }
         }
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
-        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
 
+        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
+        value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
+
+
+        b.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
+        b.add(getBitWith(value_delta_topk_max - value_delta_min));
         b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
         b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -1221,12 +1335,16 @@ public class TopKRegerDeltaReorderTopK {
         int max_value_delta = epsilon_v_j_list.get(i_star_index).get(1) - value_delta_min;
 
         if (max_timestamp_delta >= max_value_delta) {
-            i_star =  epsilon_r_j_list.get(i_star_index).get(0);
-        }else{
-            i_star =  epsilon_v_j_list.get(i_star_index).get(0);
+            i_star = epsilon_r_j_list.get(i_star_index).get(0);
+        } else {
+            i_star = epsilon_v_j_list.get(i_star_index).get(0);
         }
 
         return i_star;
+    }
+
+    public static double calculateCost(ArrayList<Integer> b, double threshold) {
+        return threshold * ((double) b.get(2) + (double) b.get(3)) + (double) b.get(0) + (double) b.get(1);
     }
 
     public static int getJStarThreshold(
@@ -1236,8 +1354,11 @@ public class TopKRegerDeltaReorderTopK {
             double threshold) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
-        int raw_timestamp_delta_max = Integer.MIN_VALUE;
-        int raw_value_delta_max = Integer.MIN_VALUE;
+        int raw_timestamp_delta_max = Integer.MIN_VALUE; // topk
+        int raw_value_delta_max = Integer.MIN_VALUE; // topk
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+
         int timestamp_tsdiff_max = Integer.MIN_VALUE;
         int value_tsdiff_max = Integer.MIN_VALUE;
         int raw_timestamp_delta_max_index = -1;
@@ -1304,13 +1425,14 @@ public class TopKRegerDeltaReorderTopK {
         int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
         int j_star_t = epsilon_r_j_list.get(j_star_index_t).get(0);
         raw_timestamp_delta_max = epsilon_r_j_list.get(j_star_index_t).get(1);
+        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
 //    timestamp_tsdiff_max = raw_timestamp_delta_max - timestamp_delta_min;
 //    int timestamp_tsdiff_max_value = ts_block.get(j_star_t).get(1) - value_delta_min;
 
         int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
         int j_star_v = epsilon_v_j_list.get(j_star_index_v).get(0);
         raw_value_delta_max = epsilon_v_j_list.get(j_star_index_v).get(1);
-
+        value_delta_max = epsilon_v_j_list.get(0).get(1);
 //    value_tsdiff_max = raw_value_delta_max - value_delta_min;
 
 
@@ -1325,27 +1447,41 @@ public class TopKRegerDeltaReorderTopK {
         }
         raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max - timestamp_delta_min);
         raw_bit_width_value = getBitWith(raw_value_delta_max - value_delta_min);
+        ArrayList<Integer> raw_b = new ArrayList<>();
+        raw_b.add(raw_bit_width_timestamp);
+        raw_b.add(raw_bit_width_value);
+        raw_b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+        raw_b.add(getBitWith(value_delta_max - value_delta_min));
+
+        double raw_cost = calculateCost(raw_b, threshold);
+
         // alpha == 1
         if (alpha == 0) {
             for (int j = 2; j < block_size; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 ArrayList<Integer> b = adjust0(ts_block, alpha, j, threshold);
-                if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                    raw_bit_width_timestamp = b.get(0);
-                    raw_bit_width_value = b.get(1);
+                if (calculateCost(b, threshold) < raw_cost) {
+                    raw_cost = calculateCost(b, threshold);
+//                if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+//                    raw_bit_width_timestamp = b.get(0);
+//                    raw_bit_width_value = b.get(1);
                     j_star_list.clear();
                     j_star_list.add(j);
-                } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+                } else if (calculateCost(b, threshold) == raw_cost) {
+//                } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                     j_star_list.add(j);
                 }
             }
             ArrayList<Integer> b = adjust0n1(ts_block, threshold);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(block_size);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(block_size);
             }
 
@@ -1354,59 +1490,78 @@ public class TopKRegerDeltaReorderTopK {
             for (int j = 1; j < block_size - 1; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 ArrayList<Integer> b = adjustn(ts_block, alpha, j, threshold);
-                if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                    raw_bit_width_timestamp = b.get(0);
-                    raw_bit_width_value = b.get(1);
+                if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                    raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                     j_star_list.clear();
                     j_star_list.add(j);
-                } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+                } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                     j_star_list.add(j);
                 }
+
             }
             ArrayList<Integer> b = adjustn0(ts_block, threshold);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(0);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(0);
             }
+
         } // alpha != 1 and alpha != n
         else {
             for (int j = 1; j < block_size; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 if (alpha != j && (alpha + 1) != j) {
                     ArrayList<Integer> b = adjustAlphaToJ(ts_block, alpha, j, threshold);
-                    if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                        raw_bit_width_timestamp = b.get(0);
-                        raw_bit_width_value = b.get(1);
+                    if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                        raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                         j_star_list.clear();
                         j_star_list.add(j);
-                    } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+                    } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                         j_star_list.add(j);
                     }
                 }
             }
             ArrayList<Integer> b = adjustTo0(ts_block, alpha, threshold);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(0);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(0);
             }
             b = adjustTon(ts_block, alpha, threshold);
-            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
-                raw_bit_width_timestamp = b.get(0);
-                raw_bit_width_value = b.get(1);
+            if (calculateCost(b, threshold) < raw_cost) {
+//            if ((b.get(0) + b.get(1)) < (raw_bit_width_timestamp + raw_bit_width_value)) {
+                raw_cost = calculateCost(b, threshold);
+//                raw_bit_width_timestamp = b.get(0);
+//                raw_bit_width_value = b.get(1);
                 j_star_list.clear();
                 j_star_list.add(block_size);
-            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
+            } else if (calculateCost(b, threshold) == raw_cost) {
+//            } else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp + raw_bit_width_value)) {
                 j_star_list.add(block_size);
             }
         }
+
+//        System.out.println("j_star_list:"+j_star_list);
         if (j_star_list.size() == 0) {
         } else {
             j_star = getIstarClose(alpha, j_star_list);
@@ -1498,15 +1653,27 @@ public class TopKRegerDeltaReorderTopK {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_r = abs(ts_block.get(i).get(0) - ts_block.get(i - 1).get(0));
-            int epsilon_v = abs(ts_block.get(i).get(1) - ts_block.get(i - 1).get(1));
+            int epsilon_r = ts_block.get(i).get(0) - ts_block.get(i - 1).get(0);
+            int epsilon_v = ts_block.get(i).get(1) - ts_block.get(i - 1).get(1);
+            if(epsilon_r< timestamp_delta_min){
+                timestamp_delta_min = epsilon_r;
+            }
+            if(epsilon_v<value_delta_min){
+                value_delta_min = epsilon_v;
+            }
+
+        }
+//        System.out.println("timestamp_delta_min:"+timestamp_delta_min);
+//        System.out.println("value_delta_min:"+value_delta_min);
+        for (int i = 1; i < ts_block.size(); i++) {
+            int epsilon_r =  ts_block.get(i).get(0) - timestamp_delta_min - ts_block.get(i - 1).get(0);
+            int epsilon_v =  ts_block.get(i).get(1) -  value_delta_min - ts_block.get(i - 1).get(1);
 
             tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
         }
-
         return ts_block_delta;
     }
 
@@ -1542,22 +1709,21 @@ public class TopKRegerDeltaReorderTopK {
                 epsilon_v = 0;
                 tmp = new ArrayList<>();
                 tmp.add(i);
-                tmp.add(ts_block.get(i).get(0) - ts_block.get(i - 1).get(0));
-                tmp.add(ts_block.get(i).get(1) - ts_block.get(i - 1).get(1));
+                tmp.add(ts_block.get(i).get(0));
+                tmp.add(ts_block.get(i).get(1));
                 outlier_top_k.add(tmp);
             } else {
                 epsilon_r = ts_block.get(i).get(0) - ts_block.get(i - 1).get(0);
                 epsilon_v = ts_block.get(i).get(1) - ts_block.get(i - 1).get(1);
-            }
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-//                System.out.println("i:"+i);
-//                System.out.println("value_delta_min:"+value_delta_min);
+                if (epsilon_r < timestamp_delta_min) {
+                    timestamp_delta_min = epsilon_r;
+                }
+                if (epsilon_v < value_delta_min) {
+                    value_delta_min = epsilon_v;
+                }
 
             }
+
             tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
@@ -1618,12 +1784,14 @@ public class TopKRegerDeltaReorderTopK {
     public static int getBitwidthDeltaTsBlock(ArrayList<ArrayList<Integer>> outlier_top_k, int t_or_v) {
         int bit_num = 0;
         int block_size = outlier_top_k.size();
+//        System.out.println(outlier_top_k);
 //        bit_num += (10 * block_size);
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
         int timestamp_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
-        for (ArrayList<Integer> integers : outlier_top_k) {
-            int epsilon_r = integers.get(t_or_v + 1);
+        for (int i = 1; i < block_size; i++) {
+//        for (ArrayList<Integer> integers : outlier_top_k) {
+            int epsilon_r = outlier_top_k.get(i).get(t_or_v + 1) - outlier_top_k.get(i - 1).get(t_or_v + 1);
             if (epsilon_r < timestamp_delta_min) {
                 timestamp_delta_min = epsilon_r;
             }
@@ -1631,7 +1799,7 @@ public class TopKRegerDeltaReorderTopK {
                 timestamp_delta_max = epsilon_r;
             }
         }
-        bit_num += ((block_size-1) * getBitWith(timestamp_delta_max - timestamp_delta_min)+32);
+        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 32);
         return bit_num;
     }
 
@@ -1661,6 +1829,8 @@ public class TopKRegerDeltaReorderTopK {
                 int frequency = Collections.frequency(ts_block_bit_width_column, value);
                 frequencyMap.put(value, frequency);
             }
+
+//            System.out.println(frequencyMap);
             int sum_frequency = 0;
             //        int top_k_ul = 0;
             ArrayList<Integer> top_k_uniqueList = new ArrayList<>();
@@ -1678,24 +1848,26 @@ public class TopKRegerDeltaReorderTopK {
                     outlier_top_k_index.add(j);
                 }
             }
-            //
+
             //        System.out.println("top_k_uniqueList="+top_k_uniqueList);
             //        System.out.println("frequencyMap="+frequencyMap);
         }
+//        System.out.println("outlier_top_k_index"+outlier_top_k_index);
         ts_block_delta = getDeltaTsBlock(ts_block, raw_length, outlier_top_k_index, outlier_top_k);
         //
         // printTSBlock(ts_block_delta,"C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test_top_k\\2.csv");
 
         //      System.out.println(outlier_top_k);
         ArrayList<Byte> cur_encoded_result = encodeDeltaTsBlock(ts_block_delta, raw_length, t_or_v);
-        //    encoded_result.addAll(cur_encoded_result);
-        //      ts_block_delta = getEncodeBitsRegression(ts_block, ts_block.size(), raw_length,
-        // i_star_ready);
 
         bits_encoded_data += (cur_encoded_result.size() * 8L);
-//        System.out.println("bits_encoded_data:"+bits_encoded_data);
+//        System.out.println("bits_encoded_data:" + bits_encoded_data);
         bits_encoded_data += getBitwidthDeltaTsBlock(outlier_top_k, t_or_v);
-//        System.out.println("bits_encoded_data:"+bits_encoded_data);
+//        if(t_or_v == 1){
+//            System.out.println(raw_length);
+//            System.out.println(outlier_top_k);
+//        }
+//        System.out.println("bits_encoded_data:" + getBitwidthDeltaTsBlock(outlier_top_k, t_or_v));
 
         return bits_encoded_data;
     }
@@ -1714,23 +1886,11 @@ public class TopKRegerDeltaReorderTopK {
         byte[] block_size_byte = int2Bytes(block_size);
         for (byte b : block_size_byte) encoded_result.add(b);
         bits_encoded_data += 32;
-        //    String Output_before
-        // ="C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\bit-width-before-test.csv";
-        //    String Output_after
-        // ="C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\bit-width-after-test.csv";
-        //    CsvWriter writer_before = new CsvWriter(Output_before, ',', StandardCharsets.UTF_8);
-        //    CsvWriter writer_after = new CsvWriter(Output_after, ',', StandardCharsets.UTF_8);
-        //    String[] head = {
-        //            "Timestamp bit width",
-        //            "Value bit width"
-        //    };
-        //    writer_before.writeRecord(head); // write header to output file
-        //    writer_after.writeRecord(head);
 
         int count_raw = 0;
         int count_reorder = 0;
-        //    System.out.println(block_num);
-//        for (int i = 33; i < 34; i++) {
+
+//        for (int i = 74; i < 75; i++) {
         for (int i = 0; i < block_num; i++) {
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -1738,21 +1898,21 @@ public class TopKRegerDeltaReorderTopK {
                 ts_block.add(data.get(j + i * block_size));
                 ts_block_reorder.add(data.get(j + i * block_size));
             }
-            //      System.out.println("ts_block:"+ts_block);
+
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block, result2);
 
 //                  System.out.println("result2:"+result2);
 
             quickSort(ts_block, 0, 0, block_size - 1);
-            // System.out.println(i);
+
 
             // time-order
             ArrayList<Integer> raw_length =
                     new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
             ArrayList<Integer> i_star_ready = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta =
-                    getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready);
+                    getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready,threshold);
             //      for (int j=1;j< ts_block_delta.size();j++) {
             //        ArrayList<Integer> integers = ts_block_delta.get(j);
             //        head = new String[]{
@@ -1766,19 +1926,12 @@ public class TopKRegerDeltaReorderTopK {
             ArrayList<Integer> reorder_length = new ArrayList<>();
             ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
-                    getEncodeBitsRegression(ts_block, block_size, reorder_length, i_star_ready_reorder);
-            //      for (int j=1;j< ts_block_delta_reorder.size();j++) {
-            //        ArrayList<Integer> integers = ts_block_delta_reorder.get(j);
-            //        head = new String[]{
-            //                String.valueOf(integers.get(0)),
-            //                String.valueOf(getBitWith(integers.get(1)))
-            //        };
-            //        writer_after.writeRecord(head);
-            //      }
+                    getEncodeBitsRegression(ts_block, block_size, reorder_length, i_star_ready_reorder,threshold);
+
 
             int i_star;
             int j_star;
-            if (raw_length.get(0) <= reorder_length.get(0)) {
+            if (calculateCost(raw_length, threshold) <= calculateCost(reorder_length, threshold)) {
                 quickSort(ts_block, 0, 0, block_size - 1);
                 count_raw++;
                 i_star = getIStarThreshold(ts_block, block_size, 0, threshold);
@@ -1822,8 +1975,8 @@ public class TopKRegerDeltaReorderTopK {
                 }
                 ts_block.set(j_star, tmp_tv);
 
-                getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder);
-                if (old_length.get(1) + old_length.get(2) < raw_length.get(1) + raw_length.get(2)) {
+                getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,threshold);
+                if (calculateCost(old_length, threshold) < calculateCost(raw_length, threshold)) {
                     ts_block = old_ts_block;
                     break;
                 }
@@ -1836,16 +1989,17 @@ public class TopKRegerDeltaReorderTopK {
 //            System.out.println("j_star" + j_star);
 
 //            System.out.println(ts_block);
+            long cur_bits = 0;
             for (int t_or_v = 0; t_or_v < 2; t_or_v++) {
 
-                long cur_bits = getOutlier(ts_block, raw_length, threshold, t_or_v);
-
-                bits_encoded_data += cur_bits;
+                cur_bits += getOutlier(ts_block, raw_length, threshold, t_or_v);
+//                System.out.println("cur_bits" + cur_bits);
 //                System.out.println("optimal threshold " + t_or_v + " column of " + dataset_name + ": " + bits_encoded_data);
             }
+            bits_encoded_data += cur_bits;
             bits_encoded_data += 32; // outliers block size
-//            System.out.println("encoded_result: " + (bits_encoded_data));
-
+//            System.out.println("encoded_result: " + (cur_bits));
+//            System.out.println( (cur_bits));
 //      ts_block_delta =
 //          getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder);
 //      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, result2);
@@ -1879,16 +2033,16 @@ public class TopKRegerDeltaReorderTopK {
                     new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
             ArrayList<Integer> i_star_ready = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta =
-                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready);
+                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready,threshold);
 
             // value-order
             quickSort(ts_block, 1, 0, remaining_length - 1);
             ArrayList<Integer> reorder_length = new ArrayList<>();
             ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
-                    getEncodeBitsRegression(ts_block, remaining_length, reorder_length, i_star_ready_reorder);
+                    getEncodeBitsRegression(ts_block, remaining_length, reorder_length, i_star_ready_reorder,threshold);
 
-            if (raw_length.get(0) <= reorder_length.get(0)) {
+            if (calculateCost(raw_length, threshold) <= calculateCost(reorder_length, threshold)) {
                 quickSort(ts_block, 0, 0, remaining_length - 1);
                 count_raw++;
             } else {
@@ -1897,7 +2051,7 @@ public class TopKRegerDeltaReorderTopK {
                 count_reorder++;
             }
             ts_block_delta =
-                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder);
+                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,threshold);
             int supple_length;
             if (remaining_length % 8 == 0) {
                 supple_length = 1;
@@ -1915,6 +2069,7 @@ public class TopKRegerDeltaReorderTopK {
 
             ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, result2);
             bits_encoded_data += (cur_encoded_result.size() * 8L);
+//            System.out.println("encoded_result: "+ (cur_encoded_result.size() * 8L));
 //      encoded_result.addAll(cur_encoded_result);
         }
         double ratio = (double) bits_encoded_data / (double) (length_all * 64);
@@ -2086,46 +2241,50 @@ public class TopKRegerDeltaReorderTopK {
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("EPM-Education");
-        dataset_name.add("TH-Climate");
+        dataset_name.add("EPM-Education"); // 0
+        dataset_name.add("GW-Magnetic"); // 1
+        dataset_name.add("Metro-Traffic"); // 2
+        dataset_name.add("Nifty-Stocks"); // 3
+        dataset_name.add("USGS-Earthquakes"); //4
+        dataset_name.add("Vehicle-Charge");//5
+        dataset_name.add("Cyber-Vehicle");//6
+        dataset_name.add("TH-Climate");//7
+        dataset_name.add("TY-Fuel");//8
+        dataset_name.add("TY-Transport");//9
+
+
+//        dataset_name.add("CS-Sensors");
+
 
         String input =
                 "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
 
-        String output =
-                "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\topk_delta_reorder\\";
+        String output =  "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\topk_delta_reorder\\";
 
-//        String output =
-//                "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\a_star_rubbish\\";
+//        String output =  "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\a_star_rubbish\\";
 //    a_star_rubbish
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input + dataset_name.get(i));
             output_path_list.add(output + dataset_name.get(i) + "_ratio.csv");
             //      dataset_block_size.add(256);
         }
-        dataset_block_size.add(512);
-        dataset_block_size.add(256);
-        dataset_block_size.add(512);
-        dataset_block_size.add(128);
-        dataset_block_size.add(512);
-        dataset_block_size.add(64);
-        dataset_block_size.add(128);
-        dataset_block_size.add(256);
-        dataset_block_size.add(512);
-        dataset_block_size.add(512);
-        dataset_block_size.add(512);
+
+        dataset_block_size.add(64); //EPM-Education
+        dataset_block_size.add(64); //GW-Magnetic
+        dataset_block_size.add(256); //Metro-Traffic
+        dataset_block_size.add(512); // Nifty-Stocks
+        dataset_block_size.add(2048); //USGS-Earthquakes
+        dataset_block_size.add(512); //Vehicle-Charge
+        dataset_block_size.add(256); //Cyber-Vehicle
+        dataset_block_size.add(256); //TH-Climate
+        dataset_block_size.add(64); //TY-Fuel
+        dataset_block_size.add(512); //TY-Transport
+
+//        dataset_block_size.add(256);
+
 
         for (int file_i = 9; file_i < 10; file_i++) {
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -2201,7 +2360,7 @@ public class TopKRegerDeltaReorderTopK {
 
                     String[] record = {
                             f.toString(),
-                            "REGER-DELTA-Reorder-TopK",
+                            "DELTA-Reorder-TopK",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(threshold),

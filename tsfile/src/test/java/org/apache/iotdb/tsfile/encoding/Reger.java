@@ -577,7 +577,7 @@ public class Reger {
                 - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha - 1).get(0));
         value_delta_i =
             ts_block.get(alpha + 1).get(1)
-                - (int) (theta0_v - theta1_v * (float) ts_block.get(alpha - 1).get(1));
+                - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha - 1).get(1));
       } else if (i == alpha) {
         timestamp_delta_i =
             ts_block.get(0).get(0)
@@ -591,7 +591,7 @@ public class Reger {
                 - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
         value_delta_i =
             ts_block.get(i).get(1)
-                - (int) (theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+                - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
       }
       if (timestamp_delta_i > timestamp_delta_max) {
         timestamp_delta_max = timestamp_delta_i;
@@ -1505,9 +1505,8 @@ public class Reger {
   }
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-//    String parent_dir =
-//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\compression_ratio\\rd_ratio";
-        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\reger_ratio";
+//        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
@@ -1524,10 +1523,10 @@ public class Reger {
     output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");
     dataset_block_size.add(512);
 
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
-    output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv");
-    dataset_block_size.add(1024);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
+//    output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv");
+//    dataset_block_size.add(1024);
     input_path_list.add(
         "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Metro-Traffic");
     output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");
@@ -1601,8 +1600,8 @@ public class Reger {
     //
     // output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
     //            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
-        for(int file_i=0;file_i<1;file_i++){
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for(int file_i=0;file_i<1;file_i++){
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1692,7 +1691,7 @@ public class Reger {
         };
         System.out.println(ratio);
         writer.writeRecord(record);
-        break;
+//        break;
       }
       writer.close();
     }

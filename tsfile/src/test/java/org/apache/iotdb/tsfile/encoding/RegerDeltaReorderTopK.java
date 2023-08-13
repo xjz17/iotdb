@@ -2079,17 +2079,18 @@ public class RegerDeltaReorderTopK {
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
+        dataset_name.add("EPM-Education");
+        dataset_name.add("GW-Magnetic");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("Nifty-Stocks");
         dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("CS-Sensors");
         dataset_name.add("Vehicle-Charge");
-        dataset_name.add("EPM-Education");
+        dataset_name.add("Cyber-Vehicle");
         dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("TY-Transport");
+
+        //        dataset_name.add("CS-Sensors");
 
         String input =
                 "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
@@ -2101,17 +2102,18 @@ public class RegerDeltaReorderTopK {
             output_path_list.add(output + dataset_name.get(i) + "_ratio.csv");
             //      dataset_block_size.add(256);
         }
-        dataset_block_size.add(512);
-        dataset_block_size.add(256);
-        dataset_block_size.add(512);
-        dataset_block_size.add(128);
-        dataset_block_size.add(512);
         dataset_block_size.add(64);
-        dataset_block_size.add(128);
+        dataset_block_size.add(64);
         dataset_block_size.add(256);
         dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         dataset_block_size.add(512);
+        dataset_block_size.add(256);
+        dataset_block_size.add(256);
+        dataset_block_size.add(64);
         dataset_block_size.add(512);
+
+//        dataset_block_size.add(256);
 
 //        for (int file_i = 4; file_i < 6; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -2193,7 +2195,7 @@ public class RegerDeltaReorderTopK {
 
                     String[] record = {
                             f.toString(),
-                            "REGER-DELTA-Reorder-TopK",
+                            "DELTA-Reorder-TopK",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
 //                            String.valueOf(threshold),

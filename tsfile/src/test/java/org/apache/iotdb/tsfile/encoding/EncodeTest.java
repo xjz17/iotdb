@@ -41,12 +41,12 @@ public class EncodeTest {
         "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
             + "\\compression_ratio\\java_ratio\\EPM-Education_ratio.csv");
     dataset_map_td.add(1);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\CS-Sensors_ratio.csv");
-    dataset_map_td.add(1);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\compression_ratio\\java_ratio\\CS-Sensors_ratio.csv");
+//    dataset_map_td.add(1);
     //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
     //    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\ts2diff.csv");
     //    dataset_map_td.add(1);

@@ -1232,55 +1232,81 @@ public class RegerDeltaBlocksizeTest {
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
-    ArrayList<Integer> dataset_block_size = new ArrayList<>();
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\Metro-Traffic_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\Nifty-Stocks_ratio.csv");
-    dataset_block_size.add(256);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\USGS-Earthquakes_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\Cyber-Vehicle_ratio.csv");
-    dataset_block_size.add(128);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\TH-Climate_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\TY-Transport_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\TY-Fuel_ratio.csv");
-    dataset_block_size.add(64);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\regression_delta_ratio\\GW-Magnetic_ratio.csv");
-    dataset_block_size.add(128);
+    ArrayList<String> dataset_name = new ArrayList<>();
+    dataset_name.add("Metro-Traffic");
+    dataset_name.add("Nifty-Stocks");
+    dataset_name.add("USGS-Earthquakes");
+    dataset_name.add("Cyber-Vehicle");
+    dataset_name.add("TY-Transport");
+    dataset_name.add("TY-Fuel");
+    dataset_name.add("GW-Magnetic");
+    dataset_name.add("CS-Sensors");
+    dataset_name.add("Vehicle-Charge");
+    dataset_name.add("EPM-Education");
+    dataset_name.add("TH-Climate");
+    String input =
+            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+
+//        String output =
+//                "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\topk_delta_reorder\\";
+
+    String output =
+            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation\\vary_parameter\\rd_ratio\\";
+    for (int i = 0; i < dataset_name.size(); i++) {
+      input_path_list.add(input + dataset_name.get(i));
+      output_path_list.add(output + dataset_name.get(i) + "_ratio.csv");
+      //      dataset_block_size.add(256);
+    }
+
+//    ArrayList<Integer> dataset_block_size = new ArrayList<>();
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\Metro-Traffic_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\Nifty-Stocks_ratio.csv");
+//    dataset_block_size.add(256);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\USGS-Earthquakes_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\Cyber-Vehicle_ratio.csv");
+//    dataset_block_size.add(128);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\TH-Climate_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\TY-Transport_ratio.csv");
+//    dataset_block_size.add(512);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\TY-Fuel_ratio.csv");
+//    dataset_block_size.add(64);
+//    input_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+//    output_path_list.add(
+//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
+//            + "\\vary_parameter\\regression_delta_ratio\\GW-Magnetic_ratio.csv");
+//    dataset_block_size.add(128);
 
     //
     // input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
@@ -1349,7 +1375,7 @@ public class RegerDeltaBlocksizeTest {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for (int block_size_exp = 11; block_size_exp >= 4; block_size_exp--) {
+      for (int block_size_exp = 12; block_size_exp >= 4; block_size_exp--) {
         int block_size = (int) Math.pow(2, block_size_exp);
         System.out.println(block_size);
         for (File f : tempList) {
