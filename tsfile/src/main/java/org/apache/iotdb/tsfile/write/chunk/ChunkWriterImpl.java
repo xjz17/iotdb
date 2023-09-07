@@ -206,6 +206,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
+  public void write(long[] timestamps, int[] values, int batchSize, int[] dataset_third) {
+    pageWriter.write(timestamps, values, batchSize, dataset_third);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
   public void write(long[] timestamps, int[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);

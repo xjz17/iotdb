@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.page.Reger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.util.ArrayList;
 
 /**
  * This writer is used to write time-value into a page. It consists of a time encoder, a value
@@ -124,6 +126,24 @@ public class PageWriter {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
+  }
+
+  /** write time series into encoder */
+  public void write(long[] timestamps, int[] values, int batchSize, int[] dataset_third) {
+    ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+    for (int i = 0; i < timestamps.length; i++) {
+      ArrayList<Integer> tmp_data= new ArrayList<>();
+      tmp_data.add((int) timestamps[i]);
+      tmp_data.add((int) values[i]);
+      data.add(tmp_data);
+    }
+    ArrayList<ArrayList<Byte>> buffer = new ArrayList<>();
+    buffer = Reger.ReorderingRegressionEncoder(data, batchSize, dataset_third, 8, 1);
+    for(int i=0;i<buffer.get(0).size();i++){
+      timeOut.write(buffer.get(0).get(i));
+      valueOut.write(buffer.get(0).get(i));
+    }
+    statistics.update(timestamps, values, batchSize);
   }
 
   /** write time series into encoder */

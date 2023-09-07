@@ -91,6 +91,8 @@ public abstract class TSEncodingBuilder {
         return new Buff();
       case CHIMP:
         return new Chimp();
+      case REGER:
+        return new REGER();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -591,6 +593,30 @@ public abstract class TSEncodingBuilder {
           return new IntChimpEncoder();
         case INT64:
           return new LongChimpEncoder();
+        default:
+          throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // allowed do nothing
+    }
+  }
+
+  /** for FLOAT, DOUBLE, INT, LONG. */
+  public static class REGER extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new DeltaBinaryEncoder.IntDeltaEncoder();
+        case INT64:
+          return new DeltaBinaryEncoder.LongDeltaEncoder();
+        case FLOAT:
+        case DOUBLE:
+          return new FloatEncoder(TSEncoding.TS_2DIFF, type, 2);
         default:
           throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + type);
       }
