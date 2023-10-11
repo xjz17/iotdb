@@ -28,9 +28,9 @@ public class EncodeTest {
 //    String parent_dir =
 //            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\sota_ratio";
 //
-    String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\";
-    String output_parent_dir = parent_dir + "vldb\\compression_ratio\\sota_ratio";
-    String input_parent_dir = parent_dir + "reorder\\iotdb_test_small\\";
+    String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
+    String output_parent_dir = parent_dir + "vldb/compression_ratio/sota_ratio";
+    String input_parent_dir = parent_dir + "origin_data/";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -54,40 +54,40 @@ public class EncodeTest {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
     }
 
-    output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
+    output_path_list.add(output_parent_dir + "CS-Sensors_ratio.csv"); // 0
     dataset_block_size.add(1024);
 //    dataset_k.add(5);
-    output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
+    output_path_list.add(output_parent_dir + "Metro-Traffic_ratio.csv");// 1
     dataset_block_size.add(512);
 //    dataset_k.add(7);
-    output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
+    output_path_list.add(output_parent_dir + "USGS-Earthquakes_ratio.csv");// 2
     dataset_block_size.add(512);
 //    dataset_k.add(7);
-    output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
+    output_path_list.add(output_parent_dir + "YZ-Electricity_ratio.csv"); // 3
     dataset_block_size.add(512);
 //    dataset_k.add(1);
-    output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
+    output_path_list.add(output_parent_dir + "GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
 //    dataset_k.add(6);
-    output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
+    output_path_list.add(output_parent_dir + "TY-Fuel_ratio.csv");//5
     dataset_block_size.add(64);
 //    dataset_k.add(5);
-    output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
+    output_path_list.add(output_parent_dir + "Cyber-Vehicle_ratio.csv"); //6
     dataset_block_size.add(128);
 //    dataset_k.add(4);
-    output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
+    output_path_list.add(output_parent_dir + "Vehicle-Charge_ratio.csv");//7
     dataset_block_size.add(512);
 //    dataset_k.add(8);
-    output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
+    output_path_list.add(output_parent_dir + "Nifty-Stocks_ratio.csv");//8
     dataset_block_size.add(256);
 //    dataset_k.add(1);
-    output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
+    output_path_list.add(output_parent_dir + "TH-Climate_ratio.csv");//9
     dataset_block_size.add(512);
 //    dataset_k.add(2);
-    output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
+    output_path_list.add(output_parent_dir + "TY-Transport_ratio.csv");//10
     dataset_block_size.add(512);
 //    dataset_k.add(9);
-    output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
+    output_path_list.add(output_parent_dir + "EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
 
 //        for(int file_i=3;file_i<4;file_i++){
@@ -133,8 +133,8 @@ public class EncodeTest {
         "Compress Algorithm",
         "Encoding Time",
         "Decoding Time",
-//        "Compress Time",
-//        "Uncompress Time",
+        "Compress Time",
+        "Uncompress Time",
         "Points",
         "Compressed Size",
         "Compression Ratio"
@@ -158,6 +158,9 @@ public class EncodeTest {
         for (int index : columnIndexes) {
           // add a column to "data"
           //        System.out.println(index);
+          if (index == 0){
+            continue;
+          }
           int max_precision = 0;
           loader.readHeaders();
           data.clear();
@@ -171,6 +174,9 @@ public class EncodeTest {
             //            }
             //          }
             data.add(v);
+            if (!v.matches("-?\\d+")){
+              dataTypeName = "float";
+            }
           }
           //        System.out.println(max_precision);
           inputStream.close();
@@ -267,8 +273,8 @@ public class EncodeTest {
                       comp.toString(),
                       String.valueOf(encodeTime),
                       String.valueOf(decodeTime),
-//                      String.valueOf(compressTime),
-//                      String.valueOf(uncompressTime),
+                      String.valueOf(compressTime),
+                      String.valueOf(uncompressTime),
                       String.valueOf(data.size()),
                       String.valueOf(compressed_size),
                       String.valueOf(ratio)
@@ -473,6 +479,7 @@ public class EncodeTest {
               }
             case "float":
               {
+                System.out.println("get float");
                 TSDataType dataType = TSDataType.FLOAT;
                 ArrayList<Float> tmp = new ArrayList<>();
                 data.removeIf(String::isEmpty);
