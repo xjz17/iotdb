@@ -5,6 +5,7 @@ import com.kamikaze.pfordelta.Simple16;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -22,7 +23,7 @@ public class myPFOR {
     private static final int MAX_BITS = 32;
     // Header records the value of b and the number of exceptions in the
     // block
-    private static final int HEADER_NUM = 2;
+    private static final int HEADER_NUM = 3;
     // Header size in bits
     private static final int HEADER_SIZE = MAX_BITS * HEADER_NUM;
 
@@ -36,16 +37,6 @@ public class myPFOR {
 
     private static int min = Integer.MAX_VALUE;
 
-    /**
-     * Compress one block of blockSize integers using PForDelta with the
-     * optimal parameter b
-     *
-     * @param inBlock
-     *                the block to be compressed
-     * @param blockSize
-     *                the block size
-     * @return the compressed block
-     */
     public static int[] compressOneBlockOpt(final int[] inBlock,
                                             int blockSize) {
         // find the best b that may lead to the smallest overall
@@ -63,49 +54,30 @@ public class myPFOR {
         int[] outBlock = null;
         int tmpB = currentB;
         // deal with the large exception cases
-        boolean hasBigNum = checkBigNumbers(inBlock2,
-                POSSIBLE_B[POSSIBLE_B.length - 1], blockSize);
-        if (hasBigNum) {
-            currentB = 4;
-            System.out.println("has big num and the currentB is: "
-                    + currentB);
-        } else {
-            int optSize = estimateCompressedSize(inBlock2, tmpB,
-                    blockSize);
-            for (int i = 1; i < POSSIBLE_B.length; ++i) {
-                tmpB = POSSIBLE_B[i];
-                int curSize = estimateCompressedSize(inBlock2,
-                        tmpB, blockSize);
-                if (curSize < optSize) {
-                    currentB = tmpB;
-                    optSize = curSize;
-                }
+        int optSize = estimateCompressedSize(inBlock2, tmpB,
+                blockSize);
+        for (int i = 1; i < POSSIBLE_B.length; ++i) {
+            tmpB = POSSIBLE_B[i];
+            int curSize = estimateCompressedSize(inBlock2,
+                    tmpB, blockSize);
+            if (curSize < optSize) {
+                currentB = tmpB;
+                optSize = curSize;
             }
         }
-
-        // compress the block using the above best b
+        // 使用相同的b分block压缩
         outBlock = compressOneBlock(inBlock2, currentB, blockSize);
 
         return outBlock;
     }
 
-    /**
-     * Decompress one block using PForDelta
-     *
-     * @param outBlock
-     *                the block that was decompressed
-     * @param inBlock
-     *                the block to be decompressed
-     * @param blockSize
-     *                the number of elements in the decompressed block
-     * @return the compressed size in bits
-     */
     public static int decompressOneBlock(int[] outBlock, int[] inBlock,
                                          int blockSize) {
-        int[] expAux = new int[blockSize * 2];
+        int[] expAux = new int[blockSize]; //分配空间,最多blockSize个异常值
 
-        int expNum = inBlock[0] & 0x3ff;
-        int bits = (inBlock[0] >>> 10) & (0x1f);
+        int expNum = inBlock[1];
+        int bits = inBlock[0];
+        int index_first_exp = inBlock[2];
 
         // decompress the b-bit slots
         int offset = HEADER_SIZE;
@@ -113,43 +85,35 @@ public class myPFOR {
         if (bits == 0) {
             Arrays.fill(outBlock, 0);
         } else {
+            //解码bits * blocksize的部分
             compressedBits = decompressBBitSlots(outBlock, inBlock,
                     blockSize, bits);
-            // Note that blocksize must be ==128 in order to use
-            // decompressBBitSlotsWithHardCodes
-            // compressedBits =
-            // decompressBBitSlotsWithHardCodes(outBlock, inBlock,
-            // blockSize, bits);
         }
         offset += compressedBits;
 
-        // decompress exceptions
+        // 解码异常值部分
         if (expNum > 0) {
             compressedBits = decompressBlockByS16(expAux, inBlock,
-                    offset, expNum * 2);
+                    offset, expNum);
             offset += compressedBits;
 
+            int exp_index = index_first_exp;
+            int shift;
             for (int i = 0; i < expNum; i++) {
-                int curExpPos = expAux[i];
-                int curHighBits = expAux[i + expNum];
-                outBlock[curExpPos] = (outBlock[curExpPos] & MASK[bits])
-                        | ((curHighBits & MASK[32 - bits]) << bits);
+                int exp_value = expAux[i];
+                shift = outBlock[exp_index];//目前位置是偏移量
+                outBlock[exp_index] = exp_value;
+                exp_index += (shift + 1);
             }
+
+        }
+        //加min
+        for (int i = 0; i < blockSize; i++){
+            outBlock[i] += min;
         }
         return offset;
     }
 
-    /**
-     * Estimate the compressed size in ints of a block
-     *
-     * @param inputBlock
-     *                the block to be compressed
-     * @param bits
-     *                the value of the parameter b
-     * @param blockSize
-     *                the block size
-     * @return the compressed size in ints
-     */
     public static int estimateCompressedSize(int[] inputBlock, int bits,
                                              int blockSize)  {
         int maxNoExp = (1 << bits) - 1;
@@ -167,99 +131,133 @@ public class myPFOR {
         return outputOffset;
     }
 
-    /**
-     * Check if the block contains big numbers that is greater than ((1&lt;&lt;
-     * bits)-1)
-     *
-     * @param inputBlock
-     *                the block to be compressed
-     * @param bits
-     *                the numbers of bits to decide whether a number is a
-     *                big number
-     * @param blockSize
-     *                the block size
-     * @return true if there is any big numbers in the block
-     */
-    public static boolean checkBigNumbers(int[] inputBlock, int bits,
-                                          int blockSize) {
-        int maxNoExp = (1 << bits) - 1;
-        for (int i = 0; i < blockSize; ++i) {
-            if (inputBlock[i] > maxNoExp)
-                return true;
-        }
-        return false;
-    }
-
-    /**
-     * The core implementation of compressing a block with blockSize
-     * integers using PForDelta with the given parameter b
-     *
-     * @param inputBlock
-     *                the block to be compressed
-     * @param bits
-     *                the the value of the parameter b
-     * @param blockSize
-     *                the block size
-     * @return the compressed block
-     */
     public static int[] compressOneBlock(int[] inputBlock, int bits,
                                          int blockSize)  {
-
-        int[] expAux = new int[blockSize * 2];
-
         int maxCompBitSize = HEADER_SIZE + blockSize
                 * (MAX_BITS + MAX_BITS + MAX_BITS) + 32;
-        int[] tmpCompressedBlock = new int[(maxCompBitSize >>> 5)];
+        //头部的Int存储b 异常值数量 第一个异常值的位置 HEADER_SIZE
+        //正常值最多blockSize * MAX_BITS， 异常值最多2 * blockSize * MAX_BITS
+        //向上取整 32
 
-        int outputOffset = HEADER_SIZE;
-        int expUpperBound = 1 << bits;
+        int[] tmpCompressedBlock = new int[(maxCompBitSize >>> 5)];//分配空间
+
+        int outputOffset = HEADER_SIZE;// 跳过头部
+        int expUpperBound = 1 << bits;// 异常值边界
+        //异常值计数，并记录一下异常值位置
         int expNum = 0;
-
-        for (int elem : inputBlock) {
-            if (elem >= expUpperBound) {
+        int expNum_more = 0;
+        ArrayList<Integer> exp_index = new ArrayList<>();
+        ArrayList<Integer> exp_index_more = new ArrayList<>();
+        ArrayList<Integer> shift = new ArrayList<>();
+        ArrayList<Integer> exp_value = new ArrayList<>();
+        ArrayList<Integer> exp_value_more = new ArrayList<>();
+        for (int i = 0; i < inputBlock.length; i++) {
+            if (inputBlock[i] >= expUpperBound) {
                 expNum++;
+                exp_value.add(inputBlock[i]);
+                exp_index.add(i);
+            }
+        }
+        //b*blocksize部分 分类处理
+        if (expNum == 0){
+            //System.out.println("无异常");
+            for (int i = 0; i < blockSize; i++){
+                writeBits(tmpCompressedBlock, inputBlock[i], outputOffset, bits);
+                outputOffset += bits;
+            }
+        } else if (expNum == 1) {
+            //System.out.println("有1个异常");
+            for (int i = 0; i < blockSize; i++){
+                if (i != exp_index.get(0)){
+                    writeBits(tmpCompressedBlock, inputBlock[i], outputOffset, bits);
+                }else {
+                    writeBits(tmpCompressedBlock, 0, outputOffset, bits);
+                }
+                outputOffset += bits;
+            }
+        }else {
+            //System.out.println("有多个异常");
+            //System.out.println(expNum);
+            //此时有两个或更多的异常值，需要编码位移量，同时还需要考虑加入的强制异常值，首先加入强制的异常值
+            exp_index_more.add(exp_index.get(0));
+            exp_value_more.add(exp_value.get(0));
+            expNum_more++;
+            for (int i = 0; i < expNum - 1; i++){
+                if (exp_index.get(i + 1) - exp_index.get(i) <= (1 << bits)){
+                    //此时能正常编码位移量
+                    exp_index_more.add(exp_index.get(i + 1));
+                    exp_value_more.add(exp_value.get(i + 1));
+                    expNum_more++;
+                    shift.add(exp_index.get(i + 1) - exp_index.get(i) - 1);
+                }else {
+//                    System.out.println("强制异常");
+                    //不够表达，需要加入强制异常值
+                    int tag = exp_index.get(i);
+                    while (exp_index.get(i + 1) - tag > (1 << bits)){
+                        //增添强制异常值
+                        tag += (1 << bits);
+                        expNum_more++;
+                        exp_index_more.add(tag);
+                        exp_value_more.add(inputBlock[tag]);
+                        shift.add((1 << bits) - 1);
+                    }
+                    //最后加上i + 1处的原异常值
+                    exp_index_more.add(exp_index.get(i + 1));
+                    exp_value_more.add(exp_value.get(i + 1));
+                    expNum_more++;
+                    shift.add(exp_index.get(i + 1) - tag - 1);
+                }
+                shift.add(0);
+            }
+            //加完了异常值，再来编码
+            int j = 0;//记录异常值标号
+            for (int i = 0; i < blockSize; i++){
+                if (j < expNum_more && exp_index_more.get(j) == i){
+                    //编码shift值
+                    writeBits(tmpCompressedBlock, shift.get(j), outputOffset, bits);
+                    j++;
+                }else {
+                    //编码正常值
+                    writeBits(tmpCompressedBlock, inputBlock[i], outputOffset, bits);
+                }
+                outputOffset += bits;
             }
         }
 
-        int expIndex = 0;
-        // compress the b-bit slots
-        for (int i = 0; i < blockSize; ++i) {
-            if (inputBlock[i] < expUpperBound) {
-                writeBits(tmpCompressedBlock, inputBlock[i],
-                        outputOffset, bits);
-            } else // exp
-            {
-                // store the lower bits-bits of the exception
-                writeBits(tmpCompressedBlock, inputBlock[i]
-                        & MASK[bits], outputOffset, bits);
-                // write the position of exception
-                expAux[expIndex] = i;
-                // write the higher 32-bits bits of the
-                // exception
-                expAux[expIndex + expNum] = (inputBlock[i] >>> bits)
-                        & MASK[32 - bits];
-                expIndex++;
-            }
-            outputOffset += bits;
+        // bits expNum(_more) index_of_first_exp
+        tmpCompressedBlock[0] = bits;
+        tmpCompressedBlock[1] = expNum;
+        if (tmpCompressedBlock[1] > 1){
+            tmpCompressedBlock[1] = expNum_more;
+        }
+        if (expNum > 0){
+            tmpCompressedBlock[2] = exp_index.get(0);
+        }else{
+            tmpCompressedBlock[2] = 0;
         }
 
-        // the first int in the compressed block stores the value of b
-        // and the number of exceptions
-        // tmpCompressedBlock[0] = ((bits & MASK[POSSIBLE_B_BITS]) <<
-        // (31-POSSIBLE_B_BITS)) | (expNum & MASK[31-POSSIBLE_B_BITS]);
-        tmpCompressedBlock[0] = ((bits & MASK[10]) << 10)
-                | (expNum & 0x3ff);
-        tmpCompressedBlock[1] = inputBlock[blockSize - 1];
-
-        // compress exceptions
-        if (expNum > 0) {
+        // 编码异常值
+        if (expNum == 1){
+            int[] expAux = new int[1];
+            expAux[0] = exp_value.get(0);
             int compressedBitSize = compressBlockByS16(
                     tmpCompressedBlock, outputOffset, expAux,
-                    expNum * 2);
+                    expNum_more);
+            outputOffset += compressedBitSize;
+        }
+        else if (expNum > 1) {
+            //Array转数组
+            int[] expAux = new int[expNum_more];
+            for (int i = 0; i < expNum_more; i++){
+                expAux[i] = exp_value_more.get(i);
+            }
+            int compressedBitSize = compressBlockByS16(
+                    tmpCompressedBlock, outputOffset, expAux,
+                    expNum_more);
             outputOffset += compressedBitSize;
         }
 
-        // discard the redundant parts in the tmpCompressedBlock
+        // 剪掉多余的空间
         int compressedSizeInInts = (outputOffset + 31) >>> 5;
         int[] compBlock;
         compBlock = new int[compressedSizeInInts];
@@ -288,7 +286,7 @@ public class myPFOR {
         int compressedBitSize = 0;
         int offset = HEADER_SIZE;
         for (int i = 0; i < blockSize; i++) {
-            outDecompSlots[i] = readBits(inCompBlock, offset, bits) + min;
+            outDecompSlots[i] = readBits(inCompBlock, offset, bits);
             offset += bits;
         }
         compressedBitSize = bits * blockSize;
@@ -296,19 +294,6 @@ public class myPFOR {
         return compressedBitSize;
     }
 
-    /**
-     * Compress a block of blockSize integers using Simple16 algorithm
-     *
-     * @param outCompBlock
-     *                the compressed block which is the output
-     * @param outStartOffsetInBits
-     *                the start offset in bits of the compressed block
-     * @param inBlock
-     *                the block to be compressed
-     * @param blockSize
-     *                the block size
-     * @return the compressed size in bits
-     */
     private static int compressBlockByS16(int[] outCompBlock,
                                           int outStartOffsetInBits, int[] inBlock, int blockSize) {
         int outOffset = (outStartOffsetInBits + 31) >>> 5;
@@ -323,20 +308,6 @@ public class myPFOR {
         return compressedBitSize;
     }
 
-    /**
-     * Decompress a block of blockSize integers using Simple16 algorithm
-     *
-     * @param outDecompBlock
-     *                the decompressed block which is the output
-     * @param inCompBlock
-     *                the compressed block which is the input
-     * @param blockSize
-     *                the block size
-     * @param inStartOffsetInBits
-     *                the start offset in bits of the compressed block
-     * @return the compressed size in bits of the data that has been
-     *         decompressed
-     */
     public static int decompressBlockByS16(int[] outDecompBlock,
                                            int[] inCompBlock, int inStartOffsetInBits, int blockSize) {
         int inOffset = (inStartOffsetInBits + 31) >>> 5;
@@ -351,21 +322,8 @@ public class myPFOR {
         return compressedBitSize;
     }
 
-    /**
-     * Write a certain number of bits of an integer into an integer array
-     * starting from the given start offset
-     *
-     * @param out
-     *                the output array
-     * @param val
-     *                the integer to be written
-     * @param outOffset
-     *                the start offset in bits in the output array
-     * @param bits
-     *                the number of bits to be written (bits greater or equal to 0)
-     */
-    public static final void writeBits(int[] out, int val, int outOffset,
-                                       int bits) {
+    public static void writeBits(int[] out, int val, int outOffset,
+                                 int bits) {
         if (bits == 0)
             return;
         final int index = outOffset >>> 5;
@@ -377,47 +335,8 @@ public class myPFOR {
         }
     }
 
-    /**
-     * Decompress the b-bit slots using hardcoded unpack methods
-     *
-     * @param decompressedSlots
-     *                the decompressed output
-     * @param compBlock
-     *                the compressed input block
-     * @param blockSize
-     *                the block size which is 256 by default
-     * @param bits
-     *                the value of b
-     * @return the processed data size (the number of bits in the compressed
-     *         form)
-     */
-    static int decompressBBitSlotsWithHardCodes(int[] decompressedSlots,
-                                                int[] compBlock, int blockSize, int bits) {
-        int compressedBitSize = 0;
-        myPFORUnpack128.unpack(decompressedSlots, compBlock, bits);
-        compressedBitSize = bits * blockSize;
-
-        return compressedBitSize;
-    }
-
-    /**
-     * Read a certain number of bits of an integer into an integer array
-     * starting from the given start offset
-     *
-     * @param in
-     *                the input array
-     * @param inOffset
-     *                the start offset in bits in the input array
-     * @param bits
-     *                the number of bits to be read, unlike writeBits(),
-     *                readBits() does not deal with bits==0 and thus bits
-     *                must be greater than 0. When bits ==0, the calling functions will
-     *                just skip the entire bits-bit slots without decoding
-     *                them
-     * @return the bits bits of the input
-     */
-    public static final int readBits(int[] in, final int inOffset,
-                                     final int bits) {
+    public static int readBits(int[] in, final int inOffset,
+                               final int bits) {
         final int index = inOffset >>> 5;
         final int skip = inOffset & 0x1f;
         int val = in[index] >>> skip;
@@ -448,11 +367,5 @@ public class myPFOR {
                 System.out.println(i);
             }
         }
-//        for (int i:timeSeries){
-//            System.out.println(i);
-//        }
-//        for (int i:outBlock){
-//            System.out.println(i);
-//        }
     }
 }
