@@ -29,7 +29,7 @@ public class EncodeTest {
 //            "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\sota_ratio";
 //
     String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-    String output_parent_dir = parent_dir + "vldb/compression_ratio/sota_ratio";
+    String output_parent_dir = parent_dir + "vldb/compression_ratio/sota_ratio/";
     String input_parent_dir = parent_dir + "origin_data/";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
