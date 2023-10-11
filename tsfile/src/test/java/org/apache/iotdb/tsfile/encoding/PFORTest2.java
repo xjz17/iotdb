@@ -17,7 +17,7 @@ public class PFORTest2 {
     public static void main(@NotNull String[] args) throws IOException {
         String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pfor_ratio/";
-        String input_parent_dir = parent_dir + "iotdb_test_small/";
+        String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -40,7 +40,7 @@ public class PFORTest2 {
         encoding_list.add("NEWPFD");
         encoding_list.add("OPTPFD");
         encoding_list.add("FASTPFOR");
-        encoding_list.add("PFOR");
+//        encoding_list.add("PFOR");
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
