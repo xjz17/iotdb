@@ -41,6 +41,7 @@ public class PFORTest2 {
         encoding_list.add("OPTPFD");
         encoding_list.add("FASTPFOR");
         encoding_list.add("PFOR");
+        encoding_list.add("PFOR-DELTA");
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
@@ -167,6 +168,91 @@ public class PFORTest2 {
                                 int size = decompressOneBlock(uncompressed,outBlock,origin.length);
                                 decodeTime += System.nanoTime() - s;
                                 if (Arrays.equals(origin, uncompressed)) {
+//                                System.out.println("data is recovered without loss");
+                                }
+                                else {
+//                                    System.out.println(tmp.length);
+//                                    for (int j = 0; j < origin.length; j++){
+//                                        System.out.println(origin[j]);
+//                                        System.out.println(uncompressed[j]);
+//                                    }
+                                    System.out.println("get bug");
+                                    //throw new RuntimeException("bug");
+                                }
+                                final_ratio += 1.0 * outBlock.length / origin.length;
+                                final_compressed_size += outBlock.length * 4;
+                            }
+                        }
+                        String[] record = {
+                                f.toString(),
+                                "1",
+                                encoding,
+                                "NOCOMPRESSION",
+                                String.valueOf(1.0 * encodeTime / fileRepeat),
+                                String.valueOf(1.0 * decodeTime / fileRepeat),
+                                "0",
+                                "0",
+                                String.valueOf(points),
+                                String.valueOf(final_compressed_size / fileRepeat),
+                                String.valueOf(final_ratio / fileRepeat)
+                        };
+//                    System.out.println(final_ratio / fileRepeat);
+                        writer.writeRecord(record);
+                    }
+                    continue;
+                }
+                else if (Objects.equals(encoding, "PFOR-DELTA")) {
+                    for (File f : tempList) {
+                        fileRepeat = 0;
+                        double final_ratio = 0;
+                        int final_compressed_size = 0;
+                        System.out.println(f);
+                        long encodeTime = 0;
+                        long decodeTime = 0;
+                        while (fileRepeat < 1) {
+                            fileRepeat += 1;
+                            InputStream inputStream = Files.newInputStream(f.toPath());
+                            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                            ArrayList<String> data = new ArrayList<>();
+                            for (int index : columnIndexes) {
+                                if (index == 0) {
+                                    continue;
+                                }
+                                loader.readHeaders();
+                                data.clear();
+                                while (loader.readRecord()) {
+                                    String v = loader.getValues()[index];
+                                    data.add(v);
+                                }
+                                points = data.size();
+                                inputStream.close();
+
+                                int[] origin = new int[data.size()];
+                                int i = 0;
+                                for (String value : data) {
+                                    origin[i] = Integer.parseInt(value);
+                                    i++;
+                                }
+                                //PFORDELTA
+                                int[] res = new int[data.size() - 1];
+                                int first_value = origin[0];
+                                for (i = 0; i < data.size() - 1;i++) {
+                                    res[i] = origin[i + 1] - origin[i];
+                                }
+                                int[] outBlock;
+                                long s = System.nanoTime();
+                                outBlock = compressOneBlockOpt(res,res.length);
+                                encodeTime += System.nanoTime() - s;
+                                int[] uncompressed = new int[res.length];
+                                s = System.nanoTime();
+                                int size = decompressOneBlock(uncompressed,outBlock,res.length);
+                                decodeTime += System.nanoTime() - s;
+                                int[] trans = new int[data.size()];
+                                trans[0] = first_value;
+                                for (i = 0; i < data.size()-1; i++){
+                                    trans[i + 1] = trans[i] + uncompressed[i];
+                                }
+                                if (Arrays.equals(origin, trans)) {
 //                                System.out.println("data is recovered without loss");
                                 }
                                 else {

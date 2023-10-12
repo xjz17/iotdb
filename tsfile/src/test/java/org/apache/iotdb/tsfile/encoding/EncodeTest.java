@@ -505,6 +505,8 @@ public class EncodeTest {
                   encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
                   if (encoding == TSEncoding.TS_2DIFF){
                     encoder = new FloatEncoder(TSEncoding.TS_2DIFF, dataType, max_precision);
+                  } else if (encoding == TSEncoding.RLE){
+                    encoder = new FloatEncoder(TSEncoding.RLE, dataType, max_precision);
                   }
 
                   Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
