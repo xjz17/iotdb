@@ -18,13 +18,9 @@ public class myPFOR {
     // All possible values of b in the PForDelta algorithm
     private static final int[] POSSIBLE_B = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
             10, 11, 12, 13, 16, 20, 28};
-
-    // Max number of bits to store an uncompressed value
     private static final int MAX_BITS = 32;
-    // Header records the value of b and the number of exceptions in the
-    // block
+
     private static final int HEADER_NUM = 3;
-    // Header size in bits
     private static final int HEADER_SIZE = MAX_BITS * HEADER_NUM;
 
     private static final int[] MASK = { 0x00000000, 0x00000001, 0x00000003,
@@ -42,6 +38,7 @@ public class myPFOR {
         // find the best b that may lead to the smallest overall
         // compressed size
         int[] inBlock2 = new int[blockSize];
+        min = Integer.MAX_VALUE;
         for (int k : inBlock) {
             if (k < min) {
                 min = k;
@@ -53,7 +50,6 @@ public class myPFOR {
         int currentB = POSSIBLE_B[0];
         int[] outBlock = null;
         int tmpB = currentB;
-        // deal with the large exception cases
         int optSize = estimateCompressedSize(inBlock2, tmpB,
                 blockSize);
         for (int i = 1; i < POSSIBLE_B.length; ++i) {
@@ -79,7 +75,6 @@ public class myPFOR {
         int bits = inBlock[0];
         int index_first_exp = inBlock[2];
 
-        // decompress the b-bit slots
         int offset = HEADER_SIZE;
         int compressedBits = 0;
         if (bits == 0) {
@@ -207,8 +202,8 @@ public class myPFOR {
                     expNum_more++;
                     shift.add(exp_index.get(i + 1) - tag - 1);
                 }
-                shift.add(0);
             }
+            shift.add(0);
             //加完了异常值，再来编码
             int j = 0;//记录异常值标号
             for (int i = 0; i < blockSize; i++){
@@ -242,7 +237,7 @@ public class myPFOR {
             expAux[0] = exp_value.get(0);
             int compressedBitSize = compressBlockByS16(
                     tmpCompressedBlock, outputOffset, expAux,
-                    expNum_more);
+                    expNum);
             outputOffset += compressedBitSize;
         }
         else if (expNum > 1) {
@@ -266,21 +261,6 @@ public class myPFOR {
 
         return compBlock;
     }
-
-    /**
-     * Decompress b-bit slots
-     *
-     * @param outDecompSlots
-     *                decompressed block which is the output
-     * @param inCompBlock
-     *                the compressed block which is the input
-     * @param blockSize
-     *                the block size
-     * @param bits
-     *                the value of the parameter b
-     * @return the compressed size in bits of the data that has been
-     *         decompressed
-     */
     public static int decompressBBitSlots(int[] outDecompSlots,
                                           int[] inCompBlock, int blockSize, int bits) {
         int compressedBitSize = 0;

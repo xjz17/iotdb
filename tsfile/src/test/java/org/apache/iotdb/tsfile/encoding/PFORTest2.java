@@ -40,7 +40,7 @@ public class PFORTest2 {
         encoding_list.add("NEWPFD");
         encoding_list.add("OPTPFD");
         encoding_list.add("FASTPFOR");
-//        encoding_list.add("PFOR");
+        encoding_list.add("PFOR");
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
