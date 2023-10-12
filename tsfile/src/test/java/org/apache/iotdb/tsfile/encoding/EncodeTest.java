@@ -4,6 +4,7 @@ import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -161,7 +162,12 @@ public class EncodeTest {
           if (index == 0){
             continue;
           }
-          int max_precision = 0;
+          int max_precision = 2;
+          if (file_i == 3){
+            max_precision = 4;
+          } else if (file_i == 4 ||file_i == 5) {
+            max_precision = 3;
+          }
           loader.readHeaders();
           data.clear();
           while (loader.readRecord()) {
@@ -497,6 +503,9 @@ public class EncodeTest {
                   //                  TSEncodingBuilder.Ts2Diff.setMaxPointNumber(max_precision);
                   //                }
                   encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+                  if (encoding == TSEncoding.TS_2DIFF){
+                    encoder = new FloatEncoder(TSEncoding.TS_2DIFF, dataType, max_precision);
+                  }
 
                   Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
 
@@ -570,6 +579,7 @@ public class EncodeTest {
                       String.valueOf(decodeTime),
                       String.valueOf(compressTime),
                       String.valueOf(uncompressTime),
+                      String.valueOf(data.size()),
                       String.valueOf(compressed_size),
                       String.valueOf(ratio)
                     };
