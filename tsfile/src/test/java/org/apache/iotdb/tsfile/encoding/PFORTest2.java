@@ -119,7 +119,7 @@ public class PFORTest2 {
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
         ArrayList<String> encoding_list = new ArrayList<>();
         ArrayList<String> encoding_list0 = new ArrayList<>();
-        int blocksize = 4096;
+        int blocksize = 2048;
 
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
@@ -265,20 +265,11 @@ public class PFORTest2 {
                                         ArrayList<Integer> outBlock = new ArrayList<>();
                                         long s = System.nanoTime();
                                         int offset = 0;
-                                        while (offset + blocksize < data.size()) {
+                                        while (offset < data.size()) {
                                             int endindex = offset + blocksize;
-                                            int[] slice = Arrays.copyOfRange(origin,offset,endindex);
-                                            int[] new_slice = getAbsDeltaTsBlock(slice,min);
-                                            int[] sliceoutBlock = compressOneBlockOpt(new_slice, new_slice.length);
-                                            outBlock.add(sliceoutBlock.length);
-                                            outBlock.add(blocksize - 1);
-                                            for (i = 0; i < sliceoutBlock.length; i ++){
-                                                outBlock.add(sliceoutBlock[i]);
+                                            if (endindex >= data.size()){
+                                                endindex = data.size();
                                             }
-                                            offset += blocksize;
-                                        }
-                                        if (offset != data.size()){
-                                            int endindex = data.size();
                                             int[] slice = Arrays.copyOfRange(origin,offset,endindex);
                                             int[] new_slice = getAbsDeltaTsBlock(slice,min);
                                             int[] sliceoutBlock = compressOneBlockOpt(new_slice, new_slice.length);
@@ -287,6 +278,7 @@ public class PFORTest2 {
                                             for (i = 0; i < sliceoutBlock.length; i ++){
                                                 outBlock.add(sliceoutBlock[i]);
                                             }
+                                            offset = endindex;
                                         }
                                         int[] minList = new int[min.size()];
                                         i = 0;
@@ -356,21 +348,11 @@ public class PFORTest2 {
                                         ArrayList<Integer> outBlock = new ArrayList<>();
                                         long s = System.nanoTime();
                                         int offset = 0;
-                                        while (offset + blocksize < data.size()) {
-
+                                        while (offset < data.size()) {
                                             int endindex = offset + blocksize;
-                                            int[] slice = Arrays.copyOfRange(origin,offset,endindex);
-                                            int[] new_slice = getAbsDeltaTsBlockSPRINTZ(slice,min);
-                                            int[] sliceoutBlock = compressOneBlockOpt(new_slice, new_slice.length);
-                                            outBlock.add(sliceoutBlock.length);
-                                            outBlock.add(blocksize - 1);
-                                            for (i = 0; i < sliceoutBlock.length; i ++){
-                                                outBlock.add(sliceoutBlock[i]);
+                                            if (endindex >= data.size()){
+                                                endindex = data.size();
                                             }
-                                            offset += blocksize;
-                                        }
-                                        if (offset != data.size()){
-                                            int endindex = data.size();
                                             int[] slice = Arrays.copyOfRange(origin,offset,endindex);
                                             int[] new_slice = getAbsDeltaTsBlockSPRINTZ(slice,min);
                                             int[] sliceoutBlock = compressOneBlockOpt(new_slice, new_slice.length);
@@ -379,6 +361,7 @@ public class PFORTest2 {
                                             for (i = 0; i < sliceoutBlock.length; i ++){
                                                 outBlock.add(sliceoutBlock[i]);
                                             }
+                                            offset = endindex;
                                         }
                                         int[] minList = new int[min.size()];
                                         i = 0;
@@ -443,13 +426,16 @@ public class PFORTest2 {
                                         final_ratio += 1.0 * outBlock.size() / origin.length;
                                         final_compressed_size += outBlock.size() * 4;
                                     } else if (encoding0.equals("RLE")) {
-                                        //TS_2DIFF+RLE
+                                        //TS_2DIFF+RLE+++
                                         ArrayList<Integer> min = new ArrayList<>();
                                         ArrayList<Integer> outBlock = new ArrayList<>();
                                         long s = System.nanoTime();
                                         int offset = 0;
-                                        while (offset + blocksize < data.size()) {
+                                        while (offset < data.size()) {
                                             int endindex = offset + blocksize;
+                                            if (endindex >= data.size()){
+                                                endindex = data.size();
+                                            }
                                             int[] slice = Arrays.copyOfRange(origin,offset,endindex);
                                             ArrayList<Integer> repeat_list = new ArrayList<>();
                                             ArrayList<Integer> new_slice_list = getAbsDeltaTsBlockRLE(slice,min,repeat_list);
@@ -475,35 +461,7 @@ public class PFORTest2 {
                                             for (i = 0; i < sliceoutBlock2.length; i ++){
                                                 outBlock.add(sliceoutBlock2[i]);
                                             }
-                                            offset += blocksize;
-                                        }
-                                        if (offset != data.size()){
-                                            int endindex = data.size();
-                                            int[] slice = Arrays.copyOfRange(origin,offset,endindex);
-                                            ArrayList<Integer> repeat_list = new ArrayList<>();
-                                            ArrayList<Integer> new_slice_list = getAbsDeltaTsBlockRLE(slice,min,repeat_list);
-                                            int[] new_slice = new int[new_slice_list.size()];
-                                            i = 0;
-                                            for (int value:new_slice_list){
-                                                new_slice[i++] = value;
-                                            }
-                                            int[] repeat = new int[repeat_list.size()];
-                                            i = 0;
-                                            for (int value:repeat_list){
-                                                repeat[i++] = value;
-                                            }
-                                            int[] sliceoutBlock = compressOneBlockOpt(new_slice, new_slice.length);
-                                            outBlock.add(sliceoutBlock.length);
-                                            outBlock.add(new_slice.length);
-                                            for (i = 0; i < sliceoutBlock.length; i ++){
-                                                outBlock.add(sliceoutBlock[i]);
-                                            }
-                                            int[] sliceoutBlock2 = compressOneBlockOpt(repeat, repeat.length);
-                                            outBlock.add(sliceoutBlock2.length);
-                                            outBlock.add(repeat.length);
-                                            for (i = 0; i < sliceoutBlock2.length; i ++){
-                                                outBlock.add(sliceoutBlock2[i]);
-                                            }
+                                            offset = endindex;
                                         }
                                         int[] minList = new int[min.size()];
                                         i = 0;
@@ -537,6 +495,7 @@ public class PFORTest2 {
                                         int size = decompressOneBlock(new_min, min_sliceBlock, min_origin_size);
                                         offset = first_endindex;
                                         while (offset != outBlock.size()){
+                                            //RLE---
                                             int slice_size = outBlock.get(offset);
                                             int endindex = offset+2+slice_size;
                                             int origin_size = outBlock.get(offset+1);
@@ -613,84 +572,538 @@ public class PFORTest2 {
                     continue;
                 }
                 for (File f : tempList) {
-//                    for (String encoding0 : encoding_list0) {
-                        fileRepeat = 0;
-                        double final_ratio = 0;
-                        int final_compressed_size = 0;
-                        System.out.println(f);
-                        long encodeTime = 0;
-                        long decodeTime = 0;
+                    for (String encoding0 : encoding_list0) {
+                        if (encoding0.equals("TS_2DIFF1")) {
+                            fileRepeat = 0;
+                            double final_ratio = 0;
+                            int final_compressed_size = 0;
+                            System.out.println(f);
+                            long encodeTime = 0;
+                            long decodeTime = 0;
 
-                        while (fileRepeat < 10) {
-                            fileRepeat += 1;
-                            InputStream inputStream = Files.newInputStream(f.toPath());
-                            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                            ArrayList<String> data = new ArrayList<>();
+                            while (fileRepeat < 1) {
+                                fileRepeat += 1;
+                                InputStream inputStream = Files.newInputStream(f.toPath());
+                                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                                ArrayList<String> data = new ArrayList<>();
 
-                            for (int index : columnIndexes) {
-                                if (index == 0) {
-                                    continue;
+                                for (int index : columnIndexes) {
+                                    if (index == 0) {
+                                        continue;
+                                    }
+                                    loader.readHeaders();
+                                    data.clear();
+                                    while (loader.readRecord()) {
+                                        String v = loader.getValues()[index];
+                                        data.add(v);
+                                    }
+                                    points = data.size();
+                                    inputStream.close();
+
+                                    int[] origin = new int[data.size()];
+                                    int i = 0;
+                                    for (String value : data) {
+                                        origin[i++] = Integer.parseInt(value);
+                                    }
+                                    // TS_2DIFF
+                                    ArrayList<Integer> min = new ArrayList<>();
+                                    ArrayList<Integer> outBlock = new ArrayList<>();
+                                    long s = System.nanoTime();
+                                    int offset = 0;
+                                    while (offset < data.size()) {
+                                        int endindex = offset + blocksize;
+                                        if (endindex >= data.size()) {
+                                            endindex = data.size();
+                                        }
+                                        int[] slice = Arrays.copyOfRange(origin, offset, endindex);
+                                        int[] tmp = getAbsDeltaTsBlock(slice, min);
+                                        compressed = new int[tmp.length + 1024];
+                                        inputoffset = new IntWrapper(0);
+                                        outputoffset = new IntWrapper(0);
+                                        codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
+                                        compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                        outBlock.add(compressed.length);
+                                        outBlock.add(endindex - offset - 1);
+                                        for (i = 0; i < compressed.length; i++) {
+                                            outBlock.add(compressed[i]);
+                                        }
+                                        offset = endindex;
+                                    }
+                                    int[] minList = new int[min.size()];
+                                    i = 0;
+                                    for (int value : min) {
+                                        minList[i] = value;
+                                        i++;
+                                    }
+                                    compressed = new int[minList.length + 1024];
+                                    inputoffset = new IntWrapper(0);
+                                    outputoffset = new IntWrapper(0);
+                                    codec.compress(minList, inputoffset, minList.length, compressed, outputoffset);
+                                    compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                    for (i = compressed.length - 1; i >= 0; i--) {
+                                        outBlock.add(0, compressed[i]);
+                                    }
+                                    outBlock.add(0, minList.length);
+                                    outBlock.add(0, compressed.length);
+                                    int[] outBlock2 = new int[outBlock.size()];
+                                    i = 0;
+                                    for (int value : outBlock) {
+                                        outBlock2[i] = value;
+                                        i++;
+                                    }
+                                    encodeTime += System.nanoTime() - s;
+                                    s = System.nanoTime();
+                                    offset = 0;
+                                    int[] uncompressed = new int[data.size()];
+                                    int j = 0;
+                                    int k = 0;
+                                    int first_slice_size = outBlock.get(offset);
+                                    int first_endindex = offset + 2 + first_slice_size;
+                                    int min_origin_size = outBlock.get(offset + 1);
+                                    int[] new_min = new int[min_origin_size];
+                                    int[] min_sliceBlock = Arrays.copyOfRange(outBlock2, offset + 2, first_endindex);
+                                    IntWrapper recoffset = new IntWrapper(0);
+                                    codec.uncompress(min_sliceBlock, new IntWrapper(0), min_sliceBlock.length,
+                                            new_min, recoffset);
+                                    offset = first_endindex;
+                                    while (offset != outBlock.size()) {
+                                        int slice_size = outBlock.get(offset);
+                                        int endindex = offset + 2 + slice_size;
+                                        int origin_size = outBlock.get(offset + 1);
+                                        int[] sliceBlock = Arrays.copyOfRange(outBlock2, offset + 2, endindex);
+                                        int[] recovered = new int[origin_size];
+                                        recoffset = new IntWrapper(0);
+                                        codec.uncompress(sliceBlock, new IntWrapper(0), sliceBlock.length,
+                                                recovered, recoffset);
+                                        uncompressed[j] = new_min[k];
+                                        j++;
+                                        k++;
+                                        for (i = 0; i < origin_size; i++) {
+                                            uncompressed[j] = recovered[i] + new_min[k] + uncompressed[j - 1];
+                                            j++;
+                                        }
+                                        k++;
+                                        offset = endindex;
+                                    }
+                                    decodeTime += System.nanoTime() - s;
+
+                                    if (Arrays.equals(origin, uncompressed)) {
+                                    } else {
+                                        System.out.println("bug");
+                                    }
+
+                                    final_ratio += 1.0 * outBlock.size() / origin.length;
+                                    final_compressed_size += outBlock.size() * 4;
                                 }
-                                loader.readHeaders();
-                                data.clear();
-                                while (loader.readRecord()) {
-                                    String v = loader.getValues()[index];
-                                    data.add(v);
-                                }
-                                points = data.size();
-                                inputStream.close();
-
-                                int[] tmp = new int[data.size()];
-                                int i = 0;
-                                for (String value : data) {
-                                    tmp[i++] = Integer.parseInt(value);
-                                }
-                                // TS_2DIFF
-
-                                compressed = new int[tmp.length + 1024];
-                                inputoffset = new IntWrapper(0);
-                                outputoffset = new IntWrapper(0);
-
-
-                                long s = System.nanoTime();
-                                codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
-                                encodeTime += System.nanoTime() - s;
-
-
-                                compressed = Arrays.copyOf(compressed, outputoffset.intValue());
-
-                                int[] recovered = new int[tmp.length];
-                                IntWrapper recoffset = new IntWrapper(0);
-
-                                s = System.nanoTime();
-                                codec.uncompress(compressed, new IntWrapper(0), compressed.length,
-                                        recovered, recoffset);
-                                decodeTime += System.nanoTime() - s;
-
-                                if (Arrays.equals(tmp, recovered)) {
-                                } else
-                                    throw new RuntimeException("bug");
-
-                                final_ratio += 1.0 * outputoffset.intValue() / tmp.length;
-                                final_compressed_size += outputoffset.intValue() * 4;
                             }
-                        }
 
-                        String[] record = {
-                                f.toString(),
-                                "1",
-                                encoding,
-                                "NOCOMPRESSION",
-                                String.valueOf(1.0 * encodeTime / fileRepeat),
-                                String.valueOf(1.0 * decodeTime / fileRepeat),
-                                "0",
-                                "0",
-                                String.valueOf(points),
-                                String.valueOf(final_compressed_size / fileRepeat),
-                                String.valueOf(final_ratio / fileRepeat)
-                        };
-                        writer.writeRecord(record);
-//                    }
+                            String[] record = {
+                                    f.toString(),
+                                    "1",
+                                    encoding0 + "+" + encoding,
+                                    "NOCOMPRESSION",
+                                    String.valueOf(1.0 * encodeTime / fileRepeat),
+                                    String.valueOf(1.0 * decodeTime / fileRepeat),
+                                    "0",
+                                    "0",
+                                    String.valueOf(points),
+                                    String.valueOf(final_compressed_size / fileRepeat),
+                                    String.valueOf(final_ratio / fileRepeat)
+                            };
+                            writer.writeRecord(record);
+                        }else if (encoding0.equals("SPRINTZ")) {
+                            fileRepeat = 0;
+                            double final_ratio = 0;
+                            int final_compressed_size = 0;
+                            System.out.println(f);
+                            long encodeTime = 0;
+                            long decodeTime = 0;
+
+                            while (fileRepeat < 1) {
+                                fileRepeat += 1;
+                                InputStream inputStream = Files.newInputStream(f.toPath());
+                                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                                ArrayList<String> data = new ArrayList<>();
+
+                                for (int index : columnIndexes) {
+                                    if (index == 0) {
+                                        continue;
+                                    }
+                                    loader.readHeaders();
+                                    data.clear();
+                                    while (loader.readRecord()) {
+                                        String v = loader.getValues()[index];
+                                        data.add(v);
+                                    }
+                                    points = data.size();
+                                    inputStream.close();
+
+                                    int[] origin = new int[data.size()];
+                                    int i = 0;
+                                    for (String value : data) {
+                                        origin[i++] = Integer.parseInt(value);
+                                    }
+                                    // SPRINTZ
+                                    ArrayList<Integer> min = new ArrayList<>();
+                                    ArrayList<Integer> outBlock = new ArrayList<>();
+                                    long s = System.nanoTime();
+                                    int offset = 0;
+                                    while (offset < data.size()) {
+                                        int endindex = offset + blocksize;
+                                        if (endindex >= data.size()) {
+                                            endindex = data.size();
+                                        }
+                                        int[] slice = Arrays.copyOfRange(origin, offset, endindex);
+                                        int[] tmp = getAbsDeltaTsBlockSPRINTZ(slice,min);
+                                        compressed = new int[tmp.length + 1024];
+                                        inputoffset = new IntWrapper(0);
+                                        outputoffset = new IntWrapper(0);
+                                        codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
+                                        compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                        outBlock.add(compressed.length);
+                                        outBlock.add(endindex - offset - 1);
+                                        for (i = 0; i < compressed.length; i++) {
+                                            outBlock.add(compressed[i]);
+                                        }
+                                        offset = endindex;
+                                    }
+                                    int[] minList = new int[min.size()];
+                                    i = 0;
+                                    for (int value : min) {
+                                        minList[i] = value;
+                                        i++;
+                                    }
+                                    compressed = new int[minList.length + 1024];
+                                    inputoffset = new IntWrapper(0);
+                                    outputoffset = new IntWrapper(0);
+                                    codec.compress(minList, inputoffset, minList.length, compressed, outputoffset);
+                                    compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                    for (i = compressed.length - 1; i >= 0; i--) {
+                                        outBlock.add(0, compressed[i]);
+                                    }
+                                    outBlock.add(0, minList.length);
+                                    outBlock.add(0, compressed.length);
+                                    int[] outBlock2 = new int[outBlock.size()];
+                                    i = 0;
+                                    for (int value : outBlock) {
+                                        outBlock2[i] = value;
+                                        i++;
+                                    }
+                                    encodeTime += System.nanoTime() - s;
+                                    s = System.nanoTime();
+                                    offset = 0;
+                                    int[] uncompressed = new int[data.size()];
+                                    int j = 0;
+                                    int k = 0;
+                                    int first_slice_size = outBlock.get(offset);
+                                    int first_endindex = offset + 2 + first_slice_size;
+                                    int min_origin_size = outBlock.get(offset + 1);
+                                    int[] new_min = new int[min_origin_size];
+                                    int[] min_sliceBlock = Arrays.copyOfRange(outBlock2, offset + 2, first_endindex);
+                                    IntWrapper recoffset = new IntWrapper(0);
+                                    codec.uncompress(min_sliceBlock, new IntWrapper(0), min_sliceBlock.length,
+                                            new_min, recoffset);
+                                    offset = first_endindex;
+                                    while (offset != outBlock.size()) {
+                                        int slice_size = outBlock.get(offset);
+                                        int endindex = offset + 2 + slice_size;
+                                        int origin_size = outBlock.get(offset + 1);
+                                        int[] sliceBlock = Arrays.copyOfRange(outBlock2, offset + 2, endindex);
+                                        int[] recovered = new int[origin_size];
+                                        recoffset = new IntWrapper(0);
+                                        codec.uncompress(sliceBlock, new IntWrapper(0), sliceBlock.length,
+                                                recovered, recoffset);
+                                        uncompressed[j] = new_min[k];
+                                        j++;
+                                        k++;
+                                        for (i = 0; i < origin_size; i++){
+                                            uncompressed[j] = deZigzag(recovered[i]) + uncompressed[j - 1];
+                                            j++;
+                                        }
+                                        offset = endindex;
+                                    }
+                                    decodeTime += System.nanoTime() - s;
+
+                                    if (Arrays.equals(origin, uncompressed)) {
+                                    } else {
+                                        System.out.println("bug");
+                                    }
+
+                                    final_ratio += 1.0 * outBlock.size() / origin.length;
+                                    final_compressed_size += outBlock.size() * 4;
+                                }
+                            }
+
+                            String[] record = {
+                                    f.toString(),
+                                    "1",
+                                    encoding0 + "+" + encoding,
+                                    "NOCOMPRESSION",
+                                    String.valueOf(1.0 * encodeTime / fileRepeat),
+                                    String.valueOf(1.0 * decodeTime / fileRepeat),
+                                    "0",
+                                    "0",
+                                    String.valueOf(points),
+                                    String.valueOf(final_compressed_size / fileRepeat),
+                                    String.valueOf(final_ratio / fileRepeat)
+                            };
+                            writer.writeRecord(record);
+                        }else if (encoding0.equals("RLE")) {
+                            fileRepeat = 0;
+                            double final_ratio = 0;
+                            int final_compressed_size = 0;
+                            System.out.println(f);
+                            long encodeTime = 0;
+                            long decodeTime = 0;
+
+                            while (fileRepeat < 1) {
+                                fileRepeat += 1;
+                                InputStream inputStream = Files.newInputStream(f.toPath());
+                                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                                ArrayList<String> data = new ArrayList<>();
+
+                                for (int index : columnIndexes) {
+                                    if (index == 0) {
+                                        continue;
+                                    }
+                                    loader.readHeaders();
+                                    data.clear();
+                                    while (loader.readRecord()) {
+                                        String v = loader.getValues()[index];
+                                        data.add(v);
+                                    }
+                                    points = data.size();
+                                    inputStream.close();
+
+                                    int[] origin = new int[data.size()];
+                                    int i = 0;
+                                    for (String value : data) {
+                                        origin[i++] = Integer.parseInt(value);
+                                    }
+                                    // RLE+++
+                                    ArrayList<Integer> min = new ArrayList<>();
+                                    ArrayList<Integer> outBlock = new ArrayList<>();
+                                    long s = System.nanoTime();
+                                    int offset = 0;
+                                    while (offset < data.size()) {
+                                        int endindex = offset + blocksize;
+                                        if (endindex >= data.size()) {
+                                            endindex = data.size();
+                                        }
+                                        int[] slice = Arrays.copyOfRange(origin, offset, endindex);
+                                        ArrayList<Integer> repeat_list = new ArrayList<>();
+                                        ArrayList<Integer> new_slice_list = getAbsDeltaTsBlockRLE(slice,min,repeat_list);
+                                        int[] tmp = new int[new_slice_list.size()];
+                                        i = 0;
+                                        for (int value:new_slice_list){
+                                            tmp[i++] = value;
+                                        }
+                                        int[] repeat = new int[repeat_list.size()];
+                                        i = 0;
+                                        for (int value:repeat_list){
+                                            repeat[i++] = value;
+                                        }
+                                        compressed = new int[tmp.length + 1024];
+                                        inputoffset = new IntWrapper(0);
+                                        outputoffset = new IntWrapper(0);
+                                        codec.compress(tmp, inputoffset, tmp.length, compressed, outputoffset);
+                                        compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                        outBlock.add(compressed.length);
+                                        outBlock.add(tmp.length);
+                                        for (i = 0; i < compressed.length; i++) {
+                                            outBlock.add(compressed[i]);
+                                        }
+                                        compressed = new int[repeat.length + 1024];
+                                        inputoffset = new IntWrapper(0);
+                                        outputoffset = new IntWrapper(0);
+                                        codec.compress(repeat, inputoffset, repeat.length, compressed, outputoffset);
+                                        compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                        outBlock.add(compressed.length);
+                                        outBlock.add(repeat.length);
+                                        for (i = 0; i < compressed.length; i++) {
+                                            outBlock.add(compressed[i]);
+                                        }
+                                        offset = endindex;
+                                    }
+                                    int[] minList = new int[min.size()];
+                                    i = 0;
+                                    for (int value : min) {
+                                        minList[i] = value;
+                                        i++;
+                                    }
+                                    compressed = new int[minList.length + 1024];
+                                    inputoffset = new IntWrapper(0);
+                                    outputoffset = new IntWrapper(0);
+                                    codec.compress(minList, inputoffset, minList.length, compressed, outputoffset);
+                                    compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                    for (i = compressed.length - 1; i >= 0; i--) {
+                                        outBlock.add(0, compressed[i]);
+                                    }
+                                    outBlock.add(0, minList.length);
+                                    outBlock.add(0, compressed.length);
+
+                                    int[] outBlock2 = new int[outBlock.size()];
+                                    i = 0;
+                                    for (int value : outBlock) {
+                                        outBlock2[i] = value;
+                                        i++;
+                                    }
+                                    encodeTime += System.nanoTime() - s;
+                                    s = System.nanoTime();
+                                    offset = 0;
+                                    int[] uncompressed = new int[data.size()];
+                                    int j = 0;
+                                    int k = 0;
+                                    int first_slice_size = outBlock.get(offset);
+                                    int first_endindex = offset + 2 + first_slice_size;
+                                    int min_origin_size = outBlock.get(offset + 1);
+                                    int[] new_min = new int[min_origin_size];
+                                    int[] min_sliceBlock = Arrays.copyOfRange(outBlock2, offset + 2, first_endindex);
+                                    IntWrapper recoffset = new IntWrapper(0);
+                                    codec.uncompress(min_sliceBlock, new IntWrapper(0), min_sliceBlock.length,
+                                            new_min, recoffset);
+                                    offset = first_endindex;
+                                    while (offset != outBlock.size()) {
+                                        //RLE---
+                                        int slice_size = outBlock.get(offset);
+                                        int endindex = offset + 2 + slice_size;
+                                        int origin_size = outBlock.get(offset + 1);
+                                        int[] sliceBlock = Arrays.copyOfRange(outBlock2, offset + 2, endindex);
+                                        int[] recovered = new int[origin_size];
+                                        recoffset = new IntWrapper(0);
+                                        codec.uncompress(sliceBlock, new IntWrapper(0), sliceBlock.length,
+                                                recovered, recoffset);
+                                        offset = endindex;
+                                        slice_size = outBlock.get(offset);
+                                        endindex = offset+2+slice_size;
+                                        int origin_size2 = outBlock.get(offset+1);
+                                        int[] recovered2 = new int[origin_size2];
+                                        recoffset = new IntWrapper(0);
+                                        int[] sliceBlock2 = Arrays.copyOfRange(outBlock2,offset+2,endindex);
+                                        codec.uncompress(sliceBlock2, new IntWrapper(0), sliceBlock2.length,
+                                                recovered2, recoffset);
+
+                                        int index2 = 0;
+                                        int index1 = 0;
+                                        int fake_index = 0;
+                                        for (index1 = 0; index1 < origin_size; index1++){
+                                            if (index2 < recovered2.length && fake_index == recovered2[index2]){
+                                                //repeat
+                                                int times = recovered2[index2 + 1];
+                                                for (i = 0; i < times; i++){
+                                                    uncompressed[j] = recovered[index1] + new_min[k];
+                                                    j++;
+                                                }
+                                                fake_index += recovered2[index2 + 1];
+                                                index2 += 2;
+                                            }else {
+                                                uncompressed[j] = recovered[index1] + new_min[k];
+                                                j++;
+                                                fake_index++;
+                                            }
+                                        }
+                                        k++;
+                                        offset = endindex;
+                                    }
+                                    decodeTime += System.nanoTime() - s;
+
+                                    if (Arrays.equals(origin, uncompressed)) {
+                                    } else {
+                                        System.out.println("bug");
+                                    }
+
+                                    final_ratio += 1.0 * outBlock.size() / origin.length;
+                                    final_compressed_size += outBlock.size() * 4;
+                                }
+                            }
+
+                            String[] record = {
+                                    f.toString(),
+                                    "1",
+                                    encoding0 + "+" + encoding,
+                                    "NOCOMPRESSION",
+                                    String.valueOf(1.0 * encodeTime / fileRepeat),
+                                    String.valueOf(1.0 * decodeTime / fileRepeat),
+                                    "0",
+                                    "0",
+                                    String.valueOf(points),
+                                    String.valueOf(final_compressed_size / fileRepeat),
+                                    String.valueOf(final_ratio / fileRepeat)
+                            };
+                            writer.writeRecord(record);
+                        }else if (encoding0.equals("TS_2DIFF")) {
+                            fileRepeat = 0;
+                            double final_ratio = 0;
+                            int final_compressed_size = 0;
+                            System.out.println(f);
+                            long encodeTime = 0;
+                            long decodeTime = 0;
+
+                            while (fileRepeat < 1) {
+                                fileRepeat += 1;
+                                InputStream inputStream = Files.newInputStream(f.toPath());
+                                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                                ArrayList<String> data = new ArrayList<>();
+
+                                for (int index : columnIndexes) {
+                                    if (index == 0) {
+                                        continue;
+                                    }
+                                    loader.readHeaders();
+                                    data.clear();
+                                    while (loader.readRecord()) {
+                                        String v = loader.getValues()[index];
+                                        data.add(v);
+                                    }
+                                    points = data.size();
+                                    inputStream.close();
+
+                                    int[] origin = new int[data.size()];
+                                    int i = 0;
+                                    for (String value : data) {
+                                        origin[i++] = Integer.parseInt(value);
+                                    }
+                                    // TS_2DIFF
+                                    inputoffset = new IntWrapper(0);
+                                    outputoffset = new IntWrapper(0);
+                                    compressed = new int[origin.length + 1024];
+                                    codec.compress(origin, inputoffset, origin.length, compressed, outputoffset);
+                                    long s = System.nanoTime();
+                                    compressed = Arrays.copyOf(compressed, outputoffset.intValue());
+                                    encodeTime += System.nanoTime() - s;
+                                    s = System.nanoTime();
+                                    int[] uncompressed = new int[data.size()];
+                                    IntWrapper recoffset = new IntWrapper(0);
+                                    codec.uncompress(compressed, new IntWrapper(0), compressed.length,
+                                            uncompressed, recoffset);
+                                    decodeTime += System.nanoTime() - s;
+
+                                    if (Arrays.equals(origin, uncompressed)) {
+                                    } else {
+                                        System.out.println("bug");
+                                    }
+
+                                    final_ratio += 1.0 * compressed.length / origin.length;
+                                    final_compressed_size += compressed.length * 4;
+                                }
+                            }
+
+                            String[] record = {
+                                    f.toString(),
+                                    "1",
+                                    encoding0 + "+" + encoding,
+                                    "NOCOMPRESSION",
+                                    String.valueOf(1.0 * encodeTime / fileRepeat),
+                                    String.valueOf(1.0 * decodeTime / fileRepeat),
+                                    "0",
+                                    "0",
+                                    String.valueOf(points),
+                                    String.valueOf(final_compressed_size / fileRepeat),
+                                    String.valueOf(final_ratio / fileRepeat)
+                            };
+                            writer.writeRecord(record);
+                        }
+                    }
                 }
             }
             writer.close();
