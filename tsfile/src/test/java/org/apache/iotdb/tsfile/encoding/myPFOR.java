@@ -20,7 +20,7 @@ public class myPFOR {
             10, 11, 12, 13, 16, 20, 28};
     private static final int MAX_BITS = 32;
 
-    private static final int HEADER_NUM = 3;
+    private static final int HEADER_NUM = 4;
     private static final int HEADER_SIZE = MAX_BITS * HEADER_NUM;
     private static int min = Integer.MAX_VALUE;
 
@@ -65,6 +65,7 @@ public class myPFOR {
         int expNum = inBlock[1];
         int bits = inBlock[0];
         int index_first_exp = inBlock[2];
+        min = inBlock[3];
 
         int offset = HEADER_SIZE;
         int compressedBits = 0;
@@ -221,6 +222,7 @@ public class myPFOR {
         }else{
             tmpCompressedBlock[2] = 0;
         }
+        tmpCompressedBlock[3] = min;
 
         // 编码异常值
         if (expNum == 1){
