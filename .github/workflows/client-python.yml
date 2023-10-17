@@ -7,6 +7,7 @@ on:
     branches:
       - master
       - 'rel/*'
+      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -30,6 +31,9 @@ env:
 
 jobs:
   unix:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
     runs-on: ubuntu-latest
 
     steps:
@@ -41,17 +45,14 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Build IoTDB server distribution zip and python client
-        run: mvn -B clean install -pl distribution,iotdb-client/client-py -am -DskipTests
+        run: mvn -B clean install -pl distribution,client-py -am -DskipTests
       - name: Build IoTDB server docker image
         run: |
           docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
       - name: Install IoTDB python client requirements
-        run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
-      - name: Check code style
-        shell: bash
-        run: black iotdb-client/client-py/ --check --diff
+        run: pip3 install -r client-py/requirements_dev.txt
       - name: Integration test
         shell: bash
         run: |
-          cd iotdb-client/client-py/ && pytest .
+          cd client-py && pytest .

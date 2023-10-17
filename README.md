@@ -21,7 +21,8 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
-[![Unit-Test](https://github.com/apache/iotdb/actions/workflows/unit-test.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/unit-test.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
+[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
@@ -96,116 +97,6 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
-### Linux
-
-(This guide is based on an installation of Ubuntu 22.04)
-
-#### Git
-
-Make sure `Git` is installed, if it's missing, simply install it via:
-
-    sudo apt install git
-
-#### Java
-
-Make sure `Java` is installed, if it's missing, simply install it via:
-
-    sudo apt install default-jdk
-
-#### Flex
-
-    sudo apt install flex
-
-#### Bison
-
-    sudo apt install bison
-
-#### Boost
-
-    sudo apt install libboost-all-dev
-
-#### OpenSSL header files
-
-Usually OpenSSL is already installed, however it's missing the header files we need to compile.
-So ensure these are installed:
-
-    sudo apt install libssl-dev
-
-### Mac OS
-
-#### Git
-
-First ensure `git` works.
-
-Usually on a new Mac, as soon as you simply type `git` in a `Terminal` window, a popup will come and ask if you want to finish installing the Mac developer tools. 
-Just say yes.
-As soon as this is finished, you are free to use `git`.
-
-#### Homebrew
-
-Then install `Homebrew` - If this hasn't been installed yet, as we are going to be installing everything using `Homebrew`.
-
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-#### Java
-
-As soon as that's done install `Java`, if this hasn't been installed yet:
-
-    brew install java
-
-Depending on your version of Homebrew, it will tell you to do one of the following (Depending on the type of processor in your device).
-
-Mainly on the Intel-based models:
-
-    sudo ln -sfn /usr/local/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
-
-Mainly on the ARM-based models:
-
-    sudo ln -sfn /opt/homebrew/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
-
-#### CPP Prerequisites 
-
-Building `Thrift` requires us to add two more dependencies to the picture.
-
-This however is only needed when enabling the `compile-cpp` profile:
-
-    brew install boost
-    brew install bison
-    brew install openssl
-
-### Windows
-
-#### Chocolatey
-
-Then install `Chocolatey` - If this hasn't been installed yet, as we are going to be installing everything using `Chocolatey`.
-
-https://chocolatey.org/install
-
-#### Git
-
-    choco install git.install
-
-#### Java
-
-    choco install openjdk
-
-#### Visual Studio 19 2022
-
-    choco install visualstudio2022community
-    choco install visualstudio2022buildtools
-    choco install visualstudio2022-workload-nativedesktop
-
-#### FLex / Bison
-
-    choco install winflexbison
-
-#### Boost
-
-    choco install boost-msvc-14.2
-
-#### OpenSSL
-
-    choco install openssl
 
 ## Installation
 
@@ -213,7 +104,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is [here](https://github.com/apache/iotdb/tree/master/docker/src/main)
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/tree/master/docker/src/main
 
 
 Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
@@ -257,39 +148,24 @@ git clone https://github.com/apache/iotdb.git
 The default dev branch is the master branch, If you want to use a released version x.x.x:
 
 ```
+git checkout release/x.x.x
+```
+
+From v0.11.3 on, the tag name format is change to: vx.x.x:
+
+```
 git checkout vx.x.x
 ```
 
-Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0
-
-```
-git checkout rel/x.x
-```
-
-### Build IoTDB from source
-
 Under the root path of iotdb:
 
 ```
-> mvn clean package -pl distribution -am -DskipTests
+> mvn clean package -DskipTests
 ```
-
-After being built, the IoTDB distribution is located at the folder: "distribution/target".
-
-
-### Only build cli
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-After being built, the IoTDB cli is located at the folder "cli/target".
-
-### Build Others
 
 Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
+
+Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
 "`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
@@ -306,7 +182,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/Config-Manual.html).
 
 ## Start
 
@@ -314,15 +190,21 @@ You can go through the following steps to test the installation. If there is no 
 
 ### Start IoTDB
 
-Users can start 1C1D IoTDB by the start-standalone script under the sbin folder.
+Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> sbin/start-standalone.sh
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
 
 # Windows
-> sbin\start-standalone.bat
+> sbin\start-server.bat -c <conf_path>
 ```
+
+- "-c" is optional.
+- option "-c" specifies the system configuration file directory.
+
 
 ### Use IoTDB
 
@@ -366,7 +248,7 @@ Now, let us introduce the way of creating timeseries, inserting data and queryin
 The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a database. Before defining a timeseries, we should define a database using CREATE DATABASE first, and here is an example:
 
 ```
-IoTDB> CREATE DATABASE root.ln
+IoTDB> CREATE DATABSE root.ln
 ```
 
 We can also use SHOW DATABASES to check the database being created:
@@ -381,7 +263,7 @@ IoTDB> SHOW DATABASES
 Total line number = 1
 ```
 
-After the database is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here we create two timeseries:
+After the database is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here We create two timeseries:
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -486,15 +368,36 @@ The server can be stopped with "ctrl-C" or the following script:
 
 ```
 # Unix/OS X
-> sbin/stop-standalone.sh
+> sbin/stop-server.sh
 
 # Windows
-> sbin\stop-standalone.bat
+> sbin\stop-server.bat
 ```
+
+## Only build server
+
+Under the root path of iotdb:
+
+```
+> mvn clean package -pl server -am -DskipTests
+```
+
+After being built, the IoTDB server is located at the folder: "server/target/iotdb-server-{project.version}".
+
+
+## Only build cli
+
+Under the root path of iotdb:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
 # Usage of CSV Import and Export Tool
 
-see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
+see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Write-And-Delete-Data/CSV-Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
@@ -510,6 +413,6 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Slack
 
-* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+* https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!
