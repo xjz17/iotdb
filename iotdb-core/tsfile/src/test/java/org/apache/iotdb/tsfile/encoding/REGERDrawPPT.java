@@ -9,12 +9,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import static java.lang.Math.abs;
 
-public class REGERPruneTest {
+public class REGERDrawPPT {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -2098,7 +2099,7 @@ public class REGERPruneTest {
         }
     }
 
-    private static long[] ReorderingTimeSeries(long[] ts_block, int[] raw_length, float[] theta, int segment_size) {
+    private static long[] ReorderingTimeSeries(long[] ts_block, int[] raw_length, float[] theta, int segment_size) throws IOException {
 
 
         int block_size = ts_block.length;
@@ -2196,6 +2197,24 @@ public class REGERPruneTest {
             }
 
         }
+        CsvWriter writer = new CsvWriter("/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/data7_reorder.csv", ',', StandardCharsets.UTF_8);
+
+        String[] head = {
+                "Timestamp",
+                "Value",
+        };
+        writer.writeRecord(head);
+        for (int i = 0; i < block_size; i++) {
+            long tmp_j = ts_block[i];
+            int epsilon_r = getTime(tmp_j) ;
+            int epsilon_v = getValue(tmp_j) ;
+            String[] record = {
+                    String.valueOf(epsilon_r),
+                    String.valueOf(epsilon_v),
+            };
+            writer.writeRecord(record);
+        }
+        writer.close();
 
 
         ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
@@ -2205,7 +2224,7 @@ public class REGERPruneTest {
     }
 
 
-    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte, int[] block_sort) {
+    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte, int[] block_sort) throws IOException {
 
 
         long min_time = (long) getTime(data[i * block_size]) << 32;
@@ -2390,7 +2409,7 @@ public class REGERPruneTest {
 
     }
 
-    public static int ReorderingRegressionEncoder(long[] data, int block_size, int[] third_value, int segment_size, byte[] encoded_result) {
+    public static int ReorderingRegressionEncoder(long[] data, int block_size, int[] third_value, int segment_size, byte[] encoded_result) throws IOException {
         block_size++;
 //    ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.length;
@@ -2411,8 +2430,8 @@ public class REGERPruneTest {
         int length_block_sort = (int) Math.ceil((double)(block_num+1)/(double) 8);
         encode_pos += length_block_sort;
 
-//        for (int i = 0; i < 1; i++) {
-        for (int i = 0; i < block_num; i++) {
+        for (int i = 0; i < 1; i++) {
+//        for (int i = 0; i < block_num; i++) {
 //            System.out.println(i);
             encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result, block_sort);
         }
@@ -2722,7 +2741,7 @@ public class REGERPruneTest {
 
 
         int pack_size = 16;
-        int block_size = 512;
+        int block_size = 128;
 
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -2775,680 +2794,157 @@ public class REGERPruneTest {
         dataset_third.add(dataset_11);
         dataset_third.add(dataset_12);
         dataset_third.add(dataset_13);
+        String f = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/data7.csv";
+        File fi= new File(f);
 
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(block_size);
+        InputStream inputStream = Files.newInputStream(fi.toPath());
+        CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+        ArrayList<Long> data = new ArrayList<>();
+
+        loader.readHeaders();
+        loader.readRecord();
+        int time0 = Integer.parseInt(loader.getValues()[0]);
+        int value0 = Integer.parseInt(loader.getValues()[1]);
+        data.add(combine2Int(0, value0));
+
+        while (loader.readRecord()) {
+
+            int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
+            int value_tmp = Integer.parseInt(loader.getValues()[1]);
+
+            data.add(combine2Int(time_tmp, value_tmp));
+        }
+        long[] data2_arr = new long[data.size()];
+
+        for (int i = 0; i < data.size(); i++) {
+            data2_arr[i] = data.get(i);
         }
 
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
-        output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
-
-        int[] file_list = {1,8};
-        for(int file_i :file_list){
-//        for (int file_i = 0; file_i <12; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-            String inputPath = input_path_list.get(file_i);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio",
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            int count_csv =0;
-            for (File f : tempList) {
-                System.out.println(count_csv);
-                count_csv ++;
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Long> data = new ArrayList<>();
-
-                loader.readHeaders();
-                loader.readRecord();
-                int time0 = Integer.parseInt(loader.getValues()[0]);
-                int value0 = Integer.parseInt(loader.getValues()[1]);
-                data.add(combine2Int(0, value0));
-
-                while (loader.readRecord()) {
-
-                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
-                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
-
-                    data.add(combine2Int(time_tmp, value_tmp));
-                }
-
-
-                inputStream.close();
-//                ArrayList<Integer> result2 = new ArrayList<>();
-//                splitTimeStamp3(data, result2);
-
-                long[] data2_arr = new long[data.size()];
-
-                for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i);
-                }
-
-                byte[] encoded_result = new byte[data2_arr.length * 8];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-                int repeatTime2 = 100;
-                long s = System.nanoTime();
-                int length = 0;
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), pack_size, encoded_result);
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    REGERDecoder(encoded_result);
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
-
-
-                String[] record = {
-                        f.toString(),
-                        "REGER (prune)",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio),
-//                        String.valueOf(best_order[0]),
-//                        String.valueOf(best_order[1]),
-//                        String.valueOf(best_order[2])
-                };
-                writer.writeRecord(record);
-//                System.out.println(Arrays.toString(best_order));
-                System.out.println(ratio);
-
-//                break;
-            }
-            writer.close();
-        }
-    }
-
-    @Test
-    public void REGER() throws IOException {
-
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_float";
-
-
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        ArrayList<int[]> dataset_third = new ArrayList<>();
-
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-        dataset_name.add("FANYP-Sensors");
-        dataset_name.add("TRAJET-Transport");
-
-        int[] dataset_0 = {547, 2816};
-        int[] dataset_1 = {1719, 3731};
-        int[] dataset_2 = {-48, -11, 6, 25, 52};
-        int[] dataset_3 = {8681, 13584};
-        int[] dataset_4 = {79, 184, 274};
-        int[] dataset_5 = {17, 68};
-        int[] dataset_6 = {677};
-        int[] dataset_7 = {1047, 1725};
-        int[] dataset_8 = {227, 499, 614, 1013};
-        int[] dataset_9 = {474, 678};
-        int[] dataset_10 = {4, 30, 38, 49, 58};
-        int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {652477};
-        int[] dataset_13 = {581388};
-
-        dataset_third.add(dataset_0);
-        dataset_third.add(dataset_1);
-        dataset_third.add(dataset_2);
-        dataset_third.add(dataset_3);
-        dataset_third.add(dataset_4);
-        dataset_third.add(dataset_5);
-        dataset_third.add(dataset_6);
-        dataset_third.add(dataset_7);
-        dataset_third.add(dataset_8);
-        dataset_third.add(dataset_9);
-        dataset_third.add(dataset_10);
-        dataset_third.add(dataset_11);
-        dataset_third.add(dataset_12);
-        dataset_third.add(dataset_13);
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
+        byte[] encoded_result = new byte[data2_arr.length * 8];
+        ReorderingRegressionEncoder(data2_arr, 128, dataset_third.get(6), pack_size, encoded_result);
+//        for (String value : dataset_name) {
+//            input_path_list.add(input_parent_dir + value);
 //            dataset_block_size.add(block_size);
-        }
+//        }
+//
+//        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
+//        output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
-        output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
-
-        int[] file_list = {8};
+//
+//        int[] file_list = {8,12};
 //        for(int file_i :file_list){
-//        for (int file_i = 0; file_i <12; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-            int pack_size = 16;
-            int block_size = 512;
-            if(file_i==8){
-                block_size = 256;
-            }
-            String inputPath = input_path_list.get(file_i);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio",
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            int count_csv =0;
-            for (File f : tempList) {
-                System.out.println(count_csv);
-                count_csv ++;
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Long> data = new ArrayList<>();
-
-                loader.readHeaders();
-                loader.readRecord();
-                int time0 = Integer.parseInt(loader.getValues()[0]);
-                int value0 = Integer.parseInt(loader.getValues()[1]);
-                data.add(combine2Int(0, value0));
-
-                while (loader.readRecord()) {
-
-                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
-                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
-
-                    data.add(combine2Int(time_tmp, value_tmp));
-                }
-
-
-                inputStream.close();
-//                ArrayList<Integer> result2 = new ArrayList<>();
-//                splitTimeStamp3(data, result2);
-
-                long[] data2_arr = new long[data.size()];
-
-                for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i);
-                }
-
-                byte[] encoded_result = new byte[data2_arr.length * 8];
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-                int repeatTime2 = 100;
-                long s = System.nanoTime();
-                int length = 0;
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    length = ReorderingRegressionEncoder(data2_arr, block_size, dataset_third.get(file_i), pack_size, encoded_result);
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime2);
-                compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
-                ratio += ratioTmp;
-                s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    REGERDecoder(encoded_result);
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime2);
-
-
-                String[] record = {
-                        f.toString(),
-                        "REGER (our)",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio),
-//                        String.valueOf(best_order[0]),
-//                        String.valueOf(best_order[1]),
-//                        String.valueOf(best_order[2])
-                };
-                writer.writeRecord(record);
-//                System.out.println(Arrays.toString(best_order));
-                System.out.println(ratio);
-
-//                break;
-            }
-            writer.close();
-        }
-    }
-
-    @Test
-    public void REGERVaryBlockSize() throws IOException {
-        //        String parent_dir = "C:/Users/xiaoj/Desktop/test";
-        String parent_dir =
-                "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir =
-                "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/block_size_float";
-        int pack_size = 16;
-
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<int[]> dataset_third = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-        dataset_name.add("FANYP-Sensors");
-        dataset_name.add("TRAJET-Transport");
-
-        int[] dataset_0 = {547, 2816};
-        int[] dataset_1 = {1719, 3731};
-        int[] dataset_2 = {-48, -11, 6, 25, 52};
-        int[] dataset_3 = {8681, 13584};
-        int[] dataset_4 = {79, 184, 274};
-        int[] dataset_5 = {17, 68};
-        int[] dataset_6 = {677};
-        int[] dataset_7 = {1047, 1725};
-        int[] dataset_8 = {227, 499, 614, 1013};
-        int[] dataset_9 = {474, 678};
-        int[] dataset_10 = {4, 30, 38, 49, 58};
-        int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {652477};
-        int[] dataset_13 = {581388};
-
-        dataset_third.add(dataset_0);
-        dataset_third.add(dataset_1);
-        dataset_third.add(dataset_2);
-        dataset_third.add(dataset_3);
-        dataset_third.add(dataset_4);
-        dataset_third.add(dataset_5);
-        dataset_third.add(dataset_6);
-        dataset_third.add(dataset_7);
-        dataset_third.add(dataset_8);
-        dataset_third.add(dataset_9);
-        dataset_third.add(dataset_10);
-        dataset_third.add(dataset_11);
-        dataset_third.add(dataset_12);
-        dataset_third.add(dataset_13);
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv"); // 1
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv"); // 2
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); // 4
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv"); // 5
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); // 6
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv"); // 7
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv"); // 8
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv"); // 9
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv"); // 10
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
-        output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
-        output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
-
-//        int[] file_lists = {1,8};
-//        for (int file_i : file_lists) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 12; file_i < 13; file_i++) {
-            String inputPath = input_path_list.get(file_i);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Block Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            int count_csv =0;
-            for (File f : tempList) {
-                System.out.println(count_csv);
-                count_csv ++;
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Long> data = new ArrayList<>();
-
-                // add a column to "data"
-                loader.readHeaders();
-                loader.readRecord();
-                int time0 = Integer.parseInt(loader.getValues()[0]);
-                int value0 = Integer.parseInt(loader.getValues()[1]);
-                data.add(combine2Int(0, value0));
-
-                while (loader.readRecord()) {
-                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
-                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
-                    data.add(combine2Int(time_tmp, value_tmp));
-                }
-//                ArrayList<Integer> result2 = new ArrayList<>();
-//                splitTimeStamp3(data, result2);
-
-
-                long[] data2_arr = new long[data.size()];
-                for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i);
-                }
-                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
-                    int block_size = (int) Math.pow(2, block_size_exp);
-                    System.out.println(block_size);
-
-                    byte[] encoded_result = new byte[data2_arr.length * 12];
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 10;
-                    long s = System.nanoTime();
-                    int length = 0;
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        length =
-                                ReorderingRegressionEncoder(
-                                        data2_arr,
-                                        block_size,
-                                        dataset_third.get(file_i),
-                                        pack_size,
-                                        encoded_result);
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += length;
-                    double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) REGERDecoder(encoded_result);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
-
-                    String[] record = {
-                            f.toString(),
-                            "REGER-32-FLOAT",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(block_size_exp),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-                }
-            }
-            writer.close();
-        }
-    }
-
-    @Test
-    public void REGERVaryPackSize() throws IOException {
-        //        String parent_dir = "C:/Users/xiaoj/Desktop/test";
-        String parent_dir =
-                "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir =
-                "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/pack_size_float";
-
-        int block_size = 512;
-
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        ArrayList<int[]> dataset_third = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-        dataset_name.add("FANYP-Sensors");
-        dataset_name.add("TRAJET-Transport");
-
-        int[] dataset_0 = {547, 2816};
-        int[] dataset_1 = {1719, 3731};
-        int[] dataset_2 = {-48, -11, 6, 25, 52};
-        int[] dataset_3 = {8681, 13584};
-        int[] dataset_4 = {79, 184, 274};
-        int[] dataset_5 = {17, 68};
-        int[] dataset_6 = {677};
-        int[] dataset_7 = {1047, 1725};
-        int[] dataset_8 = {227, 499, 614, 1013};
-        int[] dataset_9 = {474, 678};
-        int[] dataset_10 = {4, 30, 38, 49, 58};
-        int[] dataset_11 = {5182, 8206};
-        int[] dataset_12 = {652477};
-        int[] dataset_13 = {581388};
-
-        dataset_third.add(dataset_0);
-        dataset_third.add(dataset_1);
-        dataset_third.add(dataset_2);
-        dataset_third.add(dataset_3);
-        dataset_third.add(dataset_4);
-        dataset_third.add(dataset_5);
-        dataset_third.add(dataset_6);
-        dataset_third.add(dataset_7);
-        dataset_third.add(dataset_8);
-        dataset_third.add(dataset_9);
-        dataset_third.add(dataset_10);
-        dataset_third.add(dataset_11);
-        dataset_third.add(dataset_12);
-        dataset_third.add(dataset_13);
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(block_size);
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv"); // 1
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv"); // 2
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); // 4
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv"); // 5
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); // 6
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv"); // 7
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv"); // 8
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv"); // 9
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv"); // 10
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
-        output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
-        output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
-
-//        int[] file_list = {1,8};
-//        for (int file_i : file_list){
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 12; file_i < 13; file_i++) {
-            String inputPath = input_path_list.get(file_i);
-            String Output = output_path_list.get(file_i);
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Block Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            int count_csv =0;
-            for (File f : tempList) {
-                System.out.println(count_csv);
-                count_csv ++;
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Long> data = new ArrayList<>();
-
-                // add a column to "data"
-                loader.readHeaders();
-                loader.readRecord();
-                int time0 = Integer.parseInt(loader.getValues()[0]);
-                int value0 = Integer.parseInt(loader.getValues()[1]);
-                data.add(combine2Int(0, value0));
-
-                while (loader.readRecord()) {
-                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
-                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
-                    data.add(combine2Int(time_tmp, value_tmp));
-                }
-                ArrayList<Integer> result2 = new ArrayList<>();
-//                splitTimeStamp3(data, result2);
-
-
-                long[] data2_arr = new long[data.size()];
-                for (int i = 0; i < data.size(); i++) {
-                    data2_arr[i] = data.get(i);
-                }
-                for (int segment_size_exp = 8; segment_size_exp > 2; segment_size_exp--) {
-                    int segment_size = (int) Math.pow(2, segment_size_exp);
-                    System.out.println(segment_size);
-
-                    byte[] encoded_result = new byte[data2_arr.length * 12];
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 1;
-                    long s = System.nanoTime();
-                    int length = 0;
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        length =
-                                ReorderingRegressionEncoder(
-                                        data2_arr,
-                                        dataset_block_size.get(file_i),
-                                        dataset_third.get(file_i),
-                                        segment_size,
-                                        encoded_result);
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += length;
-                    double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) REGERDecoder(encoded_result);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
-
-                    String[] record = {
-                            f.toString(),
-                            "REGER-32-FLOAT",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(segment_size_exp),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-                }
-            }
-            writer.close();
-        }
+//
+////        for (int file_i = 0; file_i <12; file_i++) {
+////        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//            String inputPath = input_path_list.get(file_i);
+//            String Output = output_path_list.get(file_i);
+//
+//            File file = new File(inputPath);
+//            File[] tempList = file.listFiles();
+//
+//            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+//
+//            String[] head = {
+//                    "Input Direction",
+//                    "Encoding Algorithm",
+//                    "Encoding Time",
+//                    "Decoding Time",
+//                    "Points",
+//                    "Compressed Size",
+//                    "Compression Ratio",
+//            };
+//            writer.writeRecord(head); // write header to output file
+//
+//            assert tempList != null;
+//
+//            int count_csv =0;
+//            for (File f : tempList) {
+//                System.out.println(count_csv);
+//                count_csv ++;
+//                System.out.println(f);
+//                InputStream inputStream = Files.newInputStream(f.toPath());
+//                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+//                ArrayList<Long> data = new ArrayList<>();
+//
+//                loader.readHeaders();
+//                loader.readRecord();
+//                int time0 = Integer.parseInt(loader.getValues()[0]);
+//                int value0 = Integer.parseInt(loader.getValues()[1]);
+//                data.add(combine2Int(0, value0));
+//
+//                while (loader.readRecord()) {
+//
+//                    int time_tmp = Integer.parseInt(loader.getValues()[0]) - time0;
+//                    int value_tmp = Integer.parseInt(loader.getValues()[1]);
+//
+//                    data.add(combine2Int(time_tmp, value_tmp));
+//                }
+//
+//
+//                inputStream.close();
+////                ArrayList<Integer> result2 = new ArrayList<>();
+////                splitTimeStamp3(data, result2);
+//
+//                long[] data2_arr = new long[data.size()];
+//
+//                for (int i = 0; i < data.size(); i++) {
+//                    data2_arr[i] = data.get(i);
+//                }
+//
+//                byte[] encoded_result = new byte[data2_arr.length * 8];
+//                long encodeTime = 0;
+//                long decodeTime = 0;
+//                double ratio = 0;
+//                double compressed_size = 0;
+//                int repeatTime2 = 100;
+//                long s = System.nanoTime();
+//                int length = 0;
+//                for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), pack_size, encoded_result);
+//                long e = System.nanoTime();
+//                encodeTime += ((e - s) / repeatTime2);
+//                compressed_size += length;
+//                double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
+//                ratio += ratioTmp;
+//                s = System.nanoTime();
+//                for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                    REGERDecoder(encoded_result);
+//                e = System.nanoTime();
+//                decodeTime += ((e - s) / repeatTime2);
+//
+//
+//                String[] record = {
+//                        f.toString(),
+//                        "REGER (prune)",
+//                        String.valueOf(encodeTime),
+//                        String.valueOf(decodeTime),
+//                        String.valueOf(data.size()),
+//                        String.valueOf(compressed_size),
+//                        String.valueOf(ratio),
+////                        String.valueOf(best_order[0]),
+////                        String.valueOf(best_order[1]),
+////                        String.valueOf(best_order[2])
+//                };
+//                writer.writeRecord(record);
+////                System.out.println(Arrays.toString(best_order));
+//                System.out.println(ratio);
+//
+////                break;
+//            }
+//            writer.close();
+//        }
     }
 
 }
