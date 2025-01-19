@@ -12,18 +12,23 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class TSDIFFSubcolumn3Test {
-    // TS2DIFF+Subcolumn Subcolumn3Test
+public class TSDIFFSubcolumnTest {
 
     public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
-        int startBitPosition = 0;
+        int encode_pos = 0;
 
-        Subcolumn3Test.intToBytes(data_length, encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[0] = (byte) (data_length >> 24);
+        encoded_result[1] = (byte) (data_length >> 16);
+        encoded_result[2] = (byte) (data_length >> 8);
+        encoded_result[3] = (byte) data_length;
+        encode_pos += 4;
 
-        Subcolumn3Test.intToBytes(block_size, encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[4] = (byte) (block_size >> 24);
+        encoded_result[5] = (byte) (block_size >> 16);
+        encoded_result[6] = (byte) (block_size >> 8);
+        encoded_result[7] = (byte) block_size;
+        encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
@@ -33,49 +38,59 @@ public class TSDIFFSubcolumn3Test {
         beta[0] = 2;
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result, beta);
+            encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result, beta);
         }
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                Subcolumn3Test.intToBytes(data[num_blocks * block_size + i], encoded_result, startBitPosition, 32);
-                startBitPosition += 32;
+                int value = data[num_blocks * block_size + i];
+                encoded_result[encode_pos] = (byte) (value >> 24);
+                encoded_result[encode_pos + 1] = (byte) (value >> 16);
+                encoded_result[encode_pos + 2] = (byte) (value >> 8);
+                encoded_result[encode_pos + 3] = (byte) value;
+                encode_pos += 4;
             }
         } else {
-            startBitPosition = BlockEncoder(data, num_blocks, block_size, remainder, startBitPosition,
+            encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos,
                     encoded_result, beta);
         }
 
-        return startBitPosition;
+        // System.out.println("beta: " + beta[0]);
+
+        return encode_pos;
     }
 
     public static int[] Decoder(byte[] encoded_result) {
-        int startBitPosition = 0;
+        int encode_pos = 0;
 
-        int data_length = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
-        int block_size = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
         int[] data = new int[data_length];
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockDecoder(encoded_result, i, block_size, block_size, startBitPosition, data);
+            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, data);
         }
 
         int remainder = data_length % block_size;
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                startBitPosition += 32;
+                data[num_blocks * block_size + i] = ((encoded_result[encode_pos] & 0xFF) << 24) |
+                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+                encode_pos += 4;
             }
         } else {
-            startBitPosition = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
-                    startBitPosition, data);
+            encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
+            encode_pos, data);
         }
 
         return data;
@@ -126,17 +141,23 @@ public class TSDIFFSubcolumn3Test {
     }
 
     public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
-            int startBitPosition, byte[] encoded_result, int[] beta) {
+            int encode_pos, byte[] encoded_result, int[] beta) {
         int[] min_delta = new int[3];
 
         // data_delta 的长度为 remainder - 1
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
-        Subcolumn3Test.intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
+        encoded_result[encode_pos + 1] = (byte) (min_delta[0] >> 16);
+        encoded_result[encode_pos + 2] = (byte) (min_delta[0] >> 8);
+        encoded_result[encode_pos + 3] = (byte) min_delta[0];
+        encode_pos += 4;
 
-        Subcolumn3Test.intToBytes(min_delta[1], encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[encode_pos] = (byte) (min_delta[1] >> 24);
+        encoded_result[encode_pos + 1] = (byte) (min_delta[1] >> 16);
+        encoded_result[encode_pos + 2] = (byte) (min_delta[1] >> 8);
+        encoded_result[encode_pos + 3] = (byte) min_delta[1];
+        encode_pos += 4;
 
         if (block_index == 0) {
             int maxValue = 0;
@@ -145,29 +166,31 @@ public class TSDIFFSubcolumn3Test {
                     maxValue = data_delta[j];
                 }
             }
-            int m = Subcolumn3Test.bitWidth(maxValue);
+            int m = SubcolumnTest.bitWidth(maxValue);
 
-            beta[0] = Subcolumn3Test.Subcolumn(data_delta, remainder - 1, m, block_size);
+            beta[0] = SubcolumnTest.Subcolumn(data_delta, remainder - 1, m, block_size);
         }
 
-        startBitPosition = Subcolumn3Test.SubcolumnEncoder(data_delta, startBitPosition, encoded_result, beta, block_size);
+        encode_pos = SubcolumnTest.SubcolumnEncoder(data_delta, encode_pos, encoded_result, beta, block_size);
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int startBitPosition, int[] data) {
+            int encode_pos, int[] data) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
-        min_delta[1] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        min_delta[1] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
         int[] data_delta = new int[remainder - 1];
 
-        startBitPosition = Subcolumn3Test.SubcolumnDecoder(encoded_result, startBitPosition, data_delta, block_size);
+        encode_pos = SubcolumnTest.SubcolumnDecoder(encoded_result, encode_pos, data_delta, block_size);
 
         for (int i = 0; i < remainder - 1; i++) {
             data_delta[i] = data_delta[i] + min_delta[1];
@@ -179,7 +202,7 @@ public class TSDIFFSubcolumn3Test {
             data[block_index * block_size + i + 1] = data[block_index * block_size + i] + data_delta[i];
         }
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int getDecimalPrecision(String str) {
@@ -214,21 +237,19 @@ public class TSDIFFSubcolumn3Test {
 
     @Test
     public void testTSDIFF() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/";
 
-        String outputPath = output_parent_dir + "ts2diff_subcolumn3.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
-        int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
+        int repeatTime = 500;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
 
         String[] head = {
                 "Dataset",
@@ -286,7 +307,7 @@ public class TSDIFFSubcolumn3Test {
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            compressed_size += length / 8;
+            compressed_size += length;
             double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
 
@@ -306,7 +327,7 @@ public class TSDIFFSubcolumn3Test {
 
             String[] record = {
                     datasetName,
-                    "TS2DIFF+Subcolumn",
+                    "TS2DIFF+Sub-columns",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

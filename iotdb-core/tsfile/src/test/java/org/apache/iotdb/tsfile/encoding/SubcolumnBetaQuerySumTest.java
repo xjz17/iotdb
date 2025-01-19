@@ -13,8 +13,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn5BetaQueryCountTest {
-    // Subcolumn5Test Query Count
+public class SubcolumnBetaQuerySumTest {
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -48,15 +47,13 @@ public class Subcolumn5BetaQueryCountTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/query_vs_beta/";
 
-        // int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31 };
-        
+
         int block_size = 512;
 
         HashMap<String, Integer> queryRange = new HashMap<>();
@@ -74,11 +71,9 @@ public class Subcolumn5BetaQueryCountTest {
         queryRange.put("Wind-Speed", 60);
 
         int repeatTime = 200;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
 
         for (int beta : beta_list) {
-            String outputPath = output_parent_dir + "subcolumn5_query_count_beta_" + beta + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_query_sum_beta_" + beta + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -134,7 +129,7 @@ public class Subcolumn5BetaQueryCountTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Subcolumn5BetaTest.Encoder(data2_arr, block_size, encoded_result, beta);
+                    length = SubcolumnBetaTest.Encoder(data2_arr, block_size, encoded_result, beta);
                 }
 
                 long e = System.nanoTime();
@@ -149,7 +144,7 @@ public class Subcolumn5BetaQueryCountTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    Subcolumn5QueryCountTest.Query(encoded_result, queryRange.get(datasetName));
+                    SubcolumnQuerySumTest.Query(encoded_result, queryRange.get(datasetName));
                 }
 
                 e = System.nanoTime();

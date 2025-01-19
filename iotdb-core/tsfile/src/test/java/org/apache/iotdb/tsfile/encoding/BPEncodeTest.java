@@ -191,13 +191,9 @@ public class BPEncodeTest {
         int m = bitWidth(maxValue);
         // System.out.println("m: " + m);
 
-        // writeBits(encoded_result, startBitPosition, 8, m);
-        // startBitPosition += 8;
         encoded_result[encode_pos] = (byte) m;
         encode_pos += 1;
 
-        // bitPacking(list, encoded_result, startBitPosition, m, list_length);
-        // startBitPosition += m * list_length;
         encode_pos = bitPacking(list, m, encode_pos, encoded_result, list_length);
 
         return encode_pos;
@@ -402,18 +398,15 @@ public class BPEncodeTest {
 
     @Test
     public void testBP() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/";
 
-        String outputPath = output_parent_dir + "test_bp2.csv";
+        String outputPath = output_parent_dir + "bp.csv";
 
         int block_size = 1024;
 
         int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 
@@ -508,7 +501,7 @@ public class BPEncodeTest {
 
             String[] record = {
                     datasetName,
-                    "Subcolumn",
+                    "BP",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

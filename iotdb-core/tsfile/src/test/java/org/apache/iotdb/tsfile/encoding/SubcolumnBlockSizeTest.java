@@ -12,8 +12,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn2BlockSizeTest {
-    // Subcolumn2Test 测试不同 block size
+public class SubcolumnBlockSizeTest {
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -47,21 +46,20 @@ public class Subcolumn2BlockSizeTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/compression_vs_block/";
 
-        int[] block_size_list = { 1024, 512, 256, 128, 64, 32 };
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
+        int repeatTime = 200;
 
         for (int block_size : block_size_list) {
 
             String outputPath = output_parent_dir + "subcolumn_block_" + block_size + ".csv";
+
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+            writer.setRecordDelimiter('\n');
 
             String[] head = {
                     "Dataset",
@@ -114,12 +112,13 @@ public class Subcolumn2BlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Subcolumn1Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
-                compressed_size += length / 8;
+                // compressed_size += length / 8;
+                compressed_size += length;
                 double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 ratio += ratioTmp;
 
@@ -128,7 +127,7 @@ public class Subcolumn2BlockSizeTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    int[] data2_arr_decoded = Subcolumn1Test.Decoder(encoded_result);
+                    int[] data2_arr_decoded = SubcolumnTest.Decoder(encoded_result);
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // assert data2_arr[i] == data2_arr_decoded[i]
                         //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];

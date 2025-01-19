@@ -13,8 +13,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn5QueryEqualTest {
-    // Subcolumn5Test Query Equal
+public class SubcolumnQueryCountTest {
 
     public static void Query(byte[] encoded_result, int target) {
 
@@ -36,7 +35,7 @@ public class Subcolumn5QueryEqualTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockQueryIndex(encoded_result, i, block_size,
+            encode_pos = BlockQueryCount(encoded_result, i, block_size,
                     block_size, encode_pos, target,
                     result, result_length);
         }
@@ -49,20 +48,19 @@ public class Subcolumn5QueryEqualTest {
                         ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
                         ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
                 if (value == target) {
-                    result[result_length[0]] = value;
-                    result_length[0]++;
+                    result[result_length[0]]++;
                 }
                 encode_pos += 4;
             }
         } else {
-            encode_pos = BlockQueryIndex(encoded_result, num_blocks, block_size,
+            encode_pos = BlockQueryCount(encoded_result, num_blocks, block_size,
                     remainder, encode_pos, target,
                     result, result_length);
         }
 
     }
 
-    public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
+    public static int BlockQueryCount(byte[] encoded_result, int block_index, int block_size, int remainder,
             int encode_pos, int target, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
@@ -87,15 +85,12 @@ public class Subcolumn5QueryEqualTest {
 
         if (m == 0) {
             if (target == 0) {
-                for (int i = 0; i < remainder; i++) {
-                    result[result_length[0]] = block_size * block_index + i;
-                    result_length[0]++;
-                }
+                result[result_length[0]] += remainder;
             }
             return encode_pos;
         }
 
-        int bw = Subcolumn5Test.bitWidth(block_size);
+        int bw = SubcolumnTest.bitWidth(block_size);
 
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
@@ -104,13 +99,13 @@ public class Subcolumn5QueryEqualTest {
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
-        int[][] subcolumnList = new int[l][remainder];
+        // int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -129,7 +124,7 @@ public class Subcolumn5QueryEqualTest {
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
 
-                    subcolumnList[i][index] = Subcolumn5Test.bytesToInt(encoded_result,
+                    int current = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
                     int value = (target >> (i * beta)) & ((1 << beta) - 1);
                     // if (subcolumnList[i][index] < value) {
@@ -139,7 +134,7 @@ public class Subcolumn5QueryEqualTest {
                     // candidate_indices[new_length] = index;
                     // new_length++;
                     // }
-                    if (subcolumnList[i][index] == value) {
+                    if (current == value) {
                         candidate_indices[new_length] = index;
                         new_length++;
                     }
@@ -170,8 +165,8 @@ public class Subcolumn5QueryEqualTest {
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
 
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
                         rle_values);
 
                 int new_length = 0;
@@ -214,10 +209,8 @@ public class Subcolumn5QueryEqualTest {
         // }
         // return encode_pos;
         // }
-        for (int i = 0; i < candidate_length; i++) {
-            result[result_length[0]] = block_size * block_index + candidate_indices[i];
-            result_length[0]++;
-        }
+
+        result[result_length[0]] += candidate_length;
 
         return encode_pos;
     }
@@ -254,10 +247,9 @@ public class Subcolumn5QueryEqualTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/query_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
@@ -276,11 +268,9 @@ public class Subcolumn5QueryEqualTest {
         queryRange.put("Wind-Speed", 60);
 
         int repeatTime = 200;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
 
         for (int block_size : block_size_list) {
-            String outputPath = output_parent_dir + "subcolumn5_query_equal_block_" + block_size + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_query_count_block_" + block_size + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -336,7 +326,7 @@ public class Subcolumn5QueryEqualTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();

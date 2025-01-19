@@ -6,17 +6,15 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import org.junit.Test;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn5QuerySum2Test {
-    // Subcolumn5Test Query Sum
+public class SubcolumnQueryMaxTest {
 
-    public static void Query(byte[] encoded_result, int target) {
+    public static void Query(byte[] encoded_result) {
 
         int encode_pos = 0;
 
@@ -36,7 +34,7 @@ public class Subcolumn5QuerySum2Test {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockQuerySum(encoded_result, i, block_size, block_size, encode_pos, target, result,
+            encode_pos = BlockQueryMax(encoded_result, i, block_size, block_size, encode_pos, result,
                     result_length);
         }
 
@@ -47,12 +45,12 @@ public class Subcolumn5QuerySum2Test {
                 int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
                         ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
                         ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-                encode_pos += 4;
                 result[result_length[0]] = value;
                 result_length[0]++;
+                encode_pos += 4;
             }
         } else {
-            encode_pos = BlockQuerySum(encoded_result, num_blocks, block_size, remainder, encode_pos, target,
+            encode_pos = BlockQueryMax(encoded_result, num_blocks, block_size, remainder, encode_pos,
                     result, result_length);
         }
 
@@ -63,8 +61,8 @@ public class Subcolumn5QuerySum2Test {
 
     }
 
-    public static int BlockQuerySum(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int target, int[] result, int[] result_length) {
+    public static int BlockQueryMax(byte[] encoded_result, int block_index, int block_size, int remainder,
+            int encode_pos, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
         min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
@@ -74,7 +72,7 @@ public class Subcolumn5QuerySum2Test {
         int m = encoded_result[encode_pos];
         encode_pos += 1;
 
-        target -= min_delta[0];
+        // System.out.println("m: " + m);
 
         int[] candidate_indices = new int[remainder];
         int candidate_length = 0;
@@ -84,68 +82,79 @@ public class Subcolumn5QuerySum2Test {
         }
 
         if (m == 0) {
-            if (target == 0) {
-                result[result_length[0]] = min_delta[0] * remainder;
-                result_length[0]++;
-            }
+            result[result_length[0]] = min_delta[0];
+            result_length[0]++;
             return encode_pos;
         }
 
-        int bw = Subcolumn5Test.bitWidth(block_size);
+        int bw = SubcolumnTest.bitWidth(block_size);
 
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
+
+        // System.out.println("beta: " + beta);
 
         int l = (m + beta - 1) / beta;
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
-        int[][] subcolumnList = new int[l][remainder];
+        // int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
 
-        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
             if (type == 0) {
-
-                if (target < 0) {
+                if (candidate_length == 1) {
                     encode_pos *= 8;
                     encode_pos += bitWidthList[i] * remainder;
                     encode_pos = (encode_pos + 7) / 8;
                     continue;
                 }
 
-                encode_pos *= 8;
+                int maxPart = 0;
 
                 int new_length = 0;
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
+                    int value = SubcolumnTest.bytesToInt(encoded_result,
+                            encode_pos * 8 + index * bitWidthList[i], bitWidthList[i]);
 
-                    subcolumnList[i][index] = Subcolumn5Test.bytesToInt(encoded_result,
-                            encode_pos + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (target >> (i * beta)) & ((1 << beta) - 1);
+                    if (value > maxPart) {
+                        maxPart = value;
 
-                    if (subcolumnList[i][index] == value) {
+                        new_length = 0;
+                        candidate_indices[new_length] = index;
+                        new_length++;
+                    } else if (value == maxPart) {
                         candidate_indices[new_length] = index;
                         new_length++;
                     }
                 }
 
-                candidate_length = new_length;
-
-                encode_pos += remainder * bitWidthList[i];
+                encode_pos *= 8;
+                encode_pos += bitWidthList[i] * remainder;
                 encode_pos = (encode_pos + 7) / 8;
+
+                // for (int j = 0; j < candidate_length; j++) {
+                // int index = candidate_indices[j];
+                // if (subcolumnList[i][index] == maxPart) {
+                // candidate_indices[new_length] = index;
+                // new_length++;
+                // }
+                // }
+
+                candidate_length = new_length;
 
             } else {
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
-
                 encode_pos += 2;
 
-                if (target < 0) {
+                if (candidate_length == 1) {
                     encode_pos *= 8;
                     encode_pos += bw * index;
                     encode_pos = (encode_pos + 7) / 8;
@@ -153,20 +162,22 @@ public class Subcolumn5QuerySum2Test {
                     encode_pos *= 8;
                     encode_pos += bitWidthList[i] * index;
                     encode_pos = (encode_pos + 7) / 8;
+
                     continue;
                 }
 
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
 
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+                encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
                         rle_values);
+
+                int maxPart = 0;
 
                 int new_length = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
-                int value = (target >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
@@ -177,18 +188,39 @@ public class Subcolumn5QuerySum2Test {
                     }
 
                     if (rleIndex < index) {
-                        if (rle_values[rleIndex] == value) {
+                        if (rle_values[rleIndex] > maxPart) {
+                            maxPart = rle_values[rleIndex];
+
+                            new_length = 0;
+                        } else if (rle_values[rleIndex] == maxPart) {
                             candidate_indices[new_length] = index_candidate;
                             new_length++;
                         }
                     }
                 }
 
+                // for (int j = 0; j < candidate_length; j++) {
+                // int index_candidate = candidate_indices[j];
+
+                // while (rleIndex < index && currentPos + run_length[rleIndex] <=
+                // index_candidate) {
+                // currentPos += run_length[rleIndex];
+                // rleIndex++;
+                // }
+
+                // if (rleIndex < index) {
+                // if (rle_values[rleIndex] == maxPart) {
+                // candidate_indices[new_length] = index_candidate;
+                // new_length++;
+                // }
+                // }
+                // }
+
                 candidate_length = new_length;
             }
         }
 
-        result[result_length[0]] = (min_delta[0] + target) * candidate_length;
+        result[result_length[0]] = candidate_indices[0];
         result_length[0]++;
 
         return encode_pos;
@@ -226,33 +258,16 @@ public class Subcolumn5QuerySum2Test {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/query_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        HashMap<String, Integer> queryRange = new HashMap<>();
-        queryRange.put("Air-pressure", 8820000);
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("Blockchain-tr", 300000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-
         int repeatTime = 200;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
 
         for (int block_size : block_size_list) {
-            String outputPath = output_parent_dir + "subcolumn5_query_sum2_block_" + block_size + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_query_max_block_" + block_size + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -308,7 +323,7 @@ public class Subcolumn5QuerySum2Test {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -323,7 +338,7 @@ public class Subcolumn5QuerySum2Test {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    Query(encoded_result, queryRange.get(datasetName));
+                    Query(encoded_result);
                 }
 
                 e = System.nanoTime();
@@ -339,7 +354,7 @@ public class Subcolumn5QuerySum2Test {
                         String.valueOf(ratio)
                 };
                 writer.writeRecord(record);
-
+                
                 System.out.println("block_size: " + block_size);
 
                 System.out.println(ratio);

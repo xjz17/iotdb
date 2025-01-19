@@ -492,66 +492,16 @@ public class BUFFTest {
     }
 
     @Test
-    public void test0() {
-        // float f = -6.1415f;
-        float f = 444804.97f;
-        int decimal = 4;
-        // float f = 23.1415f;
-        // int decimal = 4;
-
-        int bits = Float.floatToIntBits(f);
-
-        int sign = (bits >> 31) & 1;
-        int exponent = (bits >> 23) & 0xFF;
-        int mantissa = bits & 0x7FFFFF;
-
-        int actualExponent = exponent - 127;
-
-        if (actualExponent >= 0) {
-            int mask = (1 << (23 - actualExponent)) - 1;
-            mantissa &= mask;
-        } else {
-            mantissa += 1 << 23;
-        }
-
-        int shift = 23 - actualExponent - bits_needed[decimal];
-
-        if (shift < 0) {
-            mantissa <<= -shift;
-        } else {
-            mantissa >>= shift;
-        }
-
-        if (exponent == 0) {
-            mantissa = 0;
-        }
-
-        System.out.println(mantissa);
-
-        double expectedFractionalPart = Math.abs(f) - Math.floor(Math.abs(f));
-        double calculatedFractionalPart = mantissa / Math.pow(2, bits_needed[decimal]);
-
-        System.out.println(expectedFractionalPart);
-        System.out.println(calculatedFractionalPart);
-
-        assert Math.abs(expectedFractionalPart - calculatedFractionalPart) < Math.pow(10, -decimal);
-    }
-
-    @Test
     public void testBUFF() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/";
 
         String outputPath = output_parent_dir + "buff.csv";
 
         int block_size = 1024;
-        // int block_size = 8192;
 
         int repeatTime = 500;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -615,7 +565,6 @@ public class BUFFTest {
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            // compressed_size += length / 8;
             compressed_size += length;
             double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;

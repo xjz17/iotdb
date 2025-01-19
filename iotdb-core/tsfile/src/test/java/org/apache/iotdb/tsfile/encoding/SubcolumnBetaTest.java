@@ -12,8 +12,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn5BetaTest {
-    // Subcolumn5Test 测试不同 beta 的影响
+public class SubcolumnBetaTest {
 
     /**
      * 仅将数据处理为非负数，也就是将 ts_block 中的数据都减去最小值
@@ -63,7 +62,7 @@ public class Subcolumn5BetaTest {
         encoded_result[encode_pos + 3] = (byte) min_delta[0];
         encode_pos += 4;
 
-        encode_pos = Subcolumn5Test.SubcolumnEncoder(data_delta, encode_pos,
+        encode_pos = SubcolumnTest.SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
 
         return encode_pos;
@@ -79,7 +78,7 @@ public class Subcolumn5BetaTest {
 
         int[] block_data = new int[remainder];
 
-        encode_pos = Subcolumn5Test.SubcolumnDecoder(encoded_result, encode_pos,
+        encode_pos = SubcolumnTest.SubcolumnDecoder(encoded_result, encode_pos,
                 block_data, block_size);
 
         for (int i = 0; i < remainder; i++) {
@@ -202,10 +201,9 @@ public class Subcolumn5BetaTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        // String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
 
-        String output_parent_dir = "D:/compress-subcolumn/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/result/compression_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                 24, 25, 26, 27, 28, 29, 30, 31 };
@@ -214,12 +212,10 @@ public class Subcolumn5BetaTest {
         int block_size = 512;
 
         int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
-        // repeatTime = 1;
 
         for (int beta : beta_list) {
 
-            String outputPath = output_parent_dir + "subcolumn5_beta_" + beta + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_beta_" + beta + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -280,7 +276,6 @@ public class Subcolumn5BetaTest {
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
-                // compressed_size += length / 8;
                 compressed_size += length;
                 double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 ratio += ratioTmp;
