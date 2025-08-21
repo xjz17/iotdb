@@ -15,8 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static java.lang.Math.pow;
-
 public class SPRINTZBPTest {
 
     public static int getBitWith(int num) {
@@ -889,8 +887,9 @@ public class SPRINTZBPTest {
     }
 
     @Test
-    public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+    public void test0() throws IOException {
+        // String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -901,12 +900,10 @@ public class SPRINTZBPTest {
 
         int block_size = 1024;
 
-        int repeatTime = 100;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -981,11 +978,7 @@ public class SPRINTZBPTest {
 
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
@@ -1055,7 +1048,8 @@ public class SPRINTZBPTest {
         };
         writer.writeRecord(head);
 
-        int repeatTime = 100;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -1106,7 +1100,7 @@ public class SPRINTZBPTest {
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
 
@@ -1124,7 +1118,7 @@ public class SPRINTZBPTest {
                 
             }
 
-            double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
+            double compressionRatio = totalCompressedSize / (totalPoints * Long.BYTES);
 
             String[] record = {
                     dataset_name.get(file_i),

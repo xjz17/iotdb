@@ -18,23 +18,45 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class SubcolumnBetaTest {
+public class SubcolumnLongBetaTest {
 
-    public static int[] getAbsDeltaTsBlock(
-            int[] ts_block,
+    public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer >> 56);
+        cur_byte[encode_pos + 1] = (byte) (integer >> 48);
+        cur_byte[encode_pos + 2] = (byte) (integer >> 40);
+        cur_byte[encode_pos + 3] = (byte) (integer >> 32);
+        cur_byte[encode_pos + 4] = (byte) (integer >> 24);
+        cur_byte[encode_pos + 5] = (byte) (integer >> 16);
+        cur_byte[encode_pos + 6] = (byte) (integer >> 8);
+        cur_byte[encode_pos + 7] = (byte) (integer);
+    }
+
+    public static long bytes2Long(byte[] encoded, int start, int num) {
+        long value = 0;
+
+        for (int i = 0; i < num; i++) {
+            value <<= 8;
+            int b = encoded[i + start] & 0xFF;
+            value |= b;
+        }
+        return value;
+    }
+
+    public static long[] getAbsDeltaTsBlock(
+            long[] ts_block,
             int i,
             int block_size,
             int remaining,
-            int[] min_delta) {
-        int[] ts_block_delta = new int[remaining];
+            long[] min_delta) {
+        long[] ts_block_delta = new long[remaining];
 
-        int value_delta_min = Integer.MAX_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
+        long value_delta_min = Long.MAX_VALUE;
+        long value_delta_max = Long.MIN_VALUE;
         int base = i * block_size;
         int end = i * block_size + remaining;
 
         for (int j = base; j < end; j++) {
-            int cur = ts_block[j];
+            long cur = ts_block[j];
             if (cur < value_delta_min) {
                 value_delta_min = cur;
             }
@@ -52,36 +74,32 @@ public class SubcolumnBetaTest {
         return ts_block_delta;
     }
 
-    public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
+    public static int BlockEncoder(long[] data, int block_index, int block_size, int remainder,
             int encode_pos, byte[] encoded_result, int[] beta) {
-        int[] min_delta = new int[3];
+        long[] min_delta = new long[3];
 
-        int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
+        long[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
                 remainder, min_delta);
 
-        encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
-        encoded_result[encode_pos + 1] = (byte) (min_delta[0] >> 16);
-        encoded_result[encode_pos + 2] = (byte) (min_delta[0] >> 8);
-        encoded_result[encode_pos + 3] = (byte) min_delta[0];
-        encode_pos += 4;
+        long2Bytes(min_delta[0], encode_pos, encoded_result);
+        encode_pos += 8;
 
-        encode_pos = SubcolumnTest.SubcolumnEncoder(data_delta, encode_pos,
+        encode_pos = SubcolumnLongTest.SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
 
         return encode_pos;
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int[] data) {
-        int[] min_delta = new int[3];
+            int encode_pos, long[] data) {
+        long[] min_delta = new long[3];
 
-        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        min_delta[0] = bytes2Long(encoded_result, encode_pos, 8);
+        encode_pos += 8;
 
-        int[] block_data = new int[remainder];
+        long[] block_data = new long[remainder];
 
-        encode_pos = SubcolumnTest.SubcolumnDecoder(encoded_result, encode_pos,
+        encode_pos = SubcolumnLongTest.SubcolumnDecoder(encoded_result, encode_pos,
                 block_data, block_size);
 
         for (int i = 0; i < remainder; i++) {
@@ -91,7 +109,7 @@ public class SubcolumnBetaTest {
         return encode_pos;
     }
 
-    public static int Encoder(int[] data, int block_size, byte[] encoded_result, int beta_value) {
+    public static int Encoder(long[] data, int block_size, byte[] encoded_result, int beta_value) {
         int data_length = data.length;
         int encode_pos = 0;
 
@@ -120,12 +138,9 @@ public class SubcolumnBetaTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = data[num_blocks * block_size + i];
-                encoded_result[encode_pos] = (byte) (value >> 24);
-                encoded_result[encode_pos + 1] = (byte) (value >> 16);
-                encoded_result[encode_pos + 2] = (byte) (value >> 8);
-                encoded_result[encode_pos + 3] = (byte) value;
-                encode_pos += 4;
+                long value = data[num_blocks * block_size + i];
+                long2Bytes(value, encode_pos, encoded_result);
+                encode_pos += 8;
             }
         } else {
             encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos,
@@ -135,7 +150,7 @@ public class SubcolumnBetaTest {
         return encode_pos;
     }
 
-    public static int[] Decoder(byte[] encoded_result) {
+    public static long[] Decoder(byte[] encoded_result) {
         int encode_pos = 0;
 
         int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
@@ -149,7 +164,7 @@ public class SubcolumnBetaTest {
 
         int num_blocks = data_length / block_size;
 
-        int[] data = new int[data_length];
+        long[] data = new long[data_length];
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, data);
@@ -159,10 +174,8 @@ public class SubcolumnBetaTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = ((encoded_result[encode_pos] & 0xFF) << 24) |
-                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-                encode_pos += 4;
+                data[num_blocks * block_size + i] = bytes2Long(encoded_result, encode_pos, 8);
+                encode_pos += 8;
             }
         } else {
             encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
@@ -203,7 +216,7 @@ public class SubcolumnBetaTest {
     }
 
     @Test
-    public void testSubcolumn() throws IOException {
+    public void test0() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
@@ -266,14 +279,19 @@ public class SubcolumnBetaTest {
                     data1.add(Float.valueOf(f_str));
                 }
                 inputStream.close();
-                int[] data2_arr = new int[data1.size()];
+
+                if (max_decimal > 17) {
+                    max_decimal = 17;
+                }
+
+                long[] data2_arr = new long[data1.size()];
                 int max_mul = (int) Math.pow(10, max_decimal);
                 for (int i = 0; i < data1.size(); i++) {
-                    data2_arr[i] = (int) (data1.get(i) * max_mul);
+                    data2_arr[i] = (long) (data1.get(i) * max_mul);
                 }
 
                 System.out.println(max_decimal);
-                byte[] encoded_result = new byte[data2_arr.length * 4];
+                byte[] encoded_result = new byte[data2_arr.length * 8];
 
                 long encodeTime = 0;
                 long decodeTime = 0;
@@ -302,7 +320,7 @@ public class SubcolumnBetaTest {
 
                 s = System.nanoTime();
 
-                int[] data2_arr_decoded = new int[data2_arr.length];
+                long[] data2_arr_decoded = new long[data2_arr.length];
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
                     data2_arr_decoded = Decoder(encoded_result);
@@ -312,7 +330,7 @@ public class SubcolumnBetaTest {
                 decodeTime += ((e - s) / repeatTime);
 
                 for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    // assertEquals(data2_arr[i], data2_arr_decoded[i]);
+                    assertEquals(data2_arr[i], data2_arr_decoded[i]);
                 }
 
                 String[] record = {

@@ -16,8 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static java.lang.Math.pow;
-
 public class RLEBPTest {
 
     public static int getBitWith(int num) {
@@ -652,11 +650,11 @@ public class RLEBPTest {
 
         int k_byte = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        int k1_byte = (int) (k_byte % pow(2, 16));
+        int k1_byte = (int) (k_byte % Math.pow(2, 16));
         int k1 = k1_byte / 2;
         int final_alpha = k1_byte % 2;
 
-        int k2 = (int) (k_byte / pow(2, 16));
+        int k2 = (int) (k_byte / Math.pow(2, 16));
 
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -785,7 +783,7 @@ public class RLEBPTest {
         int right_outlier_i = 0;
         int normal_i = 0;
         int pre_v;
-        // int final_k_end_value = (int) (final_k_start_value + pow(2,
+        // int final_k_end_value = (int) (final_k_start_value + Math.pow(2,
         // bit_width_final));
 
         int cur_i = 0;
@@ -1039,6 +1037,7 @@ public class RLEBPTest {
     @Test
     public void testSubcolumn() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -1049,12 +1048,10 @@ public class RLEBPTest {
 
         int block_size = 1024;
 
-        int repeatTime = 100;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -1108,7 +1105,7 @@ public class RLEBPTest {
             }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
+            byte[] encoded_result = new byte[data2_arr.length * 8];
             long encodeTime = 0;
             long decodeTime = 0;
             double ratio = 0;
@@ -1127,11 +1124,7 @@ public class RLEBPTest {
             
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
@@ -1251,7 +1244,7 @@ public class RLEBPTest {
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 compressed_size += length;
-                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+                double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
 
@@ -1269,7 +1262,7 @@ public class RLEBPTest {
                 
             }
 
-            double compressionRatio = totalCompressedSize / (totalPoints * Integer.BYTES);
+            double compressionRatio = totalCompressedSize / (totalPoints * Long.BYTES);
 
             String[] record = {
                     dataset_name.get(file_i),

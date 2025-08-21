@@ -242,7 +242,8 @@ public class TSDIFFSubcolumnTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -253,12 +254,10 @@ public class TSDIFFSubcolumnTest {
 
         int block_size = 512;
 
-        int repeatTime = 200;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -328,11 +327,7 @@ public class TSDIFFSubcolumnTest {
 
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
@@ -403,7 +398,8 @@ public class TSDIFFSubcolumnTest {
         };
         writer.writeRecord(head);
 
-        int repeatTime = 100;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 

@@ -16,10 +16,14 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class BPTest {
+public class BPLongTest {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
+    }
+
+    public static int bitWidth(long value) {
+        return 64 - Long.numberOfLeadingZeros(value);
     }
 
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
@@ -44,6 +48,47 @@ public class BPTest {
 
     public static int bytesToInt(byte[] result, int pos, int width) {
         int ret = 0;
+        int cnt = pos & 0x07;
+        int index = pos >> 3;
+        while (width > 0) {
+            int m = width + cnt >= 8 ? 8 - cnt : width;
+            width -= m;
+            ret = ret << m;
+            byte y = (byte) (result[index] & (0xff >> cnt));
+            y = (byte) ((y & 0xff) >>> (8 - cnt - m));
+            ret = ret | (y & 0xff);
+            cnt += m;
+            if (cnt == 8) {
+                cnt = 0;
+                index++;
+            }
+        }
+        return ret;
+    }
+
+    public static void longToBytes(long srcNum, byte[] result, int pos, int width) {
+        int cnt = pos & 0x07;
+        int index = pos >> 3;
+
+        while (width > 0) {
+            int m = width + cnt >= 8 ? 8 - cnt : width;
+            width -= m;
+            int mask = 1 << (8 - cnt);
+            cnt += m;
+            byte y = (byte) (srcNum >>> width);
+            y = (byte) (y << (8 - cnt));
+            mask = ~(mask - (1 << (8 - cnt)));
+            result[index] = (byte) (result[index] & mask | y);
+            srcNum = srcNum & ~(-1L << width);
+            if (cnt == 8) {
+                index++;
+                cnt = 0;
+            }
+        }
+    }
+
+    public static long bytesToLong(byte[] result, int pos, int width) {
+        long ret = 0;
         int cnt = pos & 0x07;
         int index = pos >> 3;
         while (width > 0) {
@@ -110,6 +155,52 @@ public class BPTest {
 
     }
 
+    public static void pack8Values(
+            long[] values, int offset, int width, int encode_pos, byte[] encoded_result) {
+        int bufIdx = 0;
+        int valueIdx = offset;
+        // remaining bits for the current unfinished Long
+        int leftBit = 0;
+
+        while (valueIdx < 8 + offset) {
+            // buffer is used for saving 64 bits as a part of result
+            long buffer = 0;
+            // remaining size of bits in the 'buffer'
+            int leftSize = 64;
+
+            // encode the left bits of current Long to 'buffer'
+            if (leftBit > 0) {
+                buffer |= (values[valueIdx] << (64 - leftBit));
+                leftSize -= leftBit;
+                leftBit = 0;
+                valueIdx++;
+            }
+
+            while (leftSize >= width && valueIdx < 8 + offset) {
+                // encode one Long to the 'buffer'
+                buffer |= (values[valueIdx] << (leftSize - width));
+                leftSize -= width;
+                valueIdx++;
+            }
+            // If the remaining space of the buffer can not save the bits for one Long
+            if (leftSize > 0 && valueIdx < 8 + offset) {
+                // put the first 'leftSize' bits of the Long into remaining space of the buffer
+                buffer |= (values[valueIdx] >>> (width - leftSize));
+                leftBit = width - leftSize;
+            }
+
+            // put the buffer into the final result
+            for (int j = 0; j < 8; j++) {
+                encoded_result[encode_pos] = (byte) ((buffer >>> ((7 - j) * 8)) & 0xFF);
+                encode_pos++;
+                bufIdx++;
+                if (bufIdx >= width) {
+                    return;
+                }
+            }
+        }
+    }
+
     public static void unpack8Values(byte[] encoded, int offset, int width, int[] result_list, int result_offset) {
         int byteIdx = offset;
         long buffer = 0;
@@ -140,6 +231,35 @@ public class BPTest {
         }
     }
 
+    public static void unpack8Values(
+            byte[] encoded, int offset, int width, long[] result_list, int result_offset) {
+        int byteIdx = offset;
+        long buffer = 0;
+        int totalBits = 0;
+        int valueIdx = 0;
+
+        while (valueIdx < 8) {
+            // If current available bits are not enough to decode one Integer,
+            // then add next byte from buf to 'buffer' until totalBits >= width
+            while (totalBits < width) {
+                buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
+                byteIdx++;
+                totalBits += 8;
+            }
+
+            // If current available bits are enough to decode one Integer,
+            // then decode one Integer one by one until left bits in 'buffer' is
+            // not enough to decode one Integer.
+            while (totalBits >= width && valueIdx < 8) {
+                // result_list.add((int) (buffer >>> (totalBits - width)));
+                result_list[result_offset + valueIdx] = buffer >>> (totalBits - width);
+                valueIdx++;
+                totalBits -= width;
+                buffer = buffer & ((1L << totalBits) - 1);
+            }
+        }
+    }
+
     public static int bitPacking(int[] numbers, int bit_width, int encode_pos,
             byte[] encoded_result, int num_values) {
         int block_num = num_values / 8;
@@ -154,6 +274,26 @@ public class BPTest {
 
         for (int i = 0; i < remainder; i++) {
             intToBytes(numbers[block_num * 8 + i], encoded_result, encode_pos, bit_width);
+            encode_pos += bit_width;
+        }
+
+        return (encode_pos + 7) / 8;
+    }
+
+    public static int bitPacking(long[] numbers, int bit_width, int encode_pos,
+            byte[] encoded_result, int num_values) {
+        int block_num = num_values / 8;
+        int remainder = num_values % 8;
+
+        for (int i = 0; i < block_num; i++) {
+            pack8Values(numbers, i * 8, bit_width, encode_pos, encoded_result);
+            encode_pos += bit_width;
+        }
+
+        encode_pos *= 8;
+
+        for (int i = 0; i < remainder; i++) {
+            longToBytes(numbers[block_num * 8 + i], encoded_result, encode_pos, bit_width);
             encode_pos += bit_width;
         }
 
@@ -182,9 +322,73 @@ public class BPTest {
         return (decode_pos + 7) / 8;
     }
 
-    public static int BPEncoder(int[] list, int encode_pos, byte[] encoded_result) {
+    public static int decodeBitPacking(
+            byte[] encoded, int decode_pos, int bit_width, int num_values, long[] result_list) {
+        int block_num = num_values / 8;
+        int remainder = num_values % 8;
+
+        for (int i = 0; i < block_num; i++) {
+            unpack8Values(encoded, decode_pos, bit_width, result_list, i * 8);
+            decode_pos += bit_width;
+        }
+
+        decode_pos *= 8;
+
+        for (int i = 0; i < remainder; i++) {
+            result_list[block_num * 8 + i] = bytesToLong(encoded, decode_pos, bit_width);
+            decode_pos += bit_width;
+        }
+
+        return (decode_pos + 7) / 8;
+    }
+
+    public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer >> 24);
+        cur_byte[encode_pos + 1] = (byte) (integer >> 16);
+        cur_byte[encode_pos + 2] = (byte) (integer >> 8);
+        cur_byte[encode_pos + 3] = (byte) (integer);
+    }
+
+    public static void intByte2Bytes(int integer, int encode_pos, byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer);
+    }
+
+    public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer >> 56);
+        cur_byte[encode_pos + 1] = (byte) (integer >> 48);
+        cur_byte[encode_pos + 2] = (byte) (integer >> 40);
+        cur_byte[encode_pos + 3] = (byte) (integer >> 32);
+        cur_byte[encode_pos + 4] = (byte) (integer >> 24);
+        cur_byte[encode_pos + 5] = (byte) (integer >> 16);
+        cur_byte[encode_pos + 6] = (byte) (integer >> 8);
+        cur_byte[encode_pos + 7] = (byte) (integer);
+    }
+
+    public static int bytes2Integer(byte[] encoded, int start, int num) {
+        int value = 0;
+
+        for (int i = 0; i < num; i++) {
+            value <<= 8;
+            int b = encoded[i + start] & 0xFF;
+            value |= b;
+        }
+        return value;
+    }
+
+    public static long bytes2Long(byte[] encoded, int start, int num) {
+        long value = 0;
+
+        for (int i = 0; i < num; i++) {
+            value <<= 8;
+            int b = encoded[i + start] & 0xFF;
+            value |= b;
+        }
+        return value;
+    }
+
+    public static int BPEncoder(long[] list, int encode_pos, byte[] encoded_result) {
         int list_length = list.length;
-        int maxValue = 0;
+        long maxValue = 0;
         for (int i = 0; i < list_length; i++) {
             if (list[i] > maxValue) {
                 maxValue = list[i];
@@ -206,13 +410,13 @@ public class BPTest {
         return encode_pos;
     }
 
-    public static int BPDecoder(byte[] encoded_result, int encode_pos, int[] list) {
+    public static int BPDecoder(byte[] encoded_result, int encode_pos, long[] list) {
         int list_length = list.length;
 
         int m = encoded_result[encode_pos];
         encode_pos += 1;
 
-        int[] new_list = new int[list_length];
+        long[] new_list = new long[list_length];
         encode_pos = decodeBitPacking(encoded_result, encode_pos, m, list_length, new_list);
 
         for (int i = 0; i < list_length; i++) {
@@ -222,21 +426,21 @@ public class BPTest {
         return encode_pos;
     }
 
-    public static int[] getAbsDeltaTsBlock(
-            int[] ts_block,
+    public static long[] getAbsDeltaTsBlock(
+            long[] ts_block,
             int i,
             int block_size,
             int remaining,
-            int[] min_delta) {
-        int[] ts_block_delta = new int[remaining];
+            long[] min_delta) {
+        long[] ts_block_delta = new long[remaining];
 
-        int value_delta_min = Integer.MAX_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
+        long value_delta_min = Long.MAX_VALUE;
+        long value_delta_max = Long.MIN_VALUE;
         int base = i * block_size;
         int end = i * block_size + remaining;
 
         for (int j = base; j < end; j++) {
-            int cur = ts_block[j];
+            long cur = ts_block[j];
             if (cur < value_delta_min) {
                 value_delta_min = cur;
             }
@@ -254,18 +458,15 @@ public class BPTest {
         return ts_block_delta;
     }
 
-    public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
+    public static int BlockEncoder(long[] data, int block_index, int block_size, int remainder,
             int encode_pos, byte[] encoded_result) {
-        int[] min_delta = new int[3];
+        long[] min_delta = new long[3];
 
-        int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
+        long[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
                 remainder, min_delta);
 
-        encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
-        encoded_result[encode_pos + 1] = (byte) (min_delta[0] >> 16);
-        encoded_result[encode_pos + 2] = (byte) (min_delta[0] >> 8);
-        encoded_result[encode_pos + 3] = (byte) min_delta[0];
-        encode_pos += 4;
+        long2Bytes(min_delta[0], encode_pos, encoded_result);
+        encode_pos += 8;
 
         encode_pos = BPEncoder(data_delta, encode_pos,
                 encoded_result);
@@ -274,14 +475,13 @@ public class BPTest {
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int[] data) {
-        int[] min_delta = new int[3];
+            int encode_pos, long[] data) {
+        long[] min_delta = new long[3];
 
-        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        min_delta[0] = bytes2Long(encoded_result, encode_pos, 8);
+        encode_pos += 8;
 
-        int[] block_data = new int[remainder];
+        long[] block_data = new long[remainder];
 
         encode_pos = BPDecoder(encoded_result, encode_pos,
                 block_data);
@@ -293,7 +493,7 @@ public class BPTest {
         return encode_pos;
     }
 
-    public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
+    public static int Encoder(long[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
         int encode_pos = 0;
 
@@ -319,12 +519,9 @@ public class BPTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = data[num_blocks * block_size + i];
-                encoded_result[encode_pos] = (byte) (value >> 24);
-                encoded_result[encode_pos + 1] = (byte) (value >> 16);
-                encoded_result[encode_pos + 2] = (byte) (value >> 8);
-                encoded_result[encode_pos + 3] = (byte) value;
-                encode_pos += 4;
+                long value = data[num_blocks * block_size + i];
+                long2Bytes(value, encode_pos, encoded_result);
+                encode_pos += 8;
             }
         } else {
             encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos,
@@ -334,21 +531,18 @@ public class BPTest {
         return encode_pos;
     }
 
-    public static int[] Decoder(byte[] encoded_result) {
+    public static long[] Decoder(byte[] encoded_result) {
         int encode_pos = 0;
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
-                |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        int data_length = bytes2Integer(encoded_result, encode_pos, 4);
         encode_pos += 4;
 
-        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        int block_size = bytes2Integer(encoded_result, encode_pos, 4);
         encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
-        int[] data = new int[data_length];
+        long[] data = new long[data_length];
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, data);
@@ -358,10 +552,8 @@ public class BPTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = ((encoded_result[encode_pos] & 0xFF) << 24) |
-                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-                encode_pos += 4;
+                data[num_blocks * block_size + i] = bytes2Long(encoded_result, encode_pos, 8);
+                encode_pos += 8;
             }
         } else {
             encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
@@ -403,15 +595,15 @@ public class BPTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "bp.csv";
+        String outputPath = output_parent_dir + "bp_long.csv";
 
         int block_size = 1024;
 
@@ -445,7 +637,7 @@ public class BPTest {
             InputStream inputStream = Files.newInputStream(file.toPath());
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
+            ArrayList<Double> data1 = new ArrayList<>();
 
             int max_decimal = 0;
             while (loader.readRecord()) {
@@ -458,19 +650,25 @@ public class BPTest {
                     max_decimal = cur_decimal;
                 }
                 // String value = loader.getValues()[index];
-                data1.add(Float.valueOf(f_str));
+                data1.add(Double.valueOf(f_str));
                 // data2.add(Integer.valueOf(loader.getValues()[1]));
                 // data.add(Integer.valueOf(value));
             }
             inputStream.close();
-            int[] data2_arr = new int[data1.size()];
-            int max_mul = (int) Math.pow(10, max_decimal);
+
+            if (max_decimal > 17) {
+                max_decimal = 17;
+            }
+
+            long[] data2_arr = new long[data1.size()];
+
+            long max_mul = (long) Math.pow(10, max_decimal);
             for (int i = 0; i < data1.size(); i++) {
-                data2_arr[i] = (int) (data1.get(i) * max_mul);
+                data2_arr[i] = (long) (data1.get(i) * max_mul);
             }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
+            byte[] encoded_result = new byte[data2_arr.length * 8];
 
             long encodeTime = 0;
             long decodeTime = 0;
@@ -496,7 +694,7 @@ public class BPTest {
 
             System.out.println("Decode");
 
-            int[] data2_arr_decoded = new int[data1.size()];
+            long[] data2_arr_decoded = new long[data1.size()];
 
             s = System.nanoTime();
 

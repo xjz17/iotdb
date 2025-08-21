@@ -19,8 +19,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static java.lang.Math.pow;
-
 public class TSDIFFTest {
 
     public static long combine2Int(int int1, int int2) {
@@ -735,22 +733,21 @@ public class TSDIFFTest {
     @Test
     public void testSubcolumn() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "ts2diff.csv";
+        String outputPath = output_parent_dir + "ts2diff_improve.csv";
 
         int block_size = 1024;
 
-        int repeatTime = 100;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -806,7 +803,7 @@ public class TSDIFFTest {
             }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
+            byte[] encoded_result = new byte[data2_arr.length * 8];
             long encodeTime = 0;
             long decodeTime = 0;
             double ratio = 0;
@@ -816,7 +813,8 @@ public class TSDIFFTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = BOSEncoder(data2_arr, block_size, encoded_result);
+                // length = BOSEncoder(data2_arr, block_size, encoded_result);
+                length = BOSEncoderImprove(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();
@@ -825,18 +823,15 @@ public class TSDIFFTest {
 
             double ratioTmp;
 
-            if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-            } else {
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            }
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
             ratio += ratioTmp;
 
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                BOSDecoder(encoded_result);
+                // BOSDecoder(encoded_result);
+                BOSDecoderImprove(encoded_result);
             }
 
             e = System.nanoTime();
@@ -899,7 +894,8 @@ public class TSDIFFTest {
         };
         writer.writeRecord(head);
 
-        int repeatTime = 100;
+        // int repeatTime = 100;
+        int repeatTime = 500;
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -944,7 +940,8 @@ public class TSDIFFTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    // length = BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length = BOSEncoderImprove(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -955,7 +952,8 @@ public class TSDIFFTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    BOSDecoder(encoded_result);
+                    // BOSDecoder(encoded_result);
+                    BOSDecoderImprove(encoded_result);
                 }
 
                 e = System.nanoTime();

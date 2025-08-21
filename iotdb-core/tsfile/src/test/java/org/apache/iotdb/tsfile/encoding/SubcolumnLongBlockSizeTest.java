@@ -18,7 +18,7 @@ import com.csvreader.CsvWriter;
 
 import static org.junit.Assert.assertEquals;
 
-public class SubcolumnBlockSizeTest {
+public class SubcolumnLongBlockSizeTest {
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -111,14 +111,19 @@ public class SubcolumnBlockSizeTest {
                     data1.add(Float.valueOf(f_str));
                 }
                 inputStream.close();
-                int[] data2_arr = new int[data1.size()];
+
+                if (max_decimal > 17) {
+                    max_decimal = 17;
+                }
+                
+                long[] data2_arr = new long[data1.size()];
                 int max_mul = (int) Math.pow(10, max_decimal);
                 for (int i = 0; i < data1.size(); i++) {
-                    data2_arr[i] = (int) (data1.get(i) * max_mul);
+                    data2_arr[i] = (long) (data1.get(i) * max_mul);
                 }
 
                 System.out.println(max_decimal);
-                byte[] encoded_result = new byte[data2_arr.length * 4];
+                byte[] encoded_result = new byte[data2_arr.length * 8];
 
                 long encodeTime = 0;
                 long decodeTime = 0;
@@ -129,7 +134,7 @@ public class SubcolumnBlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnTest.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnLongTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -146,17 +151,17 @@ public class SubcolumnBlockSizeTest {
 
                 s = System.nanoTime();
 
-                int[] data2_arr_decoded = new int[data2_arr.length];
+                long[] data2_arr_decoded = new long[data2_arr.length];
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    data2_arr_decoded = SubcolumnTest.Decoder(encoded_result);
+                    data2_arr_decoded = SubcolumnLongTest.Decoder(encoded_result);
                 }
 
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
 
                 for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    // assertEquals(data2_arr[i], data2_arr_decoded[i]);
+                    assertEquals(data2_arr[i], data2_arr_decoded[i]);
                 }
 
                 String[] record = {
