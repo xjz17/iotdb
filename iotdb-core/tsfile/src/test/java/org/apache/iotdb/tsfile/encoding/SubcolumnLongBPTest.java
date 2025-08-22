@@ -641,30 +641,30 @@ public class SubcolumnLongBPTest {
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
             int bitWidth = bitWidthList[i];
-            if (type == 0) {
+            // if (type == 0) {
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
                         subcolumnList[i]);
-            } else {
-                int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
-
-                encode_pos += 2;
-
-                int[] run_length = new int[index];
-                int[] rle_values = new int[index];
-
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, index, rle_values);
-
-                int currentIndex = 0;
-                for (int j = 0; j < index; j++) {
-                    int endPos = run_length[j];
-                    int value = rle_values[j];
-                    while (currentIndex < endPos) {
-                        subcolumnList[i][currentIndex] = value;
-                        currentIndex++;
-                    }
-                }
-            }
+            // } else {
+            //     int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
+            //
+            //     encode_pos += 2;
+            //
+            //     int[] run_length = new int[index];
+            //     int[] rle_values = new int[index];
+            //
+            //     encode_pos = decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+            //     encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, index, rle_values);
+            //
+            //     int currentIndex = 0;
+            //     for (int j = 0; j < index; j++) {
+            //         int endPos = run_length[j];
+            //         int value = rle_values[j];
+            //         while (currentIndex < endPos) {
+            //             subcolumnList[i][currentIndex] = value;
+            //             currentIndex++;
+            //         }
+            //     }
+            // }
         }
 
         for (int i = 0; i < l; i++) {
@@ -728,7 +728,8 @@ public class SubcolumnLongBPTest {
             }
             int m = bitWidth(maxValue);
 
-            beta[0] = SubcolumnBP(data_delta, remainder, m, block_size);
+            // beta[0] = SubcolumnBP(data_delta, remainder, m, block_size);
+            beta[0] = SubcolumnLongTest.Subcolumn(data_delta, remainder, m, block_size);
 
             // System.out.println("beta: " + beta[0]);
         }

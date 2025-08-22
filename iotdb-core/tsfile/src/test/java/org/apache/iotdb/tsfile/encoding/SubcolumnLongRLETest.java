@@ -728,7 +728,8 @@ public class SubcolumnLongRLETest {
             }
             int m = bitWidth(maxValue);
 
-            beta[0] = SubcolumnRLE(data_delta, remainder, m, block_size);
+            // beta[0] = SubcolumnRLE(data_delta, remainder, m, block_size);
+            beta[0] = SubcolumnLongTest.Subcolumn(data_delta, remainder, m, block_size);
 
             // System.out.println("beta: " + beta[0]);
         }
