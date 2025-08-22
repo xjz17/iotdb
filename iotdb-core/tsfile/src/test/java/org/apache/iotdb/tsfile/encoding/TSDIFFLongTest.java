@@ -659,7 +659,7 @@ public class TSDIFFLongTest {
             InputStream inputStream = Files.newInputStream(file.toPath());
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
+            ArrayList<Double> data1 = new ArrayList<>();
             // ArrayList<Integer> data2 = new ArrayList<>();
 
             // loader.readHeaders();
@@ -675,7 +675,7 @@ public class TSDIFFLongTest {
                     max_decimal = cur_decimal;
                 }
                 // String value = loader.getValues()[index];
-                data1.add(Float.valueOf(f_str));
+                data1.add(Double.valueOf(f_str));
                 // data2.add(Integer.valueOf(loader.getValues()[1]));
                 // data.add(Integer.valueOf(value));
             }

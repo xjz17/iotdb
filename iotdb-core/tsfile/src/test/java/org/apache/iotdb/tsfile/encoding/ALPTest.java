@@ -412,8 +412,8 @@ public class ALPTest {
 
         int base = block_index * block_size;
 
-        // e = 14;
-        // f = 14 - max_decimal;
+        e = 17;
+        f = 17 - max_decimal;
 
         // double[] testValues = new double[100];
 
@@ -426,14 +426,14 @@ public class ALPTest {
             for (int j = i; j >= 0; j--) {
                 boolean valid = true;
 
-                for (double n : testValues) {
+                for (double value : testValues) {
                     // double encodedValue = n * Math.pow(10, i) * Math.pow(10, -j);
                     // double encodedValue = n * power(10, i) / power(10, j);
-                    long encodedValue = Math.round(n * power(10, i) / power(10, j));
+                    long encodedValue = Math.round(value * power(10, i) / power(10, j));
 
                     double decodedValue = encodedValue / power(10, i) * power(10, j);
                     // if (Math.abs(n - decodedValue) > 0.00001) {
-                    if (Math.abs(n - decodedValue) > Math.pow(10, -max_decimal)) {
+                    if (Math.abs(value - decodedValue) > Math.pow(10, -max_decimal)) {
                         valid = false;
                         break;
                     }
@@ -442,12 +442,11 @@ public class ALPTest {
                 if (valid) {
                     e = i;
                     f = j;
+
                     break outer_loop;
                 }
             }
         }
-
-        // System.out.println("e: " + e + ", f: " + f);
 
         intByte2Bytes(e, encode_pos, encoded_result);
         encode_pos += 1;
@@ -610,8 +609,8 @@ public class ALPTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -620,8 +619,8 @@ public class ALPTest {
 
         String outputPath = output_parent_dir + "alp_long.csv";
 
-        // int block_size = 1024;
-        int block_size = 512;
+        int block_size = 1024;
+        // int block_size = 512;
 
         // int repeatTime = 100;
         int repeatTime = 500;
@@ -669,8 +668,8 @@ public class ALPTest {
             }
             inputStream.close();
 
-            if (max_decimal > 15) {
-                max_decimal = 15;
+            if (max_decimal > 17) {
+                max_decimal = 17;
             }
 
             double[] data1_arr = new double[data1.size()];
@@ -733,5 +732,12 @@ public class ALPTest {
         }
 
         writer.close();
+    }
+
+    @Test
+    public void test1() {
+        double c = Math.pow(10, -17);
+
+        System.out.println(c);
     }
 }

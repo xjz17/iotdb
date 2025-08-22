@@ -858,18 +858,17 @@ public class SubcolumnLongTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_long_temp.csv";
+        String outputPath = output_parent_dir + "subcolumn_long.csv";
 
-        // int block_size = 512;
-        int block_size = 1024;
+        int block_size = 512;
 
         // int repeatTime = 100;
         int repeatTime = 500;

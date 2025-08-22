@@ -264,7 +264,7 @@ public class SubcolumnLongBetaTest {
                 InputStream inputStream = Files.newInputStream(file.toPath());
 
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Float> data1 = new ArrayList<>();
+                ArrayList<Double> data1 = new ArrayList<>();
 
                 int max_decimal = 0;
                 while (loader.readRecord()) {
@@ -276,7 +276,7 @@ public class SubcolumnLongBetaTest {
                     if (cur_decimal > max_decimal) {
                         max_decimal = cur_decimal;
                     }
-                    data1.add(Float.valueOf(f_str));
+                    data1.add(Double.valueOf(f_str));
                 }
                 inputStream.close();
 
@@ -285,7 +285,7 @@ public class SubcolumnLongBetaTest {
                 }
 
                 long[] data2_arr = new long[data1.size()];
-                int max_mul = (int) Math.pow(10, max_decimal);
+                long max_mul = (long) Math.pow(10, max_decimal);
                 for (int i = 0; i < data1.size(); i++) {
                     data2_arr[i] = (long) (data1.get(i) * max_mul);
                 }

@@ -16,6 +16,8 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
+import static org.junit.Assert.assertEquals;
+
 public class SPRINTZSubcolumnLongTest {
 
     public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
@@ -313,7 +315,7 @@ public class SPRINTZSubcolumnLongTest {
             InputStream inputStream = Files.newInputStream(file.toPath());
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
+            ArrayList<Double> data1 = new ArrayList<>();
 
             int max_decimal = 0;
             while (loader.readRecord()) {
@@ -325,7 +327,7 @@ public class SPRINTZSubcolumnLongTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                data1.add(Float.valueOf(f_str));
+                data1.add(Double.valueOf(f_str));
             }
             inputStream.close();
 
@@ -378,7 +380,7 @@ public class SPRINTZSubcolumnLongTest {
             decodeTime += ((e - s) / repeatTime);
 
             for (int i = 0; i < data2_arr_decoded.length; i++) {
-                // assertEquals(data2_arr[i], data2_arr_decoded[i]);
+                assertEquals(data2_arr[i], data2_arr_decoded[i]);
             }
 
             String[] record = {

@@ -261,7 +261,7 @@ public class TSDIFFSubcolumnLongTest {
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "ts2diff_subcolumn_long0.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn_long.csv";
 
         int block_size = 512;
 
@@ -295,7 +295,7 @@ public class TSDIFFSubcolumnLongTest {
             InputStream inputStream = Files.newInputStream(file.toPath());
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
+            ArrayList<Double> data1 = new ArrayList<>();
 
             int max_decimal = 0;
             while (loader.readRecord()) {
@@ -307,7 +307,7 @@ public class TSDIFFSubcolumnLongTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                data1.add(Float.valueOf(f_str));
+                data1.add(Double.valueOf(f_str));
             }
             inputStream.close();
 
