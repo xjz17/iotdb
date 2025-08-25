@@ -1,24 +1,20 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Stream;
-
-import org.junit.Test;
-
-import com.csvreader.CsvReader;
-import com.csvreader.CsvWriter;
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-public class SubcolumnLongTest {
+public class SubcolumnLongPSOTest {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -386,99 +382,232 @@ public class SubcolumnLongTest {
         return value;
     }
 
-    public static int Subcolumn(long[] x, int x_length, int m, int block_size) {
+// ------------------ PSO-based Subcolumn (replace original Subcolumn) ------------------
 
-        int betaBest = 1;
+    /**
+     * Compute the total storage cost for a given beta following original cost logic.
+     * This mirrors the cost calculation in the original Subcolumn implementation.
+     */
+    private static int computeCostForBeta(long[] x, int x_length, int m, int block_size, int beta) {
+        // clamp beta to [1, m]
+        if (beta < 1) beta = 1;
+        if (beta > m) beta = m;
 
-        int cMin = Integer.MAX_VALUE;
+        int l = (m + beta - 1) / beta;
+        long[][] subcolumnList = new long[l][x_length];
+        int[] bitWidthList = new int[l];
 
-        // int[] beta_list = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
-        // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
-        // int[] beta_list = { 1, 2, 3, 4 };
-
-        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13 };
-        // int[] beta_list = { 2, 3, 4, 7, 11 };
+        int maskBeta;
+        long mask;
+        // build subcolumns and bitWidthList
+        for (int i = 0; i < l; i++) {
+            long maxValuePart = 0;
+            int shiftAmount = i * beta;
+            // compute mask safely (avoid shifting by >=64)
+            if (beta >= 63) {
+                mask = ~0L;
+            } else {
+                mask = ((1L << beta) - 1L);
+            }
+            for (int j = 0; j < x_length; j++) {
+                subcolumnList[i][j] = (x[j] >> shiftAmount) & mask;
+                if (subcolumnList[i][j] > maxValuePart) {
+                    maxValuePart = subcolumnList[i][j];
+                }
+            }
+            bitWidthList[i] = bitWidth(maxValuePart);
+        }
 
         int bw = bitWidth(block_size);
+        int totalCost = 0;
 
-        int[] bitWidthListList = new int[m];
+        // for each sub-column compute min(bpCost, rleCost) following original logic
+        for (int i = 0; i < l; i++) {
+            int bpCost = bitWidthList[i] * x_length;
+            int rleCost = 0;
 
-        for (int beta=1 ;beta < 5 ;beta ++ ) {
-//        for (int beta : beta_list) {
-            if (beta > m) {
-                break;
-            }
-            // System.out.println("beta: " + beta);
+            long currentNumber = subcolumnList[i][0];
+            int index = 0;
+            boolean bpBest = false;
 
-            int l = (m + beta - 1) / beta;
-
-            // System.out.println("l: " + l);
-
-            long[][] subcolumnList = new long[l][x_length];
-
-            int cost = 0;
-
-            for (int i = 0; i < l; i++) {
-                long maxValuePart = 0;
-                for (int j = 0; j < x_length; j++) {
-                    subcolumnList[i][j] = (x[j] >> (i * beta)) & ((1 << beta) - 1);
-                    if (subcolumnList[i][j] > maxValuePart) {
-                        maxValuePart = subcolumnList[i][j];
-                    }
+            for (int j = 1; j < x_length; j++) {
+                if (subcolumnList[i][j] != currentNumber) {
+                    index++;
+                    currentNumber = subcolumnList[i][j];
                 }
-                bitWidthListList[i] = bitWidth(maxValuePart);
-            }
-
-            for (int i = 0; i < l; i++) {
-                int bpCost = bitWidthListList[i] * x_length;
-                int rleCost = 0;
-
-                // int count = 1;
-                long currentNumber = subcolumnList[i][0];
-
-                int index = 0;
-
-                boolean bpBest = false;
-
-                for (int j = 1; j < x_length; j++) {
-                    if (subcolumnList[i][j] != currentNumber) {
-                        index++;
-                        currentNumber = subcolumnList[i][j];
-                    }
-
-                    if (bw * index + bitWidthListList[i] * index >= bpCost) {
-                        bpBest = true;
-                        break;
-                    }
-                }
-
-                if (bpBest) {
-                    cost += bpCost;
-                    continue;
-                }
-
-                index++;
-
-                // System.out.println("index: " + index);
-
-                rleCost = bw * index + bitWidthListList[i] * index;
-
-                // System.out.println("bpCost: " + bpCost + " rleCost: " + rleCost);
-
-                if (bpCost <= rleCost) {
-                    cost += bpCost;
-                } else {
-                    cost += rleCost;
+                // if intermediate RLE cost already >= bpCost, stop (same break condition)
+                if (bw * index + bitWidthList[i] * index >= bpCost) {
+                    bpBest = true;
+                    break;
                 }
             }
 
-            // System.out.println("cost: " + cost);
+            if (bpBest) {
+                totalCost += bpCost;
+                continue;
+            }
 
-            if (cost < cMin) {
-                cMin = cost;
-                betaBest = beta;
+            // finish computing run count (index currently = number of transitions)
+            index++;
+            rleCost = bw * index + bitWidthList[i] * index;
+
+            if (bpCost <= rleCost) {
+                totalCost += bpCost;
+            } else {
+                totalCost += rleCost;
             }
         }
+
+        return totalCost;
+    }
+
+    /**
+     * PSO main routine: search integer beta in [1, m] minimizing computeCostForBeta.
+     * Returns best integer beta found.
+     * <p>
+     * Parameters (tunable):
+     *  - swarmSize: number of particles
+     *  - maxIter: number of PSO iterations
+     *  - w, c1, c2: PSO coefficients
+     *  - localSearchRadius: after PSO, perform small local search within +/- radius
+     */
+    private static int psoFindBestBeta(long[] x, int x_length, int m, int block_size,
+                                       int swarmSize, int maxIter, double w, double c1, double c2, int localSearchRadius, long seed) {
+
+        if (m <= 1) {
+            return 1;
+        }
+
+        Random rand = (seed == 0) ? new Random() : new Random(seed);
+
+        // search range 1..m
+        double minPos = 1.0;
+        double maxPos = (double) m;
+
+        // particle arrays
+        double[] pos = new double[swarmSize];
+        double[] vel = new double[swarmSize];
+        double[] pbestPos = new double[swarmSize];
+        int[] pbestCost = new int[swarmSize];
+
+        // initialize particles
+        for (int i = 0; i < swarmSize; i++) {
+            pos[i] = minPos + rand.nextDouble() * (maxPos - minPos);
+            // initial velocity small random
+            vel[i] = (rand.nextDouble() - 0.5) * (maxPos - minPos) * 0.2;
+            int intval = (int) Math.round(pos[i]);
+            if (intval < 1) intval = 1;
+            if (intval > m) intval = m;
+            pbestPos[i] = pos[i];
+            pbestCost[i] = computeCostForBeta(x, x_length, m, block_size, intval);
+        }
+
+        // global best
+        int gbestIndex = 0;
+        int gbestCost = pbestCost[0];
+        double gbestPos = pbestPos[0];
+        for (int i = 1; i < swarmSize; i++) {
+            if (pbestCost[i] < gbestCost) {
+                gbestCost = pbestCost[i];
+                gbestPos = pbestPos[i];
+                gbestIndex = i;
+            }
+        }
+
+        double vmax = maxPos; // velocity clamp
+
+        // PSO iterations
+        for (int iter = 0; iter < maxIter; iter++) {
+            for (int i = 0; i < swarmSize; i++) {
+                double r1 = rand.nextDouble();
+                double r2 = rand.nextDouble();
+
+                // velocity update
+                vel[i] = w * vel[i]
+                        + c1 * r1 * (pbestPos[i] - pos[i])
+                        + c2 * r2 * (gbestPos - pos[i]);
+
+                // clamp velocity
+                if (vel[i] > vmax) vel[i] = vmax;
+                if (vel[i] < -vmax) vel[i] = -vmax;
+
+                // position update
+                pos[i] += vel[i];
+
+                // clamp position
+                if (pos[i] < minPos) {
+                    pos[i] = minPos;
+                    vel[i] = 0.0;
+                }
+                if (pos[i] > maxPos) {
+                    pos[i] = maxPos;
+                    vel[i] = 0.0;
+                }
+
+                // evaluate integer beta = round(pos)
+                int intval = (int) Math.round(pos[i]);
+                if (intval < 1) intval = 1;
+                if (intval > m) intval = m;
+
+                int cost = computeCostForBeta(x, x_length, m, block_size, intval);
+
+                // update pbest
+                if (cost < pbestCost[i]) {
+                    pbestCost[i] = cost;
+                    pbestPos[i] = pos[i];
+                    // update gbest
+                    if (cost < gbestCost) {
+                        gbestCost = cost;
+                        gbestPos = pos[i];
+                        gbestIndex = i;
+                    }
+                }
+            }
+            // optionally: you could add inertia damping or early stopping here if desired
+        }
+
+        // final integer best
+        int bestBeta = (int) Math.round(gbestPos);
+        if (bestBeta < 1) bestBeta = 1;
+        if (bestBeta > m) bestBeta = m;
+
+        // small local search around bestBeta to refine (try +/- localSearchRadius)
+        int bestCost = computeCostForBeta(x, x_length, m, block_size, bestBeta);
+        int start = Math.max(1, bestBeta - localSearchRadius);
+        int end = Math.min(m, bestBeta + localSearchRadius);
+        for (int b = start; b <= end; b++) {
+            int c = computeCostForBeta(x, x_length, m, block_size, b);
+            if (c < bestCost) {
+                bestCost = c;
+                bestBeta = b;
+            }
+        }
+
+        return bestBeta;
+    }
+
+    /**
+     * PSO-based Subcolumn entry point (replaces original Subcolumn).
+     * Uses default PSO hyperparameters similar to typical settings.
+     */
+    public static int Subcolumn(long[] x, int x_length, int m, int block_size) {
+        // PSO hyperparameters (you can tune these if needed)
+        final int SWARM_SIZE = 5;
+        final int MAX_ITER = 5;
+        final double W = 0.72;      // inertia
+        final double C1 = 1.5;      // cognitive
+        final double C2 = 1.5;      // social
+        final int LOCAL_RADIUS = 3; // local search radius
+        final long SEED = 0L;       // 0 -> use random seed; non-zero -> reproducible
+
+
+        // trivial cases
+        if (x_length == 0) return 1;
+        if (m <= 1) return 1;
+        m=4;
+        // run PSO to find best beta in [1, m]
+        int betaBest = psoFindBestBeta(x, x_length, m, block_size,
+                SWARM_SIZE, MAX_ITER, W, C1, C2, LOCAL_RADIUS, SEED);
 
         return betaBest;
     }
@@ -720,7 +849,7 @@ public class SubcolumnLongTest {
         long2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 8;
 
-        if (block_index % 16 == 0) {
+        if (block_index == 0) {
             long maxValue = 0;
             for (int j = 0; j < remainder; j++) {
                 if (data_delta[j] > maxValue) {
@@ -860,15 +989,15 @@ public class SubcolumnLongTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; //"D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+//        String parent_dir = "D:/github/xjz17/subcolumn/";
+         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/"; //""D:/encoding-subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_long.csv";
+        String outputPath = output_parent_dir + "subcolumn_pso.csv";
 
         int block_size = 512;
 
@@ -979,7 +1108,7 @@ public class SubcolumnLongTest {
 
             String[] record = {
                     datasetName,
-                    "Sub-columns",
+                    "Sub-columns-PSO",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),
