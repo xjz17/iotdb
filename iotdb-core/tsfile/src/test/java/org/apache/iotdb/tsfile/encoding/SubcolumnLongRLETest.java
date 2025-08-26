@@ -539,7 +539,7 @@ public class SubcolumnLongRLETest {
 
         // encoded_result 预留大小为 (l + 7) / 8 的大小，存储每个分列的类型
         int preTypePos = encode_pos;
-        encode_pos += (l + 7) / 8;
+        // encode_pos += (l + 7) / 8;
 
         for (int i = l - 1; i >= 0; i--) {
             // 对于每个分列，计算使用 bit packing 还是 rle
@@ -605,7 +605,7 @@ public class SubcolumnLongRLETest {
 
         }
 
-        preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
+        // preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
 
         return encode_pos;
     }
@@ -634,23 +634,23 @@ public class SubcolumnLongRLETest {
 
         long[][] subcolumnList = new long[l][list_length];
 
-        int[] encodingType = new int[l];
+        // int[] encodingType = new int[l];
 
-        encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        // encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
-            int type = encodingType[i];
+            // int type = encodingType[i];
             int bitWidth = bitWidthList[i];
-            if (type == 0) {
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
-                        subcolumnList[i]);
-            } else {
+            // if (type == 0) {
+            //     encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
+            //             subcolumnList[i]);
+            // } else {
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
 
                 encode_pos += 2;
 
                 int[] run_length = new int[index];
-                int[] rle_values = new int[index];
+                long[] rle_values = new long[index];
 
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, index, rle_values);
@@ -658,13 +658,13 @@ public class SubcolumnLongRLETest {
                 int currentIndex = 0;
                 for (int j = 0; j < index; j++) {
                     int endPos = run_length[j];
-                    int value = rle_values[j];
+                    long value = rle_values[j];
                     while (currentIndex < endPos) {
                         subcolumnList[i][currentIndex] = value;
                         currentIndex++;
                     }
                 }
-            }
+            // }
         }
 
         for (int i = 0; i < l; i++) {
@@ -868,12 +868,12 @@ public class SubcolumnLongRLETest {
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_long_rle.csv";
+        String outputPath = output_parent_dir + "subcolumn_long_rle_repeat100.csv";
 
         int block_size = 512;
 
-        // int repeatTime = 100;
-        int repeatTime = 500;
+        int repeatTime = 100;
+        // repeatTime = 500;
 
         // repeatTime = 1;
 

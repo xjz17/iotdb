@@ -539,7 +539,7 @@ public class SubcolumnLongBPTest {
 
         // encoded_result 预留大小为 (l + 7) / 8 的大小，存储每个分列的类型
         int preTypePos = encode_pos;
-        encode_pos += (l + 7) / 8;
+        // encode_pos += (l + 7) / 8;
 
         for (int i = l - 1; i >= 0; i--) {
             // 对于每个分列，计算使用 bit packing 还是 rle
@@ -605,7 +605,7 @@ public class SubcolumnLongBPTest {
 
         }
 
-        preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
+        // preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
 
         return encode_pos;
     }
@@ -634,12 +634,12 @@ public class SubcolumnLongBPTest {
 
         long[][] subcolumnList = new long[l][list_length];
 
-        int[] encodingType = new int[l];
+        // int[] encodingType = new int[l];
 
-        encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        // encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
-            int type = encodingType[i];
+            // int type = encodingType[i];
             int bitWidth = bitWidthList[i];
             // if (type == 0) {
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
@@ -868,12 +868,12 @@ public class SubcolumnLongBPTest {
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_long_bp.csv";
+        String outputPath = output_parent_dir + "subcolumn_long_bp_repeat200.csv";
 
         int block_size = 512;
 
-        // int repeatTime = 100;
-        int repeatTime = 500;
+        int repeatTime = 100;
+        repeatTime = 200;
 
         // repeatTime = 1;
 
@@ -972,6 +972,12 @@ public class SubcolumnLongBPTest {
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
+
+            // test
+            // for (int i = 0; i < data2_arr_decoded.length; i++) {
+            //     System.out.print(data2_arr_decoded[i] + " ");
+            // }
+            // System.out.println();
 
             for (int i = 0; i < data2_arr_decoded.length; i++) {
                 assertEquals(data2_arr[i], data2_arr_decoded[i]);
