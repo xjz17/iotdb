@@ -592,8 +592,8 @@ public class SubcolumnLongPSOTest {
      */
     public static int Subcolumn(long[] x, int x_length, int m, int block_size) {
         // PSO hyperparameters (you can tune these if needed)
-        final int SWARM_SIZE = 5;
-        final int MAX_ITER = 5;
+        final int SWARM_SIZE = 3;
+        final int MAX_ITER = 2;
         final double W = 0.72;      // inertia
         final double C1 = 1.5;      // cognitive
         final double C2 = 1.5;      // social
