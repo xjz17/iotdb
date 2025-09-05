@@ -1,5 +1,9 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,15 +13,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.junit.Test;
-
-import com.csvreader.CsvReader;
-import com.csvreader.CsvWriter;
-
-import static org.junit.Assert.assertEquals;
-
-public class VBPIndexLongQueryTest {
+public class VBPQueryEqualTest {
 
     public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
@@ -104,7 +100,7 @@ public class VBPIndexLongQueryTest {
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, ArrayList<VBPIndexLong> indexList, int[] result, int[] result_length) {
+            int encode_pos, ArrayList<VBPIndexLong> indexList, int[] result, int[] result_length, int bound_query_range) {
 
         long min_value = bytes2Long(encoded_result, encode_pos, 8);
         encode_pos += 8;
@@ -114,7 +110,7 @@ public class VBPIndexLongQueryTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        BitSet bitset_result = idx.select(HBPIndex.Op.GT, 0);
+        BitSet bitset_result = idx.select(HBPIndex.Op.EQ, bound_query_range);
 
         for (int i = 0; i < bitset_result.length(); i++) {
             if (bitset_result.get(i)) {
@@ -161,7 +157,7 @@ public class VBPIndexLongQueryTest {
         return encode_pos;
     }
 
-    public static void Decoder(byte[] encoded_result, ArrayList<VBPIndexLong> indexList) {
+    public static void Decoder(byte[] encoded_result, ArrayList<VBPIndexLong> indexList, int bound_query_range) {
         int encode_pos = 0;
 
         int data_length = bytes2Integer(encoded_result, encode_pos, 4);
@@ -176,7 +172,7 @@ public class VBPIndexLongQueryTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, indexList, result, result_length);
+            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, indexList, result, result_length, bound_query_range);
         }
 
         int remainder = data_length % block_size;
@@ -189,7 +185,7 @@ public class VBPIndexLongQueryTest {
         // }
         // } else {
         encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
-                encode_pos, indexList, result, result_length);
+                encode_pos, indexList, result, result_length, bound_query_range);
         // }
     }
 
@@ -225,15 +221,26 @@ public class VBPIndexLongQueryTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+//        String parent_dir = "D:/github/xjz17/subcolumn/";
+//        // String parent_dir = "D:/encoding-subcolumn/";
+//
+//        String input_parent_dir = parent_dir + "dataset/";
+//
+//        String output_parent_dir = "D:/encoding-subcolumn/result/";
+//        // String output_parent_dir = parent_dir + "result/";
+//
+//        String outputPath = output_parent_dir + "vbp_query.csv";
+
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; //"D:/github/xjz17/subcolumn/";
         // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/vbp_query/";
 
-        String outputPath = output_parent_dir + "vbp_query.csv";
+        String outputPath = output_parent_dir + "vbp_query_equal.csv";
+        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
+
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
@@ -277,6 +284,9 @@ public class VBPIndexLongQueryTest {
         for (File file : csvFiles) {
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
+            if(!queryRange.containsKey(datasetName)){
+                continue;
+            }
 
             InputStream inputStream = Files.newInputStream(file.toPath());
 
@@ -355,8 +365,7 @@ public class VBPIndexLongQueryTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Decoder(encoded_result, indexList);
-
+                Decoder(encoded_result, indexList,queryRange.get(datasetName));
             }
 
             e = System.nanoTime();
