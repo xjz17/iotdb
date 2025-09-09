@@ -731,6 +731,7 @@ public class SubcolumnLongTest {
 
             beta[0] = Subcolumn(data_delta, remainder, m, block_size);
 
+
             // System.out.println("beta: " + beta[0]);
 //        }
 

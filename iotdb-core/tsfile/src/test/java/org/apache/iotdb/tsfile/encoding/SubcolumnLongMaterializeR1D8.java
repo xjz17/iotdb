@@ -9,29 +9,31 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-public class SubcolumnMaterializeR1D8 {
+public class SubcolumnLongMaterializeR1D8 {
 
-    public static void QueryTwoColumns(byte[] encoded_result1, byte[] encoded_result2, int upper_bound1,
-            int upper_bound2) {
+    public static void QueryTwoColumns(byte[] encoded_result1, byte[] encoded_result2, long upper_bound1,
+            long upper_bound2) {
         int[] first_column_results = new int[encoded_result1.length];
         int[] first_result_length = new int[1];
 
         Query(encoded_result1, upper_bound1, first_column_results, first_result_length);
 
-        int[] final_results = new int[first_result_length[0]];
+        long[] final_results = new long[first_result_length[0]];
         int[] final_result_length = new int[1];
 
         QueryWithIndices(encoded_result2, upper_bound2, first_column_results, first_result_length[0],
                 final_results, final_result_length);
     }
 
-    public static void QueryWithIndices(byte[] encoded_result, int upper_bound,
-            int[] candidate_indices, int candidate_length,
-            int[] result, int[] result_length) {
+    public static void QueryWithIndices(byte[] encoded_result, long upper_bound,
+                                        int[] candidate_indices, int candidate_length,
+                                        long[] result, int[] result_length) {
         int encode_pos = 0;
 
         int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
@@ -124,15 +126,24 @@ public class SubcolumnMaterializeR1D8 {
             }
         }
     }
+    public static long bytes2Long(byte[] encoded, int start, int num) {
+        long value = 0;
+
+        for (int i = 0; i < num; i++) {
+            value <<= 8;
+            int b = encoded[i + start] & 0xFF;
+            value |= b;
+        }
+        return value;
+    }
 
     public static int BlockQueryWithIndices(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int upper_bound, int[] candidate_indices, int candidate_length,
-            int[] result, int[] result_length) {
-        int[] min_delta = new int[3];
+            int encode_pos, long upper_bound, int[] candidate_indices, int candidate_length,
+            long[] result, int[] result_length) {
+        long[] min_delta = new long[3];
 
-        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        min_delta[0] = bytes2Long(encoded_result, encode_pos, 8);
+        encode_pos += 8;
 
         int m = encoded_result[encode_pos];
         encode_pos += 1;
@@ -163,13 +174,13 @@ public class SubcolumnMaterializeR1D8 {
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnLongTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
         int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
 
-        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnLongTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -189,7 +200,7 @@ public class SubcolumnMaterializeR1D8 {
 
                     subcolumnList[i][index] = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
+                    long value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
                     if (subcolumnList[i][index] < value) {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
@@ -228,7 +239,7 @@ public class SubcolumnMaterializeR1D8 {
                         rle_values);
 
                 int new_length = 0;
-                int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
+                long value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
 
                 // 为每个候选索引查找对应的RLE值
                 for (int j = 0; j < filtered_length; j++) {
@@ -265,7 +276,7 @@ public class SubcolumnMaterializeR1D8 {
             int encode_pos) {
         // int[] min_delta = new int[3];
 
-        encode_pos += 4;
+        encode_pos += 8;
 
         int m = encoded_result[encode_pos];
         encode_pos += 1;
@@ -279,6 +290,10 @@ public class SubcolumnMaterializeR1D8 {
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
 
+
+//        System.out.println("beta:"+beta);
+//        System.out.println("m:"+m);
+//        System.out.println("m:"+(m + beta - 1) / beta);
         int l = (m + beta - 1) / beta;
 
         int[] bitWidthList = new int[l];
@@ -307,7 +322,7 @@ public class SubcolumnMaterializeR1D8 {
         return encode_pos;
     }
 
-    public static void Query(byte[] encoded_result, int upper_bound, int[] result, int[] result_length) {
+    public static void Query(byte[] encoded_result, long upper_bound, int[] result, int[] result_length) {
 
         int encode_pos = 0;
 
@@ -338,14 +353,12 @@ public class SubcolumnMaterializeR1D8 {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
-                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+                long value =  bytes2Long(encoded_result, encode_pos, 8);
+                encode_pos += 8;
                 if (value < upper_bound) {
-                    result[result_length[0]] = value;
+                    result[result_length[0]] =  data_length / block_size * block_size +i;
                     result_length[0]++;
                 }
-                encode_pos += 4;
             }
         } else {
             encode_pos = BlockQueryIndex(encoded_result, num_blocks, block_size,
@@ -356,17 +369,17 @@ public class SubcolumnMaterializeR1D8 {
     }
 
     public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int upper_bound, int[] result, int[] result_length) {
-        int[] min_delta = new int[3];
+            int encode_pos, long upper_bound, int[] result, int[] result_length) {
+        long[] min_delta = new long[3];
 
-        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        min_delta[0] = bytes2Long(encoded_result, encode_pos, 8);
+        encode_pos += 8;
 
         // int[] block_data = new int[remainder];
 
         int m = encoded_result[encode_pos];
         encode_pos += 1;
+
 
         upper_bound -= min_delta[0];
 
@@ -393,13 +406,15 @@ public class SubcolumnMaterializeR1D8 {
         int beta = encoded_result[encode_pos];
         encode_pos += 1;
 
+
+
         int l = (m + beta - 1) / beta;
 
         int[] bitWidthList = new int[l];
 
         encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
-        int[][] subcolumnList = new int[l][remainder];
+        long[][] subcolumnList = new long[l][remainder];
 
         int[] encodingType = new int[l];
 
@@ -424,7 +439,7 @@ public class SubcolumnMaterializeR1D8 {
 
                     subcolumnList[i][index] = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
+                    long value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
                     if (subcolumnList[i][index] < value) {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
@@ -466,7 +481,7 @@ public class SubcolumnMaterializeR1D8 {
                 int new_length = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
-                int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
+                long value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
@@ -854,7 +869,7 @@ public class SubcolumnMaterializeR1D8 {
         // --- 基本设置，复用你 testQuery 中的路径 / 数据准备逻辑 ---
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         String input_parent_dir = parent_dir + "dataset/";
-        String output_parent_dir = parent_dir + "result/materialization/";//"D:/encoding-subcolumn/result/query_vs_beta/";
+        String output_parent_dir = parent_dir + "result/";//"D:/encoding-subcolumn/result/query_vs_beta/";
 
 //        // 这里为了演示，仅处理单个 CSV 文件（你可以循环多个文件）
 //        File directory = new File(input_parent_dir);
@@ -878,10 +893,14 @@ public class SubcolumnMaterializeR1D8 {
         queryRange.put("IR-bio-temp", -200);
         queryRange.put("PM10-dust", 2000);
         queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
+        queryRange.put("Stocks-UK", 75000);
         queryRange.put("Stocks-USA", 6000);
         queryRange.put("Wind-Speed", 60);
         queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
 
         int repeatTime = 500;
         String outputPath = output_parent_dir + "subcolumn_filter.csv";
@@ -892,6 +911,8 @@ public class SubcolumnMaterializeR1D8 {
                 "Encoding Algorithm",
                 "LM-pipelined",
                 "LM-parallel",
+                "Selectivity",
+                "Phi",
                 "Points",
         };
         writer.writeRecord(head);
@@ -922,20 +943,23 @@ public class SubcolumnMaterializeR1D8 {
 
             int totalSize = raw.size();
             int halfSize = totalSize / 2;
-            int[] col1_data = new int[halfSize];
-            int[] col2_data = new int[halfSize];
+            long[] col1_data = new long[halfSize];
+            long[] col2_data = new long[halfSize];
             int max_mul = (int) Math.pow(10, max_decimal);
-            for (int i = 0; i < halfSize; i++) col1_data[i] = (int) (raw.get(i) * max_mul);
-            for (int i = 0; i < halfSize; i++) col2_data[i] = (int) (raw.get(i + halfSize) * max_mul);
+            for (int i = 0; i < halfSize; i++) col1_data[i] = (long) (raw.get(i) * max_mul);
+            for (int i = 0; i < halfSize; i++) col2_data[i] = (long) (raw.get(i + halfSize) * max_mul);
 
+//            if(datasetName.equals("Stocks-UK")){
+//                System.out.println(Arrays.toString(col1_data));
+//            }
             int block_size = 512; // 选择一个 block size 做比较
 //            int repeatTime = 200;
-            byte[] encoded_result1 = new byte[col1_data.length * 4];
-            byte[] encoded_result2 = new byte[col2_data.length * 4];
+            byte[] encoded_result1 = new byte[col1_data.length * 8];
+            byte[] encoded_result2 = new byte[col2_data.length * 8];
 
             // 编码（复用你的 Encoder）
-            int length1 = SubcolumnTest.Encoder(col1_data, block_size, encoded_result1);
-            int length2 = SubcolumnTest.Encoder(col2_data, block_size, encoded_result2);
+            int length1 = SubcolumnLongTest.Encoder(col1_data, block_size, encoded_result1);
+            int length2 = SubcolumnLongTest.Encoder(col2_data, block_size, encoded_result2);
 
             int upper = queryRange.containsKey(datasetName) ? queryRange.get(datasetName) : Integer.MAX_VALUE;
 
@@ -961,6 +985,9 @@ public class SubcolumnMaterializeR1D8 {
             Query(encoded_result1, upper, res1, len1);
             Query(encoded_result2, upper, res2, len2);
 
+            double selectivity = 0;
+            double phi = 0;
+            int match = 0;
             tStart = System.nanoTime();
             for (int r = 0; r < repeatTime; r++) {
                 // run both queries (they are pure functions on encoded bytes)
@@ -985,30 +1012,31 @@ public class SubcolumnMaterializeR1D8 {
 //System.out.println(len1[0]);
 //                System.out.println(len2[0]);
 //// 并行设置bit
-//                long[] bits1 = new long[(halfSize + 63) / 64];
-//                long[] bits2 = new long[(halfSize + 63) / 64];
-//
-//// 设置bit
-//                for (int i = 0; i < len1[0]; i++) {
-//                    int pos = res1[i];
-//                    bits1[pos >> 6] |= (1L << (pos & 0x3F));
-//                }
-//
-//                for (int i = 0; i < len2[0]; i++) {
-//                    int pos = res2[i];
-//                    bits2[pos >> 6] |= (1L << (pos & 0x3F));
-//                }
-//
-//// 求交集并计数
-//                int match = 0;
-//                for (int i = 0; i < bits1.length; i++) {
-//                    long intersection = bits1[i] & bits2[i];
-//                    match += Long.bitCount(intersection);
-//                }
-//                System.out.println(computeSelectivity(len1[0],len2[0],halfSize,match));
+                long[] bits1 = new long[(halfSize + 63) / 64];
+                long[] bits2 = new long[(halfSize + 63) / 64];
 
+// 设置bit
+                for (int i = 0; i < len1[0]; i++) {
+                    int pos = res1[i];
+                    bits1[pos >> 6] |= (1L << (pos & 0x3F));
+                }
+
+                for (int i = 0; i < len2[0]; i++) {
+                    int pos = res2[i];
+                    bits2[pos >> 6] |= (1L << (pos & 0x3F));
+                }
+
+// 求交集并计数
+                match = 0;
+                for (int i = 0; i < bits1.length; i++) {
+                    long intersection = bits1[i] & bits2[i];
+                    match += Long.bitCount(intersection);
+                }
             }
             tEnd = System.nanoTime();
+            selectivity = computeSelectivity(len1[0],len2[0],halfSize,match);
+            phi  = phiCoefficient(len1[0],len2[0],halfSize,match);
+            System.out.println(len1[0]+","+len2[0]);
             long lmParallelTime = (tEnd - tStart) / repeatTime;
             System.out.println("LM-parallel avg ns: " + lmParallelTime);
 
@@ -1027,6 +1055,8 @@ public class SubcolumnMaterializeR1D8 {
                     "Sub-columns",
                     String.valueOf(lmPipelinedTime),
                     String.valueOf(lmParallelTime),
+                    String.valueOf(selectivity),
+                    String.valueOf(phi),
                     String.valueOf(totalSize)
             };
             writer.writeRecord(record);
