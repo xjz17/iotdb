@@ -185,7 +185,7 @@ public class SubcolumnSumWithNULLTest {
 
         int block_size = 512;
 
-        int repeatTime = 200;
+        int repeatTime = 500;
 
         // repeatTime = 1;
 
