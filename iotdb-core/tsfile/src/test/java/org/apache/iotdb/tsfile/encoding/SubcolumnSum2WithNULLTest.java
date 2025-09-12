@@ -260,7 +260,7 @@ return result_length[0];
         queryRange.put("Wind-Speed", 60);
         queryRange.put("Wine-Tasting", 10);
 
-        int repeatTime = 200;
+        int repeatTime = 500;
 
         // repeatTime = 1;
 
