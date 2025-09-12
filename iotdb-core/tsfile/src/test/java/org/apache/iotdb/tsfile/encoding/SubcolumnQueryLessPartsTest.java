@@ -537,8 +537,7 @@ public class SubcolumnQueryLessPartsTest {
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
+        // int[] block_size_list = { 512 };
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
@@ -553,6 +552,10 @@ public class SubcolumnQueryLessPartsTest {
         queryRange.put("Stocks-USA", 6000);
         queryRange.put("Wind-Speed", 60);
         queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
 
         int repeatTime = 200;
 
@@ -623,8 +626,8 @@ public class SubcolumnQueryLessPartsTest {
 
                 System.out.println(max_decimal);
 
-                byte[] encoded_result1 = new byte[col1_data.length * 4];
-                byte[] encoded_result2 = new byte[col2_data.length * 4];
+                byte[] encoded_result1 = new byte[col1_data.length * 8];
+                byte[] encoded_result2 = new byte[col2_data.length * 8];
 
                 long encodeTime = 0;
                 long decodeTime = 0;
@@ -654,11 +657,7 @@ public class SubcolumnQueryLessPartsTest {
 
                 double ratioTmp;
 
-                if (integerDatasets.contains(datasetName)) {
-                    ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                } else {
-                    ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-                }
+                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
 
                 ratio += ratioTmp;
 

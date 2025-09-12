@@ -14,9 +14,9 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnQueryEqualTest {
+public class SubcolumnQueryGreaterNewTest {
 
-    public static void Query(byte[] encoded_result, int target) {
+    public static void Query(byte[] encoded_result, int lower_bound) {
 
         int encode_pos = 0;
 
@@ -37,7 +37,7 @@ public class SubcolumnQueryEqualTest {
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockQueryIndex(encoded_result, i, block_size,
-                    block_size, encode_pos, target,
+                    block_size, encode_pos, lower_bound,
                     result, result_length);
         }
 
@@ -48,7 +48,7 @@ public class SubcolumnQueryEqualTest {
                 int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
                         ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
                         ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-                if (value == target) {
+                if (value > lower_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
                 }
@@ -56,14 +56,14 @@ public class SubcolumnQueryEqualTest {
             }
         } else {
             encode_pos = BlockQueryIndex(encoded_result, num_blocks, block_size,
-                    remainder, encode_pos, target,
+                    remainder, encode_pos, lower_bound,
                     result, result_length);
         }
 
     }
 
     public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int target, int[] result, int[] result_length) {
+            int encode_pos, int lower_bound, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
         min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
@@ -75,18 +75,21 @@ public class SubcolumnQueryEqualTest {
         int m = encoded_result[encode_pos];
         encode_pos += 1;
 
-        target -= min_delta[0];
+        lower_bound -= min_delta[0];
 
-        // 候选索引列表，当前分列值和 target 相应值相等的索引
-        int[] candidate_indices = new int[remainder];
-        int candidate_length = 0;
+        // 候选索引列表，当前分列值和 lower_bound 相应值相等的索引
+        // int[] candidate_indices = new int[remainder];
+
+        int[] currentCandidates = candidateBuffer1;
+        int[] nextCandidates = candidateBuffer2;
+        int currentLength = 0;
         for (int i = 0; i < remainder; i++) {
-            candidate_indices[i] = i;
-            candidate_length++;
+            currentCandidates[i] = i;
+            currentLength++;
         }
 
         if (m == 0) {
-            if (target == 0) {
+            if (lower_bound < 0) {
                 for (int i = 0; i < remainder; i++) {
                     result[result_length[0]] = block_size * block_index + i;
                     result_length[0]++;
@@ -116,7 +119,7 @@ public class SubcolumnQueryEqualTest {
             int type = encodingType[i];
             if (type == 0) {
 
-                if (target < 0) {
+                if (lower_bound <= 0) {
                     encode_pos *= 8;
                     encode_pos += bitWidthList[i] * remainder;
                     encode_pos = (encode_pos + 7) / 8;
@@ -125,27 +128,26 @@ public class SubcolumnQueryEqualTest {
 
                 encode_pos *= 8;
 
-                int new_length = 0;
-                for (int j = 0; j < candidate_length; j++) {
-                    int index = candidate_indices[j];
+                int nextLength = 0;
+                for (int j = 0; j < currentLength; j++) {
+                    int index = currentCandidates[j];
 
                     subcolumnList[i][index] = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (target >> (i * beta)) & ((1 << beta) - 1);
-                    // if (subcolumnList[i][index] < value) {
-                    // result[result_length[0]] = block_size * block_index + index;
-                    // result_length[0]++;
-                    // } else if (subcolumnList[i][index] == value) {
-                    // candidate_indices[new_length] = index;
-                    // new_length++;
-                    // }
-                    if (subcolumnList[i][index] == value) {
-                        candidate_indices[new_length] = index;
-                        new_length++;
+                    int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+                    if (subcolumnList[i][index] > value) {
+                        result[result_length[0]] = block_size * block_index + index;
+                        result_length[0]++;
+                    } else if (subcolumnList[i][index] == value) {
+                        nextCandidates[nextLength] = index;
+                        nextLength++;
                     }
                 }
 
-                candidate_length = new_length;
+                int[] tmp = currentCandidates;
+                currentCandidates = nextCandidates;
+                nextCandidates = tmp;
+                currentLength = nextLength;
 
                 encode_pos += remainder * bitWidthList[i];
                 encode_pos = (encode_pos + 7) / 8;
@@ -156,7 +158,7 @@ public class SubcolumnQueryEqualTest {
 
                 encode_pos += 2;
 
-                if (target < 0) {
+                if (lower_bound <= 0) {
                     encode_pos *= 8;
                     encode_pos += bw * index;
                     encode_pos = (encode_pos + 7) / 8;
@@ -174,13 +176,13 @@ public class SubcolumnQueryEqualTest {
                 encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
                         rle_values);
 
-                int new_length = 0;
+                int nextLength = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
-                int value = (target >> (i * beta)) & ((1 << beta) - 1);
+                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
 
-                for (int j = 0; j < candidate_length; j++) {
-                    int index_candidate = candidate_indices[j];
+                for (int j = 0; j < currentLength; j++) {
+                    int index_candidate = currentCandidates[j];
 
                     while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
                         currentPos += run_length[rleIndex];
@@ -188,39 +190,37 @@ public class SubcolumnQueryEqualTest {
                     }
 
                     if (rleIndex < index) {
-                        // if (rle_values[rleIndex] < value) {
-                        // result[result_length[0]] = block_size * block_index + index_candidate;
-                        // result_length[0]++;
-                        // } else if (rle_values[rleIndex] == value) {
-                        // candidate_indices[new_length] = index_candidate;
-                        // new_length++;
-                        // }
-                        if (rle_values[rleIndex] == value) {
-                            candidate_indices[new_length] = index_candidate;
-                            new_length++;
+                        if (rle_values[rleIndex] > value) {
+                            result[result_length[0]] = block_size * block_index + index_candidate;
+                            result_length[0]++;
+                        } else if (rle_values[rleIndex] == value) {
+                            nextCandidates[nextLength] = index_candidate;
+                            nextLength++;
                         }
                     }
                 }
 
-                candidate_length = new_length;
+                int[] temp = currentCandidates;
+                currentCandidates = nextCandidates;
+                nextCandidates = temp;
+                currentLength = nextLength;
 
             }
         }
 
-        // if (target <= 0) {
-        // for (int i = 0; i < remainder; i++) {
-        // result[result_length[0]] = block_size * block_index + i;
-        // result_length[0]++;
-        // }
-        // return encode_pos;
-        // }
-        for (int i = 0; i < candidate_length; i++) {
-            result[result_length[0]] = block_size * block_index + candidate_indices[i];
-            result_length[0]++;
+        if (lower_bound <= 0) {
+            for (int i = 0; i < remainder; i++) {
+                result[result_length[0]] = block_size * block_index + i;
+                result_length[0]++;
+            }
+            return encode_pos;
         }
 
         return encode_pos;
     }
+
+    private static int[] candidateBuffer1 = new int[8192];
+    private static int[] candidateBuffer2 = new int[8192];
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -254,29 +254,29 @@ public class SubcolumnQueryEqualTest {
 
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; // 修改为你本地路径
-        String input_parent_dir = parent_dir + "dataset/";
-        String output_parent_dir = parent_dir + "result/query_parquetproto/";
-        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; // "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
-        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                24, 25, 26, 27, 28, 29, 30, 31 };
+        String input_parent_dir = parent_dir + "dataset/";
+
+        String output_parent_dir = parent_dir + "result/query_beta_1/";
+        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         int block_size = 512;
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
 
         int repeatTime = 200;
 
@@ -285,152 +285,147 @@ public class SubcolumnQueryEqualTest {
         List<String> integerDatasets = new ArrayList<>();
         integerDatasets.add("Wine-Tasting");
 
-       int beta = 1;
-            String outputPath = output_parent_dir + "parquetselect_query_equal_demo.csv";
+        int beta = 1;
+        String outputPath = output_parent_dir + "subcolumn_query_greater_beta_" + beta + ".csv";
 
-            CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
-            writer.setRecordDelimiter('\n');
+        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
 
-            String[] head = {
-                    "Dataset",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head);
+        String[] head = {
+                "Dataset",
+                "Encoding Algorithm",
+                "Encoding Time",
+                "Decoding Time",
+                "Points",
+                "Compressed Size",
+                "Compression Ratio"
+        };
+        writer.writeRecord(head);
 
-            File directory = new File(input_parent_dir);
-            // File[] csvFiles = directory.listFiles();
-            File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+        File directory = new File(input_parent_dir);
+        // File[] csvFiles = directory.listFiles();
+        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
-            for (File file : csvFiles) {
-                String datasetName = extractFileName(file.toString());
-                System.out.println(datasetName);
+        for (File file : csvFiles) {
+            String datasetName = extractFileName(file.toString());
+            System.out.println(datasetName);
 
-                InputStream inputStream = Files.newInputStream(file.toPath());
+            InputStream inputStream = Files.newInputStream(file.toPath());
 
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Float> data1 = new ArrayList<>();
+            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+            ArrayList<Float> data1 = new ArrayList<>();
 
-                int max_decimal = 0;
-                while (loader.readRecord()) {
-                    String f_str = loader.getValues()[0];
-                    if (f_str.isEmpty()) {
-                        continue;
-                    }
-                    int cur_decimal = getDecimalPrecision(f_str);
-                    if (cur_decimal > max_decimal)
-                        max_decimal = cur_decimal;
-                    data1.add(Float.valueOf(f_str));
+            int max_decimal = 0;
+            while (loader.readRecord()) {
+                String f_str = loader.getValues()[0];
+                if (f_str.isEmpty()) {
+                    continue;
                 }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                int max_mul = (int) Math.pow(10, max_decimal);
-                for (int i = 0; i < data1.size(); i++) {
-                    data2_arr[i] = (int) (data1.get(i) * max_mul);
-                }
-
-                System.out.println(max_decimal);
-                byte[] encoded_result = new byte[data2_arr.length * 4];
-
-                long encodeTime = 0;
-                long decodeTime = 0;
-                double ratio = 0;
-                double compressed_size = 0;
-
-                int length = 0;
-
-                long s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnBetaTest.Encoder(data2_arr, block_size, encoded_result, beta);
-                }
-
-                long e = System.nanoTime();
-                encodeTime += ((e - s) / repeatTime);
-                compressed_size += length;
-
-                double ratioTmp;
-
-                if (integerDatasets.contains(datasetName)) {
-                    ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                } else {
-                    ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-                }
-
-                System.out.println("Query");
-
-                s = System.nanoTime();
-
-                for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    SubcolumnQueryEqualTest.Query(encoded_result, queryRange.get(datasetName));
-                }
-
-                e = System.nanoTime();
-                decodeTime += ((e - s) / repeatTime);
-
-                String[] record = {
-                        datasetName,
-                        "Sub-columns",
-                        String.valueOf(encodeTime),
-                        String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
-                        String.valueOf(compressed_size),
-                        String.valueOf(ratio)
-                };
-                writer.writeRecord(record);
-
-                System.out.println("beta: " + beta);
-
-                System.out.println(ratio);
+                int cur_decimal = getDecimalPrecision(f_str);
+                if (cur_decimal > max_decimal)
+                    max_decimal = cur_decimal;
+                data1.add(Float.valueOf(f_str));
+            }
+            inputStream.close();
+            int[] data2_arr = new int[data1.size()];
+            int max_mul = (int) Math.pow(10, max_decimal);
+            for (int i = 0; i < data1.size(); i++) {
+                data2_arr[i] = (int) (data1.get(i) * max_mul);
             }
 
-            writer.close();
-    }
+            System.out.println(max_decimal);
+            byte[] encoded_result = new byte[data2_arr.length * 4];
 
+            long encodeTime = 0;
+            long decodeTime = 0;
+            double ratio = 0;
+            double compressed_size = 0;
+
+            int length = 0;
+
+            long s = System.nanoTime();
+            for (int repeat = 0; repeat < repeatTime; repeat++) {
+                length = SubcolumnBetaTest.Encoder(data2_arr, block_size, encoded_result, beta);
+            }
+
+            long e = System.nanoTime();
+            encodeTime += ((e - s) / repeatTime);
+            compressed_size += length;
+
+            double ratioTmp;
+
+            if (integerDatasets.contains(datasetName)) {
+                ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+            } else {
+                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+            }
+
+            System.out.println("Query");
+
+            s = System.nanoTime();
+
+            for (int repeat = 0; repeat < repeatTime; repeat++) {
+                SubcolumnQueryGreaterTest.Query(encoded_result, queryRange.get(datasetName));
+            }
+
+            e = System.nanoTime();
+            decodeTime += ((e - s) / repeatTime);
+
+            String[] record = {
+                    datasetName,
+                    "Sub-columns",
+                    String.valueOf(encodeTime),
+                    String.valueOf(decodeTime),
+                    String.valueOf(data1.size()),
+                    String.valueOf(compressed_size),
+                    String.valueOf(ratio)
+            };
+            writer.writeRecord(record);
+
+            System.out.println("beta: " + beta);
+
+            System.out.println(ratio);
+        }
+
+        writer.close();
+
+    }
 
     @Test
     public void testQueryBlock() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
-        
+
         String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_block/";
         // String output_parent_dir = parent_dir + "result/query_vs_block/";
 
-        // int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-
-        int[] block_size_list = { 512 };
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         HashMap<String, Integer> queryRange = new HashMap<>();
-        
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
+
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
         queryRange.put("Wine-Tasting", 10);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
         queryRange.put("Gov10", 100000);
 
-        int repeatTime = 200;
+        int repeatTime = 100;
 
         // repeatTime = 1;
 
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
-
         for (int block_size : block_size_list) {
-            String outputPath = output_parent_dir + "subcolumn_query_equal_block_" + block_size + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_query_greater_block_new_" + block_size + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -495,14 +490,12 @@ public class SubcolumnQueryEqualTest {
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 compressed_size += length;
-                
+
                 double ratioTmp;
 
-                if (integerDatasets.contains(datasetName)) {
-                    ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                } else {
-                    ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-                }
+                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+
+                ratio = ratioTmp;
 
                 System.out.println("Query");
 
@@ -540,28 +533,28 @@ public class SubcolumnQueryEqualTest {
         String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
-        
+
         String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_beta/";
         // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-            24, 25, 26, 27, 28, 29, 30, 31 };
-        
+                24, 25, 26, 27, 28, 29, 30, 31 };
+
         int block_size = 512;
 
         HashMap<String, Integer> queryRange = new HashMap<>();
-        
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
 
         int repeatTime = 200;
 
@@ -571,7 +564,7 @@ public class SubcolumnQueryEqualTest {
         integerDatasets.add("Wine-Tasting");
 
         for (int beta : beta_list) {
-            String outputPath = output_parent_dir + "subcolumn_query_equal_beta_" + beta + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_query_greater_beta_" + beta + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -636,7 +629,7 @@ public class SubcolumnQueryEqualTest {
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
                 compressed_size += length;
-                
+
                 double ratioTmp;
 
                 if (integerDatasets.contains(datasetName)) {
@@ -650,7 +643,7 @@ public class SubcolumnQueryEqualTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    SubcolumnQueryEqualTest.Query(encoded_result, queryRange.get(datasetName));
+                    SubcolumnQueryGreaterTest.Query(encoded_result, queryRange.get(datasetName));
                 }
 
                 e = System.nanoTime();

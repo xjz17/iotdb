@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 
-public class VBPQueryEqualTest {
+public class VBPQuerySumTest {
 
     public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
@@ -100,8 +100,7 @@ public class VBPQueryEqualTest {
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, ArrayList<VBPIndexLong> indexList, int[] result, int[] result_length,
-            int bound_query_range) {
+            int encode_pos, ArrayList<VBPIndexLong> indexList, long[] result, int[] result_length) {
 
         long min_value = bytes2Long(encoded_result, encode_pos, 8);
         encode_pos += 8;
@@ -111,14 +110,14 @@ public class VBPQueryEqualTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        BitSet bitset_result = idx.select(HBPIndex.Op.EQ, bound_query_range);
+        result[0] += idx.sum() + (min_value * remainder);
 
-        for (int i = 0; i < bitset_result.length(); i++) {
-            if (bitset_result.get(i)) {
-                result[result_length[0]] = i + (block_index * block_size);
-                result_length[0]++;
-            }
-        }
+        // for (int i = 0; i < remainder; i++) {
+        //     long value = idx.getCode(i) + min_value;
+        //     if (result[0] < value) {
+        //         result[0] = value;
+        //     }
+        // }
 
         return encode_pos;
 
@@ -158,7 +157,7 @@ public class VBPQueryEqualTest {
         return encode_pos;
     }
 
-    public static void Decoder(byte[] encoded_result, ArrayList<VBPIndexLong> indexList, int bound_query_range) {
+    public static void Decoder(byte[] encoded_result, ArrayList<VBPIndexLong> indexList) {
         int encode_pos = 0;
 
         int data_length = bytes2Integer(encoded_result, encode_pos, 4);
@@ -169,12 +168,13 @@ public class VBPQueryEqualTest {
 
         int num_blocks = data_length / block_size;
 
-        int[] result = new int[data_length];
+        long[] result = new long[1];
+        result[0] = Long.MIN_VALUE;
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, indexList, result,
-                    result_length, bound_query_range);
+                    result_length);
         }
 
         int remainder = data_length % block_size;
@@ -187,7 +187,7 @@ public class VBPQueryEqualTest {
         // }
         // } else {
         encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
-                encode_pos, indexList, result, result_length, bound_query_range);
+                encode_pos, indexList, result, result_length);
         // }
     }
 
@@ -241,26 +241,8 @@ public class VBPQueryEqualTest {
 
         // String output_parent_dir = parent_dir + "result/vbp_query/";
 
-        String outputPath = output_parent_dir + "vbp_query_equal.csv";
+        String outputPath = output_parent_dir + "vbp_query_sum.csv";
         // String output_parent_dir = parent_dir + "result/query_vs_beta/";
-
-        HashMap<String, Integer> queryRange = new HashMap<>();
-
-        queryRange.put("Bird-migration", 2500000);
-        queryRange.put("Bitcoin-price", 160000000);
-        queryRange.put("City-temp", 480);
-        queryRange.put("Dewpoint-temp", 9500);
-        queryRange.put("IR-bio-temp", -300);
-        queryRange.put("PM10-dust", 1000);
-        queryRange.put("Stocks-DE", 40000);
-        queryRange.put("Stocks-UK", 20000);
-        queryRange.put("Stocks-USA", 5000);
-        queryRange.put("Wind-Speed", 50);
-        queryRange.put("Wine-Tasting", 0);
-        queryRange.put("Arade4", 10000000);
-        queryRange.put("EPM-Education", 200);
-        queryRange.put("POI-lat", 0);
-        queryRange.put("Gov10", 100000);
 
         int block_size = 512;
 
@@ -290,9 +272,6 @@ public class VBPQueryEqualTest {
         for (File file : csvFiles) {
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
-            if (!queryRange.containsKey(datasetName)) {
-                continue;
-            }
 
             InputStream inputStream = Files.newInputStream(file.toPath());
 
@@ -371,7 +350,7 @@ public class VBPQueryEqualTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Decoder(encoded_result, indexList, queryRange.get(datasetName));
+                Decoder(encoded_result, indexList);
             }
 
             e = System.nanoTime();

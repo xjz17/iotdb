@@ -100,7 +100,8 @@ public class VBPQuerySmallerTest {
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, ArrayList<VBPIndexLong> indexList, int[] result, int[] result_length, int bound_query_range) {
+            int encode_pos, ArrayList<VBPIndexLong> indexList, int[] result, int[] result_length,
+            int bound_query_range) {
 
         long min_value = bytes2Long(encoded_result, encode_pos, 8);
         encode_pos += 8;
@@ -172,7 +173,8 @@ public class VBPQuerySmallerTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, indexList, result, result_length, bound_query_range);
+            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, indexList, result,
+                    result_length, bound_query_range);
         }
 
         int remainder = data_length % block_size;
@@ -221,26 +223,26 @@ public class VBPQuerySmallerTest {
 
     @Test
     public void test0() throws IOException {
-//        String parent_dir = "D:/github/xjz17/subcolumn/";
-//        // String parent_dir = "D:/encoding-subcolumn/";
-//
-//        String input_parent_dir = parent_dir + "dataset/";
-//
-//        String output_parent_dir = "D:/encoding-subcolumn/result/";
-//        // String output_parent_dir = parent_dir + "result/";
-//
-//        String outputPath = output_parent_dir + "vbp_query.csv";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // // String parent_dir = "D:/encoding-subcolumn/";
+        //
+        String input_parent_dir = parent_dir + "dataset/";
+        //
+        String output_parent_dir = "D:/encoding-subcolumn/result/";
+        // // String output_parent_dir = parent_dir + "result/";
+        //
+        // String outputPath = output_parent_dir + "vbp_query.csv";
 
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; //"D:/github/xjz17/subcolumn/";
+        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        // //"D:/github/xjz17/subcolumn/";
         // String parent_dir = "D:/encoding-subcolumn/";
 
-        String input_parent_dir = parent_dir + "dataset/";
+        // String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/vbp_query/";
+        // String output_parent_dir = parent_dir + "result/vbp_query/";
 
-        String outputPath = output_parent_dir + "vbp_query_smaller.csv";
+        String outputPath = output_parent_dir + "vbp_query_less.csv";
         // String output_parent_dir = parent_dir + "result/query_vs_beta/";
-
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
@@ -255,6 +257,10 @@ public class VBPQuerySmallerTest {
         queryRange.put("Stocks-USA", 5000);
         queryRange.put("Wind-Speed", 50);
         queryRange.put("Wine-Tasting", 0);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
 
         int block_size = 512;
 
@@ -284,7 +290,7 @@ public class VBPQuerySmallerTest {
         for (File file : csvFiles) {
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
-            if(!queryRange.containsKey(datasetName)){
+            if (!queryRange.containsKey(datasetName)) {
                 continue;
             }
 
@@ -365,7 +371,7 @@ public class VBPQuerySmallerTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Decoder(encoded_result, indexList,queryRange.get(datasetName));
+                Decoder(encoded_result, indexList, queryRange.get(datasetName));
             }
 
             e = System.nanoTime();

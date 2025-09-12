@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 
-public class VBPQueryEqualTest {
+public class VBPQuerySmallerPartsTest {
 
     public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
@@ -99,28 +99,35 @@ public class VBPQueryEqualTest {
 
     }
 
-    public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, ArrayList<VBPIndexLong> indexList, int[] result, int[] result_length,
+    public static void BlockDecoder(byte[] encoded_result1, byte[] encoded_result2, int block_index, int block_size1, int block_size2,
+            int[] encode_pos, ArrayList<VBPIndexLong> indexList1, ArrayList<VBPIndexLong> indexList2, int[] result, int[] result_length,
             int bound_query_range) {
 
-        long min_value = bytes2Long(encoded_result, encode_pos, 8);
-        encode_pos += 8;
+        long min_value1 = bytes2Long(encoded_result1, encode_pos[0], 8);
+        encode_pos[0] += 8;
 
-        int bw = bytes2Integer(encoded_result, encode_pos, 4);
-        encode_pos += 4;
+        int bw1 = bytes2Integer(encoded_result1, encode_pos[0], 4);
+        encode_pos[0] += 4;
 
-        VBPIndexLong idx = indexList.get(block_index);
+        long min_value2 = bytes2Long(encoded_result2, encode_pos[1], 8);
+        encode_pos[1] += 8;
 
-        BitSet bitset_result = idx.select(HBPIndex.Op.EQ, bound_query_range);
+        int bw2 = bytes2Integer(encoded_result2, encode_pos[1], 4);
+        encode_pos[1] += 4;
 
-        for (int i = 0; i < bitset_result.length(); i++) {
-            if (bitset_result.get(i)) {
-                result[result_length[0]] = i + (block_index * block_size);
+
+        VBPIndexLong idx1 = indexList1.get(block_index);
+        VBPIndexLong idx2 = indexList2.get(block_index);
+
+        BitSet bitset_result1 = idx1.select(HBPIndex.Op.LT, bound_query_range);
+        BitSet bitset_result2 = idx2.select(HBPIndex.Op.LT, bound_query_range);
+
+        for (int i = 0; i < bitset_result1.length(); i++) {
+            if (bitset_result1.get(i) && bitset_result2.get(i)) {
+                result[result_length[0]] = i + (block_index * block_size1);
                 result_length[0]++;
             }
         }
-
-        return encode_pos;
 
     }
 
@@ -158,26 +165,33 @@ public class VBPQueryEqualTest {
         return encode_pos;
     }
 
-    public static void Decoder(byte[] encoded_result, ArrayList<VBPIndexLong> indexList, int bound_query_range) {
-        int encode_pos = 0;
+    public static void Decoder(byte[] encoded_result1, byte[] encoded_result2, ArrayList<VBPIndexLong> indexList1, ArrayList<VBPIndexLong> indexList2, int bound_query_range) {
+        int[] encode_pos = new int[2];
 
-        int data_length = bytes2Integer(encoded_result, encode_pos, 4);
-        encode_pos += 4;
+        int data_length1 = bytes2Integer(encoded_result1, encode_pos[0], 4);
+        encode_pos[0] += 4;
 
-        int block_size = bytes2Integer(encoded_result, encode_pos, 4);
-        encode_pos += 4;
+        int block_size1 = bytes2Integer(encoded_result1, encode_pos[0], 4);
+        encode_pos[0] += 4;
 
-        int num_blocks = data_length / block_size;
+        int num_blocks = data_length1 / block_size1;
 
-        int[] result = new int[data_length];
+        int data_length2 = bytes2Integer(encoded_result2, encode_pos[1], 4);
+        encode_pos[1] += 4;
+
+        int block_size2 = bytes2Integer(encoded_result2, encode_pos[1], 4);
+        encode_pos[1] += 4;
+
+
+        int[] result = new int[data_length1];
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, indexList, result,
+            BlockDecoder(encoded_result1, encoded_result2, i, block_size1, block_size2, encode_pos, indexList1, indexList2, result,
                     result_length, bound_query_range);
         }
 
-        int remainder = data_length % block_size;
+        int remainder = data_length1 % block_size1;
 
         // if (remainder <= 3) {
         // for (int i = 0; i < remainder; i++) {
@@ -186,8 +200,8 @@ public class VBPQueryEqualTest {
         // encode_pos += 8;
         // }
         // } else {
-        encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
-                encode_pos, indexList, result, result_length, bound_query_range);
+        BlockDecoder(encoded_result1, encoded_result2, num_blocks, block_size1, block_size2,
+                encode_pos, indexList1, indexList2, result, result_length, bound_query_range);
         // }
     }
 
@@ -241,7 +255,7 @@ public class VBPQueryEqualTest {
 
         // String output_parent_dir = parent_dir + "result/vbp_query/";
 
-        String outputPath = output_parent_dir + "vbp_query_equal.csv";
+        String outputPath = output_parent_dir + "vbp_query_less_parts.csv";
         // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
@@ -317,21 +331,26 @@ public class VBPQueryEqualTest {
                 max_decimal = 17;
             }
 
-            long[] data2_arr = new long[data1.size()];
+            // long[] data2_arr = new long[data1.size()];
+            int totalSize = data1.size();
+            int halfSize = totalSize / 2;
+
+            long[] col1_data = new long[halfSize];
+            long[] col2_data = new long[halfSize];
 
             long max_mul = (long) Math.pow(10, max_decimal);
-            for (int i = 0; i < data1.size(); i++) {
-                data2_arr[i] = (long) (data1.get(i) * max_mul);
+            for (int i = 0; i < halfSize; i++) {
+                col1_data[i] = (long) (data1.get(i) * max_mul);
             }
 
-            // test
-            // for (int i = 0; i < data2_arr.length; i++) {
-            // System.out.print(data2_arr[i] + " ");
-            // }
-            // System.out.println();
+            for (int i = 0; i < halfSize; i++) {
+                col2_data[i] = (long) (data1.get(i + halfSize) * max_mul);
+            }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 8];
+
+            byte[] encoded_result1 = new byte[col1_data.length * 8];
+            byte[] encoded_result2 = new byte[col2_data.length * 8];
 
             long encodeTime = 0;
             long decodeTime = 0;
@@ -340,21 +359,29 @@ public class VBPQueryEqualTest {
 
             int length = 0;
 
-            ArrayList<VBPIndexLong> indexList = new ArrayList<>();
+            ArrayList<VBPIndexLong> indexList1 = new ArrayList<>();
+            ArrayList<VBPIndexLong> indexList2 = new ArrayList<>();
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 // clear indexList
-                indexList.clear();
+                indexList1.clear();
+                indexList2.clear();
 
-                length = Encoder(data2_arr, block_size, indexList, encoded_result);
+                length = Encoder(col1_data, block_size, indexList1, encoded_result1);
+
+                length = Encoder(col2_data, block_size, indexList2, encoded_result2);
             }
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
             compressed_size += length;
 
-            for (VBPIndexLong idx : indexList) {
+            for (VBPIndexLong idx : indexList1) {
+                compressed_size += idx.k * idx.wordsPerPlane * Long.BYTES;
+            }
+
+            for (VBPIndexLong idx : indexList2) {
                 compressed_size += idx.k * idx.wordsPerPlane * Long.BYTES;
             }
 
@@ -371,7 +398,7 @@ public class VBPQueryEqualTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Decoder(encoded_result, indexList, queryRange.get(datasetName));
+                Decoder(encoded_result1, encoded_result2, indexList1, indexList2, queryRange.get(datasetName));
             }
 
             e = System.nanoTime();

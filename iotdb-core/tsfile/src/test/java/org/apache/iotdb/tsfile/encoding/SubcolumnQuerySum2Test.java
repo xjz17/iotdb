@@ -388,6 +388,10 @@ public class SubcolumnQuerySum2Test {
         queryRange.put("Stocks-USA", 6000);
         queryRange.put("Wind-Speed", 60);
         queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
 
         int repeatTime = 200;
 

@@ -114,7 +114,7 @@ public class VBPIndexLongQueryTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        BitSet bitset_result = idx.select(HBPIndex.Op.GT, 0);
+        BitSet bitset_result = idx.select(HBPIndex.Op.LT, 0);
 
         for (int i = 0; i < bitset_result.length(); i++) {
             if (bitset_result.get(i)) {
@@ -233,7 +233,7 @@ public class VBPIndexLongQueryTest {
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "vbp_query.csv";
+        String outputPath = output_parent_dir + "vbp_query_less0.csv";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 

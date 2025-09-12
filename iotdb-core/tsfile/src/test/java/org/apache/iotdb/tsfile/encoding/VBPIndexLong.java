@@ -6,9 +6,9 @@ public class VBPIndexLong {
 
     public static final int W = 64; // machine word size
 
-    public final int k;              // bits per code
-    public final int n;              // number of rows
-    public final int wordsPerPlane;  // how many 64-bit words needed per plane
+    public final int k; // bits per code
+    public final int n; // number of rows
+    public final int wordsPerPlane; // how many 64-bit words needed per plane
     // planes[t][w] : bitplane for bit t (0=LSB ... k-1=MSB), word index w
     public final long[][] planes;
 
@@ -20,7 +20,7 @@ public class VBPIndexLong {
      */
     public VBPIndexLong(int kBits, long[] codes) {
         // if (kBits <= 0 || kBits >= W) {
-        //     throw new IllegalArgumentException("k must be in [1, 63]");
+        // throw new IllegalArgumentException("k must be in [1, 63]");
         // }
 
         this.k = kBits;
@@ -61,11 +61,14 @@ public class VBPIndexLong {
         return bs.cardinality();
     }
 
-    public int size() { return n; }
+    public int size() {
+        return n;
+    }
 
     /** Reconstruct a code at given row (slow path). */
     public long getCode(int row) {
-        if (row < 0 || row >= n) throw new IndexOutOfBoundsException();
+        if (row < 0 || row >= n)
+            throw new IndexOutOfBoundsException();
         int wordIdx = row / W;
         int bitPos = row % W;
         long code = 0;
@@ -90,8 +93,8 @@ public class VBPIndexLong {
             long validMask = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
 
             long E = validMask; // equal-so-far
-            long L = 0L;        // less-than
-            long G = 0L;        // greater-than
+            long L = 0L; // less-than
+            long G = 0L; // greater-than
 
             // iterate bits from MSB (k-1) down to 0
             for (int t = k - 1; t >= 0; t--) {
@@ -146,10 +149,89 @@ public class VBPIndexLong {
         return out;
     }
 
+    public int findMaxIndex() {
+        if (n == 0)
+            return -1;
+
+        // 初始化候选位置，开始时所有有效位置都是候选
+        long[] candidates = new long[wordsPerPlane];
+        for (int w = 0; w < wordsPerPlane; w++) {
+            int bitsInThisWord = Math.min(W, n - w * W);
+            // 为最后一个word创建有效位掩码
+            candidates[w] = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
+        }
+
+        // 从最高位(MSB)开始处理到最低位(LSB)
+        for (int t = k - 1; t >= 0; t--) {
+            long[] nextCandidates = new long[wordsPerPlane];
+            boolean hasOnes = false;
+
+            // 检查当前候选位置中是否有在第t位为1的
+            for (int w = 0; w < wordsPerPlane; w++) {
+                long onesInThisBit = planes[t][w] & candidates[w];
+                if (onesInThisBit != 0) {
+                    nextCandidates[w] = onesInThisBit;
+                    hasOnes = true;
+                }
+            }
+
+            // 如果找到了第t位为1的位置，只保留这些位置
+            // 否则，保留第t位为0的位置
+            if (hasOnes) {
+                candidates = nextCandidates;
+            } else {
+                // 保留第t位为0的位置
+                for (int w = 0; w < wordsPerPlane; w++) {
+                    candidates[w] = candidates[w] & (~planes[t][w]);
+                }
+            }
+        }
+
+        // 在剩余的候选位置中找到第一个设置的位
+        for (int w = 0; w < wordsPerPlane; w++) {
+            if (candidates[w] != 0) {
+                int bitPos = Long.numberOfTrailingZeros(candidates[w]);
+                return w * W + bitPos;
+            }
+        }
+
+        return -1;
+    }
+
+    public long sum() {
+        if (n == 0)
+            return 0L;
+
+        long totalSum = 0L;
+
+        // 对每个bit位置t，计算其对总和的贡献
+        for (int t = 0; t < k; t++) {
+            long bitContribution = 0L;
+
+            // 统计第t个bit-plane中所有为1的位的个数
+            for (int w = 0; w < wordsPerPlane; w++) {
+                // 获取当前word中的有效位掩码
+                int bitsInThisWord = Math.min(W, n - w * W);
+                long validMask = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
+
+                // 获取第t个bit-plane在当前word中的值，并应用有效位掩码
+                long planeWord = planes[t][w] & validMask;
+
+                // 统计这个word中1的个数
+                bitContribution += Long.bitCount(planeWord);
+            }
+
+            // 第t位的权重是2^t，将贡献加到总和中
+            totalSum += bitContribution << t;
+        }
+
+        return totalSum;
+    }
+
     /* ---------- Demo ---------- */
     public static void main(String[] args) {
         int k = 3;
-        long[] codes = {1, 5, 6, 1, 6, 4, 0, 7, 4, 3};
+        long[] codes = { 1, 5, 6, 1, 6, 4, 0, 7, 4, 3 };
         VBPIndexLong idx = new VBPIndexLong(k, codes);
 
         for (int i = 0; i < idx.wordsPerPlane; i++) {
@@ -178,4 +260,3 @@ public class VBPIndexLong {
         System.out.println("count(<5) = " + idx.count(HBPIndex.Op.LT, 5));
     }
 }
-

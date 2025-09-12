@@ -403,13 +403,14 @@ public class SubcolumnQueryGreaterTest {
         queryRange.put("Stocks-USA", 5000);
         queryRange.put("Wind-Speed", 50);
         queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
 
         int repeatTime = 100;
         
         // repeatTime = 1;
-
-        List<String> integerDatasets = new ArrayList<>();
-        integerDatasets.add("Wine-Tasting");
 
         for (int block_size : block_size_list) {
             String outputPath = output_parent_dir + "subcolumn_query_greater_block_" + block_size + ".csv";
@@ -460,7 +461,7 @@ public class SubcolumnQueryGreaterTest {
                 }
 
                 System.out.println(max_decimal);
-                byte[] encoded_result = new byte[data2_arr.length * 4];
+                byte[] encoded_result = new byte[data2_arr.length * 8];
 
                 long encodeTime = 0;
                 long decodeTime = 0;
@@ -480,11 +481,9 @@ public class SubcolumnQueryGreaterTest {
                 
                 double ratioTmp;
 
-                if (integerDatasets.contains(datasetName)) {
-                    ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                } else {
-                    ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-                }
+                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+
+                ratio = ratioTmp;
 
                 System.out.println("Query");
 
