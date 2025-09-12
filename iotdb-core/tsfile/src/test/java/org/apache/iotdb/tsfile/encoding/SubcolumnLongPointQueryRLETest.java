@@ -733,7 +733,7 @@ public class SubcolumnLongPointQueryRLETest {
     }
 
     public static int BlockEncoder(long[] data, int block_index, int block_size, int remainder,
-            int encode_pos, byte[] encoded_result) {
+            int encode_pos, byte[] encoded_result,int[] beta) {
         long[] min_delta = new long[3];
 
         long[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
@@ -742,8 +742,8 @@ public class SubcolumnLongPointQueryRLETest {
         long2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 8;
 
-        int beta = 2;
-        if (block_index == 0) {
+//        int beta = 2;
+//        if (block_index == 0) {
             long maxValue = 0;
             for (int j = 0; j < remainder; j++) {
                 if (data_delta[j] > maxValue) {
@@ -752,11 +752,11 @@ public class SubcolumnLongPointQueryRLETest {
             }
             int m = bitWidth(maxValue);
 
-            beta = SubcolumnRLE(data_delta, remainder, m, block_size);
-        }
+            beta[0] = SubcolumnLongTest.Subcolumn(data_delta, remainder, m, block_size);
+//        }
 
         encode_pos = SubcolumnEncoder(data_delta, encode_pos,
-                encoded_result, beta, block_size);
+                encoded_result, beta[0], block_size);
 
         return encode_pos;
     }
@@ -794,13 +794,13 @@ public class SubcolumnLongPointQueryRLETest {
 
         int remainder = data_length % block_size;
 
-//        int[] beta = new int[1];
-//        beta[0] = beta_value;
+        int[] beta = new int[1];
+        beta[0] = 2;
 
         int pre_encode_pos = encode_pos;
         for (int i = 0; i < num_blocks; i++) {
             encode_pos += 2;
-            encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result);
+            encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result,beta);
             int encode_block_length = encode_pos-pre_encode_pos;
             encoded_result[pre_encode_pos] = (byte) (encode_block_length >> 8);
             encoded_result[pre_encode_pos+1] = (byte) encode_block_length;
@@ -816,7 +816,7 @@ public class SubcolumnLongPointQueryRLETest {
             encoded_result[pre_encode_pos+1] = (byte) (remainder*4);
         } else {
             encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos,
-                    encoded_result);
+                    encoded_result,beta);
             int encode_block_length = encode_pos-pre_encode_pos;
             encoded_result[pre_encode_pos] = (byte) (encode_block_length >> 8);
             encoded_result[pre_encode_pos+1] = (byte) encode_block_length;
@@ -1042,7 +1042,7 @@ public class SubcolumnLongPointQueryRLETest {
         int block_size = 512;
 
         // int repeatTime = 100;
-        int repeatTime = 500;
+        int repeatTime = 10000;
 
         // repeatTime = 1;
 //        for (int beta : beta_list) {
@@ -1092,9 +1092,25 @@ public class SubcolumnLongPointQueryRLETest {
                 inputStream.close();
                 long[] data2_arr = new long[data1.size()];
 
+
                 int max_mul = (int) Math.pow(10, max_decimal);
                 for (int i = 0; i < data1.size(); i++) {
                     data2_arr[i] = (int) (data1.get(i) * max_mul);
+                }
+//                if(datasetName.equals("Bitcoin-price")){
+//                    data2_arr = new long[data1.size()*13];
+//                    for(int j=0;j<13;j++){
+//                        for (int i = 0; i < data1.size(); i++) {
+//                            data2_arr[i+j*data1.size()] = (int) (data1.get(i) * max_mul);
+//                        }
+//                    }
+//                }
+                data2_arr = new long[100000];
+                for(int j=0;j<100000;j++){
+                    int i = j% data1.size();
+//                        for (int i = 0; i < data1.size(); i++) {
+                    data2_arr[j] = (int) (data1.get(i) * max_mul);
+//                        }
                 }
 
                 System.out.println(max_decimal);
@@ -1118,21 +1134,23 @@ public class SubcolumnLongPointQueryRLETest {
 
                 double ratioTmp;
 
-                ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+                ratioTmp = compressed_size / (double) (data2_arr.length * Long.BYTES);
 
                 ratio += ratioTmp;
 
                 System.out.println("Query");
 
                 Random random = new Random();
-// 生成 [0, length-1] 范围内的随机整数
+                // 生成 [0, length-1] 范围内的随机整数
 
-                int max_random_value = data1.size()/block_size*block_size;
+                int max_random_value = data2_arr.length/block_size*block_size;
+                int randomNumber =   max_random_value - (block_size/2); //random.nextInt(max_random_value);max_random_value - (block_size*3/2);
 
                 s = System.nanoTime();
-
+                long total_points = 0;
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    int randomNumber = random.nextInt(max_random_value);
+//                    int randomNumber = random.nextInt(max_random_value);
+//                    total_points += (block_size - (max_random_value - randomNumber)%block_size);
                     Query(encoded_result, randomNumber);
                 }
 
@@ -1145,7 +1163,7 @@ public class SubcolumnLongPointQueryRLETest {
                         "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
+                        String.valueOf(total_points/repeatTime),
                         String.valueOf(compressed_size),
                         String.valueOf(ratio)
                 };
