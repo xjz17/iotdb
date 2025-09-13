@@ -219,28 +219,18 @@ public class ParquetSelectGreater {
             int blockCount = Math.min(blockSize, n - startIdx);
             long bits = (long) blockCount * k;
             int words = (int) ((bits + 63) / 64);
-
-            // 使用 BigInteger 按位构建（每次 setBit 返回新对象 -> 大量分配）
-            BigInteger blockBits = BigInteger.ZERO;
+            long[] buf = new long[words];
+            // 按值逐位写入（little-endian bit packing，每个 value 的最低位放在更低的 bit）
             for (int i = 0; i < blockCount; i++) {
                 int value = shifted[startIdx + i];
-                long bitPosBase = (long) i * k;
-                // 对每个位做 setBit（会产生新的 BigInteger）
+                long bitPos = (long) i * k;
                 for (int bit = 0; bit < k; bit++) {
-                    if (((value >>> bit) & 1) != 0) {
-                        blockBits = blockBits.setBit((int)(bitPosBase + bit)); // note: int cast ok since k*blockSize fits int typically
-                    }
+                    int bval = (value >>> bit) & 1;
+                    if (bval != 0) {
+                        setBit(buf, bitPos + bit, 1);
+                    } // 若为0可跳过（buf 默认 0）
                 }
             }
-
-            // 把 BigInteger 按位写回到 long[]（同样逐位 testBit）
-            long[] buf = new long[words];
-            for (long pos = 0; pos < bits; pos++) {
-                if (blockBits.testBit((int) pos)) {
-                    setBit(buf, pos, 1);
-                }
-            }
-
             blocks[b] = buf;
         }
         return blocks;
@@ -254,29 +244,14 @@ public class ParquetSelectGreater {
             int startIdx = b * blockSize;
             int blockCount = Math.min(blockSize, n - startIdx);
             for (int i = 0; i < blockCount; i++) {
-                long bitPos = (long) i * k;
-                // 用 StringBuilder 逐位构造二进制字符串（"10101..."）
-                StringBuilder sb = new StringBuilder(k);
-                for (int bit = 0; bit < k; bit++) {
-                    int bitVal = getBit(block, bitPos + bit);
-                    sb.append(bitVal == 1 ? '1' : '0');
-                }
-                // 解析字符串为 long（基数 2）——非常昂贵
-                long val = 0L;
-                try {
-                    // 使用 Long.parseLong 支持 k==32 时无符号问题（但注意上限）
-                    val = Long.parseLong(sb.toString(), 2);
-                } catch (NumberFormatException e) {
-                    // 万一解析失败（理论上不该），就跳过（这个 catch 本身也会有开销）
-                    continue;
-                }
+                long val = extractKbitValue(block, i, k); // shifted value
                 long original = val + (long) min;
                 if (original > lower) {
                     hits.add(startIdx + i);
                 }
             }
         }
-        // 转成 int[]
+        // 转为 int[]
         int[] out = new int[hits.size()];
         for (int i = 0; i < hits.size(); i++) out[i] = hits.get(i);
         return out;
@@ -426,9 +401,9 @@ public class ParquetSelectGreater {
 
             // encoding benchmark: repeatedly pack
             long s = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
+//            for (int repeat = 0; repeat < repeatTime; repeat++) {
                 packedBlocks = packToBlocks(shifted, k, block_size);
-            }
+//            }
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
 
