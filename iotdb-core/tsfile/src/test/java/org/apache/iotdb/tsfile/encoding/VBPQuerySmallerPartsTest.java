@@ -119,13 +119,30 @@ public class VBPQuerySmallerPartsTest {
         VBPIndexLong idx1 = indexList1.get(block_index);
         VBPIndexLong idx2 = indexList2.get(block_index);
 
-        BitSet bitset_result1 = idx1.select(HBPIndex.Op.LT, bound_query_range);
-        BitSet bitset_result2 = idx2.select(HBPIndex.Op.LT, bound_query_range);
+        // BitSet bitset_result1 = idx1.select(HBPIndex.Op.LT, bound_query_range);
+        // BitSet bitset_result2 = idx2.select(HBPIndex.Op.LT, bound_query_range);
 
-        for (int i = 0; i < bitset_result1.length(); i++) {
-            if (bitset_result1.get(i) && bitset_result2.get(i)) {
-                result[result_length[0]] = i + (block_index * block_size1);
+        // for (int i = 0; i < bitset_result1.length(); i++) {
+        //     if (bitset_result1.get(i) && bitset_result2.get(i)) {
+        //         result[result_length[0]] = i + (block_index * block_size1);
+        //         result_length[0]++;
+        //     }
+        // }
+
+        int[] query_result1 = idx1.selectResult(HBPIndex.Op.LT, bound_query_range);
+        int[] query_result2 = idx2.selectResult(HBPIndex.Op.LT, bound_query_range);
+
+        int i = 0, j = 0;
+        while (i < query_result1.length && j < query_result2.length) {
+            if (query_result1[i] == query_result2[j]) {
+                result[result_length[0]] = query_result1[i] + (block_index * block_size1);
                 result_length[0]++;
+                i++;
+                j++;
+            } else if (query_result1[i] < query_result2[j]) {
+                i++;
+            } else {
+                j++;
             }
         }
 

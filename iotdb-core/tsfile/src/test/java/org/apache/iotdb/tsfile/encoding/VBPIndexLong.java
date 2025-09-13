@@ -1,6 +1,8 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 public class VBPIndexLong {
 
@@ -45,9 +47,6 @@ public class VBPIndexLong {
         }
     }
 
-    /* ---------- Public API (compatible with HBPIndex) ---------- */
-
-    /** Return a BitSet with one bit per row; bit=1 means row selected by op C. */
     public BitSet select(HBPIndex.Op op, long C) {
         // mask C into k bits safely using long shifts
         long codeMask = (k == 64) ? ~0L : ((1L << k) - 1L);
@@ -55,10 +54,86 @@ public class VBPIndexLong {
         return selectInternal(op, Ck);
     }
 
+    public int[] selectResult(HBPIndex.Op op, long C) {
+        long codeMask = (k == 64) ? ~0L : ((1L << k) - 1L);
+        long Ck = (C & codeMask);
+        return selectInternalResult(op, Ck);
+    }
+
+    private int[] selectInternalResult(HBPIndex.Op op, long Ck) {
+        // 创建一个动态数组用于存储匹配的行索引
+        List<Integer> out = new ArrayList<>();
+
+        // For each 64-bit word index, compute E/L/G across planes
+        for (int w = 0; w < wordsPerPlane; w++) {
+            // 计算当前单元的有效位掩码
+            int bitsInThisWord = Math.min(W, n - w * W);
+            long validMask = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
+
+            long E = validMask; // equal-so-far
+            long L = 0L; // less-than
+            long G = 0L; // greater-than
+
+            // 逐位比较从高到低
+            for (int t = k - 1; t >= 0; t--) {
+                long B = planes[t][w] & validMask; // 当前位平面单元（掩码处理）
+                long cb = (Ck >>> t) & 1;
+                if (cb == 1) {
+                    L |= (E & (~B));
+                    E &= B;
+                } else {
+                    G |= (E & B);
+                    E &= (~B);
+                }
+            }
+
+            long res;
+            switch (op) {
+                case EQ:
+                    res = E;
+                    break;
+                case NE:
+                    res = (~E) & validMask;
+                    break;
+                case LT:
+                    res = L;
+                    break;
+                case LE:
+                    res = (L | E) & validMask;
+                    break;
+                case GT:
+                    res = G;
+                    break;
+                case GE:
+                    res = (G | E) & validMask;
+                    break;
+                default:
+                    res = 0L;
+            }
+
+            // 将符合条件的行索引加入结果数组中
+            int base = w * W;
+            long tmp = res;
+            while (tmp != 0L) {
+                int t = Long.numberOfTrailingZeros(tmp);
+                out.add(base + t);
+                tmp &= (tmp - 1);
+            }
+        }
+
+        // 将结果转换为 int[] 数组并返回
+        return out.stream().mapToInt(i -> i).toArray();
+    }
+
     /** Count matches for op C. */
     public long count(HBPIndex.Op op, long C) {
         BitSet bs = select(op, C);
         return bs.cardinality();
+    }
+
+    public int countResult(HBPIndex.Op op, long C) {
+        int[] res = selectResult(op, C);
+        return res.length;
     }
 
     public int size() {

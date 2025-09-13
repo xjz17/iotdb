@@ -14,9 +14,9 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnLongQuerySum2Test {
+public class SubcolumnLongQueryCountTest {
 
-    public static void Query(byte[] encoded_result, long target) {
+    public static void Query(byte[] encoded_result, int target) {
 
         int encode_pos = 0;
 
@@ -32,12 +32,13 @@ public class SubcolumnLongQuerySum2Test {
         int num_blocks = data_length / block_size;
 
         // 查询结果
-        long[] result = new long[data_length];
+        int[] result = new int[data_length];
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockQuery(encoded_result, i, block_size, block_size, encode_pos, target, result,
-                    result_length);
+            encode_pos = BlockQuery(encoded_result, i, block_size,
+                    block_size, encode_pos, target,
+                    result, result_length);
         }
 
         int remainder = data_length % block_size;
@@ -45,27 +46,25 @@ public class SubcolumnLongQuerySum2Test {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 long value = SubcolumnLongTest.bytes2Long(encoded_result, encode_pos, 8);
+                encode_pos += 8;
                 // int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
                 //         ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
                 //         ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-                encode_pos += 8;
-                result[result_length[0]] = value;
-                result_length[0]++;
+                if (value == target) {
+                    result[result_length[0]]++;
+                }
+                encode_pos += 4;
             }
         } else {
-            encode_pos = BlockQuery(encoded_result, num_blocks, block_size, remainder, encode_pos, target,
+            encode_pos = BlockQuery(encoded_result, num_blocks, block_size,
+                    remainder, encode_pos, target,
                     result, result_length);
         }
-
-        // for (int i = 0; i < result_length[0]; i++) {
-        // System.out.print(result[i] + " ");
-        // }
-        // System.out.println();
 
     }
 
     public static int BlockQuery(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, long target, long[] result, int[] result_length) {
+            int encode_pos, int target, int[] result, int[] result_length) {
         long[] min_delta = new long[3];
 
         // min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
@@ -75,11 +74,14 @@ public class SubcolumnLongQuerySum2Test {
         min_delta[0] = SubcolumnLongTest.bytes2Long(encoded_result, encode_pos, 8);
         encode_pos += 8;
 
+        // int[] block_data = new int[remainder];
+
         int m = encoded_result[encode_pos];
         encode_pos += 1;
 
         target -= min_delta[0];
 
+        // 候选索引列表，当前分列值和 target 相应值相等的索引
         int[] candidate_indices = new int[remainder];
         int candidate_length = 0;
         for (int i = 0; i < remainder; i++) {
@@ -89,8 +91,7 @@ public class SubcolumnLongQuerySum2Test {
 
         if (m == 0) {
             if (target == 0) {
-                result[result_length[0]] = min_delta[0] * remainder;
-                result_length[0]++;
+                result[result_length[0]] += remainder;
             }
             return encode_pos;
         }
@@ -104,13 +105,13 @@ public class SubcolumnLongQuerySum2Test {
 
         int[] bitWidthList = new int[l];
 
-        encode_pos = SubcolumnLongTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
-        int[][] subcolumnList = new int[l][remainder];
+        // int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
 
-        encode_pos = SubcolumnLongTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = SubcolumnTest.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -129,11 +130,17 @@ public class SubcolumnLongQuerySum2Test {
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
 
-                    subcolumnList[i][index] = SubcolumnLongTest.bytesToInt(encoded_result,
+                    int current = SubcolumnTest.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (int) (target >> (i * beta)) & ((1 << beta) - 1);
-
-                    if (subcolumnList[i][index] == value) {
+                    int value = (target >> (i * beta)) & ((1 << beta) - 1);
+                    // if (subcolumnList[i][index] < value) {
+                    // result[result_length[0]] = block_size * block_index + index;
+                    // result_length[0]++;
+                    // } else if (subcolumnList[i][index] == value) {
+                    // candidate_indices[new_length] = index;
+                    // new_length++;
+                    // }
+                    if (current == value) {
                         candidate_indices[new_length] = index;
                         new_length++;
                     }
@@ -145,6 +152,7 @@ public class SubcolumnLongQuerySum2Test {
                 encode_pos = (encode_pos + 7) / 8;
 
             } else {
+
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
 
                 encode_pos += 2;
@@ -170,7 +178,7 @@ public class SubcolumnLongQuerySum2Test {
                 int new_length = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
-                long value = (target >> (i * beta)) & ((1 << beta) - 1);
+                int value = (target >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
@@ -181,6 +189,13 @@ public class SubcolumnLongQuerySum2Test {
                     }
 
                     if (rleIndex < index) {
+                        // if (rle_values[rleIndex] < value) {
+                        // result[result_length[0]] = block_size * block_index + index_candidate;
+                        // result_length[0]++;
+                        // } else if (rle_values[rleIndex] == value) {
+                        // candidate_indices[new_length] = index_candidate;
+                        // new_length++;
+                        // }
                         if (rle_values[rleIndex] == value) {
                             candidate_indices[new_length] = index_candidate;
                             new_length++;
@@ -189,11 +204,19 @@ public class SubcolumnLongQuerySum2Test {
                 }
 
                 candidate_length = new_length;
+
             }
         }
 
-        result[result_length[0]] = (min_delta[0] + target) * candidate_length;
-        result_length[0]++;
+        // if (target <= 0) {
+        // for (int i = 0; i < remainder; i++) {
+        // result[result_length[0]] = block_size * block_index + i;
+        // result_length[0]++;
+        // }
+        // return encode_pos;
+        // }
+
+        result[result_length[0]] += candidate_length;
 
         return encode_pos;
     }

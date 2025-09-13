@@ -432,39 +432,65 @@ public class DictionaryLongTest {
 
         long[] dictArray = new long[dictSize];
 
-        long min_dict_value = Long.MAX_VALUE;
-        long max_dict_value = Long.MIN_VALUE;
+        // long min_dict_value = Long.MAX_VALUE;
+        // long max_dict_value = Long.MIN_VALUE;
 
         for (int i = 0; i < dictSize; i++) {
             dictArray[i] = dictionary.get(i);
-            if (dictArray[i] < min_dict_value) {
-                min_dict_value = dictArray[i];
-            }
-            if (dictArray[i] > max_dict_value) {
-                max_dict_value = dictArray[i];
+            // if (dictArray[i] < min_dict_value) {
+            //     min_dict_value = dictArray[i];
+            // }
+            // if (dictArray[i] > max_dict_value) {
+            //     max_dict_value = dictArray[i];
+            // }
+        }
+
+        // for (int i = 0; i < dictSize; i++) {
+        //     dictArray[i] = dictArray[i] - min_dict_value;
+        // }
+
+        // long2Bytes(min_dict_value, encode_pos, encoded_result);
+        // encode_pos += 8;
+
+        // int bw = bitWidth(max_dict_value - min_dict_value);
+        // int2Bytes(bw, encode_pos, encoded_result);
+        // encode_pos += 4;
+
+        encode_pos = bitPacking(dictArray, 64, encode_pos, encoded_result, dictSize);
+
+        int rle_index = 0;
+        int[] run_length = new int[remainder];
+        int[] rle_values = new int[remainder];
+
+        int previous = encodedIndices[0];
+
+        for (int j = 1; j < remainder; j++) {
+            if (encodedIndices[j] != previous) {
+                run_length[rle_index] = j;
+                rle_values[rle_index] = previous;
+                rle_index++;
+                previous = encodedIndices[j];
             }
         }
 
-        for (int i = 0; i < dictSize; i++) {
-            dictArray[i] = dictArray[i] - min_dict_value;
-        }
-
-        long2Bytes(min_dict_value, encode_pos, encoded_result);
-        encode_pos += 8;
-
-        int bw = bitWidth(max_dict_value - min_dict_value);
-        int2Bytes(bw, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        encode_pos = bitPacking(dictArray, bw, encode_pos, encoded_result, dictSize);
+        run_length[rle_index] = remainder;
+        rle_values[rle_index] = previous;
+        rle_index++;
 
         int maxIndex = dictSize - 1;
         int indexBitWidth = maxIndex > 0 ? bitWidth(maxIndex) : 1;
 
-        encode_pos = bitPacking(encodedIndices, indexBitWidth, encode_pos, encoded_result, remainder);
+        int2Bytes(rle_index, encode_pos, encoded_result);
+        encode_pos += 4;
 
-        // encode_pos = SubcolumnEncoder(data_delta, encode_pos,
-        // encoded_result, block_size);
+        int bw = bitWidth(remainder);
+
+        encode_pos = bitPacking(run_length, bw, encode_pos, encoded_result, rle_index);
+
+        encode_pos = bitPacking(rle_values, indexBitWidth, encode_pos, encoded_result, rle_index);
+
+        // encode_pos = bitPacking(encodedIndices, indexBitWidth, encode_pos, encoded_result, remainder);
+
 
         return encode_pos;
     }
@@ -476,24 +502,47 @@ public class DictionaryLongTest {
         int dictSize = bytes2Integer(encoded_result, encode_pos, 4);
         encode_pos += 4;
 
-        long min_dict_value = bytes2Long(encoded_result, encode_pos, 8);
-        encode_pos += 8;
+        // long min_dict_value = bytes2Long(encoded_result, encode_pos, 8);
+        // encode_pos += 8;
 
-        int dictBitWidth = bytes2Integer(encoded_result, encode_pos, 4);
-        encode_pos += 4;
+        // int dictBitWidth = bytes2Integer(encoded_result, encode_pos, 4);
+        // encode_pos += 4;
 
         long[] dictionary = new long[dictSize];
-        encode_pos = decodeBitPacking(encoded_result, encode_pos, dictBitWidth, dictSize, dictionary);
+        encode_pos = decodeBitPacking(encoded_result, encode_pos, 64, dictSize, dictionary);
 
-        for (int i = 0; i < dictSize; i++) {
-            dictionary[i] = dictionary[i] + min_dict_value;
-        }
+        // for (int i = 0; i < dictSize; i++) {
+        //     dictionary[i] = dictionary[i] + min_dict_value;
+        // }
 
         int maxIndex = dictSize - 1;
         int indexBitWidth = maxIndex > 0 ? bitWidth(maxIndex) : 1;
 
         int[] encodedIndices = new int[remainder];
-        encode_pos = decodeBitPacking(encoded_result, encode_pos, indexBitWidth, remainder, encodedIndices);
+        // encode_pos = decodeBitPacking(encoded_result, encode_pos, indexBitWidth, remainder, encodedIndices);
+
+        int rle_index = bytes2Integer(encoded_result, encode_pos, 4);
+        encode_pos += 4;
+
+        int bw = bitWidth(remainder);
+
+        int[] run_length = new int[rle_index];
+
+        encode_pos = decodeBitPacking(encoded_result, encode_pos, bw, rle_index, run_length);
+
+        int[] rle_values = new int[rle_index];
+
+        encode_pos = decodeBitPacking(encoded_result, encode_pos, indexBitWidth, rle_index, rle_values);
+
+        int pos = 0;
+        for (int i = 0; i < rle_index; i++) {
+            int length = run_length[i] - pos;
+            int value = rle_values[i];
+            for (int j = 0; j < length; j++) {
+                encodedIndices[pos] = value;
+                pos++;
+            }
+        }
 
         for (int i = 0; i < remainder; i++) {
             data[block_index * block_size + i] = dictionary[encodedIndices[i]];
@@ -610,7 +659,7 @@ public class DictionaryLongTest {
         String output_parent_dir = "D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "dictionary_long.csv";
+        String outputPath = output_parent_dir + "dictionary_long_new.csv";
 
         int block_size = 512;
 
@@ -716,7 +765,7 @@ public class DictionaryLongTest {
             decodeTime += ((e - s) / repeatTime);
 
             for (int i = 0; i < data2_arr_decoded.length; i++) {
-                // assertEquals(data2_arr[i], data2_arr_decoded[i]);
+                assertEquals(data2_arr[i], data2_arr_decoded[i]);
             }
 
             String[] record = {

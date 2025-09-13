@@ -14,114 +14,106 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnQueryLessPartsTest {
+public class SubcolumnQueryLessPartsNewTest {
 
     public static void QueryTwoColumns(byte[] encoded_result1, byte[] encoded_result2, int upper_bound1,
             int upper_bound2) {
-        int[] first_column_results = new int[encoded_result1.length];
-        int[] first_result_length = new int[1];
+        int[] firstColumnResults = new int[encoded_result1.length]; // 用驼峰命名法提高可读性
+        int[] firstResultLength = new int[1];
 
-        Query(encoded_result1, upper_bound1, first_column_results, first_result_length);
+        Query(encoded_result1, upper_bound1, firstColumnResults, firstResultLength);
 
-        int[] final_results = new int[first_result_length[0]];
-        int[] final_result_length = new int[1];
+        int[] finalResults = new int[firstResultLength[0]];
+        int[] finalResultLength = new int[1];
 
-        QueryWithIndices(encoded_result2, upper_bound2, first_column_results, first_result_length[0],
-                final_results, final_result_length);
+        QueryWithIndices(encoded_result2, upper_bound2, firstColumnResults, firstResultLength[0],
+                finalResults, finalResultLength);
     }
 
     public static void QueryWithIndices(byte[] encoded_result, int upper_bound,
             int[] candidate_indices, int candidate_length,
             int[] result, int[] result_length) {
-        int encode_pos = 0;
+        int encodePos = 0; // 变量名更新为驼峰命名法
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
-                | ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        int dataLength = ((encoded_result[encodePos] & 0xFF) << 24) | ((encoded_result[encodePos + 1] & 0xFF) << 16)
+                | ((encoded_result[encodePos + 2] & 0xFF) << 8) | (encoded_result[encodePos + 3] & 0xFF);
+        encodePos += 4;
 
-        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        int blockSize = ((encoded_result[encodePos] & 0xFF) << 24) | ((encoded_result[encodePos + 1] & 0xFF) << 16)
+                | ((encoded_result[encodePos + 2] & 0xFF) << 8) | (encoded_result[encodePos + 3] & 0xFF);
+        encodePos += 4;
 
-        int num_blocks = data_length / block_size;
+        int numBlocks = dataLength / blockSize;
 
         // 初始化结果索引
         result_length[0] = 0;
 
-        int[] blockIndicesCount = new int[num_blocks + 1];
+        int[] blockIndicesCount = new int[numBlocks + 1];
 
         for (int i = 0; i < candidate_length; i++) {
             int index = candidate_indices[i];
-            int blockIndex = index / block_size;
+            int blockIndex = index / blockSize;
             blockIndicesCount[blockIndex]++;
         }
 
-        int[][] blockIndices = new int[num_blocks + 1][];
-        for (int i = 0; i <= num_blocks; i++) {
+        int[][] blockIndices = new int[numBlocks + 1][];
+        for (int i = 0; i <= numBlocks; i++) {
             blockIndices[i] = new int[blockIndicesCount[i]];
         }
 
-        int[] currentIndices = new int[num_blocks + 1];
+        int[] currentIndices = new int[numBlocks + 1];
 
         for (int i = 0; i < candidate_length; i++) {
             int index = candidate_indices[i];
-            int blockIndex = index / block_size;
-            int localIndex = index % block_size;
+            int blockIndex = index / blockSize;
+            int localIndex = index % blockSize;
 
             blockIndices[blockIndex][currentIndices[blockIndex]] = localIndex;
             currentIndices[blockIndex]++;
         }
 
         // 遍历所有块
-        for (int i = 0; i < num_blocks; i++) {
-
+        for (int i = 0; i < numBlocks; i++) {
             if (blockIndicesCount[i] == 0) {
                 // 计算跳过此块所需的字节数
-                encode_pos = SkipBlock(encoded_result, i, block_size,
-                        block_size, encode_pos);
+                encodePos = SkipBlock(encoded_result, i, blockSize, blockSize, encodePos);
                 continue;
             }
 
             // 对该块中的候选索引执行查询
-            encode_pos = BlockQueryWithIndices(encoded_result, i, block_size,
-                    block_size, encode_pos, upper_bound,
+            encodePos = BlockQueryWithIndices(encoded_result, i, blockSize,
+                    blockSize, encodePos, upper_bound,
                     blockIndices[i], blockIndicesCount[i], result, result_length);
         }
 
-        int remainder = data_length % block_size;
+        int remainder = dataLength % blockSize;
 
         if (remainder > 0) {
-            if (blockIndicesCount[num_blocks] > 0) {
+            if (blockIndicesCount[numBlocks] > 0) {
                 if (remainder <= 3) {
-                    for (int j = 0; j < blockIndicesCount[num_blocks]; j++) {
-                        int idx = blockIndices[num_blocks][j];
-                        int offset = num_blocks * block_size + idx;
-                        if (offset < data_length) {
-                            int value = ((encoded_result[encode_pos + idx * 4] & 0xFF) << 24) |
-                                    ((encoded_result[encode_pos + idx * 4 + 1] & 0xFF) << 16) |
-                                    ((encoded_result[encode_pos + idx * 4 + 2] & 0xFF) << 8) |
-                                    (encoded_result[encode_pos + idx * 4 + 3] & 0xFF);
+                    for (int j = 0; j < blockIndicesCount[numBlocks]; j++) {
+                        int idx = blockIndices[numBlocks][j];
+                        int offset = numBlocks * blockSize + idx;
+                        if (offset < dataLength) {
+                            int value = ((encoded_result[encodePos + idx * 4] & 0xFF) << 24)
+                                    | ((encoded_result[encodePos + idx * 4 + 1] & 0xFF) << 16)
+                                    | ((encoded_result[encodePos + idx * 4 + 2] & 0xFF) << 8)
+                                    | (encoded_result[encodePos + idx * 4 + 3] & 0xFF);
                             if (value < upper_bound) {
                                 result[result_length[0]] = offset;
                                 result_length[0]++;
                             }
                         }
                     }
-                    encode_pos += remainder * 4;
+                    encodePos += remainder * 4;
                 } else {
-
-                    encode_pos = BlockQueryWithIndices(encoded_result, num_blocks, block_size,
-                            remainder, encode_pos, upper_bound,
-                            blockIndices[num_blocks], blockIndicesCount[num_blocks], result, result_length);
+                    encodePos = BlockQueryWithIndices(encoded_result, numBlocks, blockSize,
+                            remainder, encodePos, upper_bound,
+                            blockIndices[numBlocks], blockIndicesCount[numBlocks], result, result_length);
                 }
             } else {
                 // 没有候选索引，跳过剩余部分
-                if (remainder <= 3) {
-                    encode_pos += remainder * 4;
-                } else {
-                    encode_pos = SkipBlock(encoded_result, num_blocks, block_size,
-                            remainder, encode_pos);
-                }
+                encodePos += (remainder <= 3) ? remainder * 4 : SkipBlock(encoded_result, numBlocks, blockSize, remainder, encodePos);
             }
         }
     }
@@ -131,8 +123,8 @@ public class SubcolumnQueryLessPartsTest {
             int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
+                | ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
         int m = encoded_result[encode_pos];
@@ -176,9 +168,7 @@ public class SubcolumnQueryLessPartsTest {
             int type = encodingType[i];
             if (type == 0) {
                 if (upper_bound <= 0) {
-                    encode_pos *= 8;
-                    encode_pos += bitWidthList[i] * remainder;
-                    encode_pos = (encode_pos + 7) / 8;
+                    encode_pos = (int) (((long) encode_pos * 8 + bitWidthList[i] * remainder + 7) / 8);
                     continue;
                 }
 
@@ -195,29 +185,23 @@ public class SubcolumnQueryLessPartsTest {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
                     } else if (subcolumnList[i][index] == value) {
-                        filtered_indices[new_length] = index;
-                        new_length++;
+                        filtered_indices[new_length++] = index; // 简化赋值逻辑
                     }
                 }
 
                 filtered_length = new_length;
 
                 encode_pos += remainder * bitWidthList[i];
-                encode_pos = (encode_pos + 7) / 8;
+                encode_pos = (encode_pos + 7) / 8; // 计算偏移并清晰表明目的
 
             } else {
+                int rleIndex = 0; // 为每个候选索引查找对应的RLE值
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
-
                 encode_pos += 2;
 
                 if (upper_bound <= 0) {
-                    encode_pos *= 8;
-                    encode_pos += bw * index;
-                    encode_pos = (encode_pos + 7) / 8;
-
-                    encode_pos *= 8;
-                    encode_pos += bitWidthList[i] * index;
-                    encode_pos = (encode_pos + 7) / 8;
+                    encode_pos = (int) (((long) encode_pos * 8 + bw * index + 7) / 8);
+                    encode_pos = (int) (((long) encode_pos * 8 + bitWidthList[i] * index + 7) / 8);
                     continue;
                 }
 
@@ -236,7 +220,6 @@ public class SubcolumnQueryLessPartsTest {
                     int index_candidate = filtered_indices[j];
 
                     // 查找包含此索引的RLE段
-                    int rleIndex = 0;
                     int currentPos = 0;
 
                     while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
@@ -249,8 +232,7 @@ public class SubcolumnQueryLessPartsTest {
                             result[result_length[0]] = block_size * block_index + index_candidate;
                             result_length[0]++;
                         } else if (rle_values[rleIndex] == value) {
-                            filtered_indices[new_length] = index_candidate;
-                            new_length++;
+                            filtered_indices[new_length++] = index_candidate; // 简化赋值逻辑
                         }
                     }
                 }
@@ -264,9 +246,7 @@ public class SubcolumnQueryLessPartsTest {
 
     private static int SkipBlock(byte[] encoded_result, int block_index, int block_size, int remainder,
             int encode_pos) {
-        // int[] min_delta = new int[3];
-
-        encode_pos += 4;
+        encode_pos += 4; // 计算 min_delta 时直接跳过不需要使用
 
         int m = encoded_result[encode_pos];
         encode_pos += 1;
@@ -294,14 +274,14 @@ public class SubcolumnQueryLessPartsTest {
             int type = encodingType[i];
 
             if (type == 0) {
-
-                encode_pos = (encode_pos * 8 + bitWidthList[i] * remainder + 7) / 8;
+                // 类型 0，直接跳过
+                encode_pos = (int) (((long) encode_pos * 8 + bitWidthList[i] * remainder + 7) / 8);
             } else {
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
                 encode_pos += 2;
 
-                encode_pos = (encode_pos * 8 + bw * index + 7) / 8;
-                encode_pos = (encode_pos * 8 + bitWidthList[i] * index + 7) / 8;
+                encode_pos = (int) (((long) encode_pos * 8 + bw * index + 7) / 8);
+                encode_pos = (int) (((long) encode_pos * 8 + bitWidthList[i] * index + 7) / 8);
             }
         }
 
@@ -309,48 +289,43 @@ public class SubcolumnQueryLessPartsTest {
     }
 
     public static void Query(byte[] encoded_result, int upper_bound, int[] result, int[] result_length) {
+        int encodePos = 0; // 更新为驼峰命名法
 
-        int encode_pos = 0;
+        int dataLength = ((encoded_result[encodePos] & 0xFF) << 24) | ((encoded_result[encodePos + 1] & 0xFF) << 16)
+                | ((encoded_result[encodePos + 2] & 0xFF) << 8) | (encoded_result[encodePos + 3] & 0xFF);
+        encodePos += 4;
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
-                |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
+        int blockSize = ((encoded_result[encodePos] & 0xFF) << 24) | ((encoded_result[encodePos + 1] & 0xFF) << 16) |
+                ((encoded_result[encodePos + 2] & 0xFF) << 8) | (encoded_result[encodePos + 3] & 0xFF);
+        encodePos += 4;
 
-        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-        encode_pos += 4;
-
-        int num_blocks = data_length / block_size;
+        int numBlocks = dataLength / blockSize;
 
         // 查询结果
-        // int[] result = new int[data_length];
-        // int[] result_length = new int[1];
-
         result_length[0] = 0;
 
-        for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockQueryIndex(encoded_result, i, block_size,
-                    block_size, encode_pos, upper_bound,
+        for (int i = 0; i < numBlocks; i++) {
+            encodePos = BlockQueryIndex(encoded_result, i, blockSize,
+                    blockSize, encodePos, upper_bound,
                     result, result_length);
         }
 
-        int remainder = data_length % block_size;
+        int remainder = dataLength % blockSize;
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
-                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+                int value = ((encoded_result[encodePos] & 0xFF) << 24) |
+                        ((encoded_result[encodePos + 1] & 0xFF) << 16) |
+                        ((encoded_result[encodePos + 2] & 0xFF) << 8) | (encoded_result[encodePos + 3] & 0xFF);
                 if (value < upper_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
                 }
-                encode_pos += 4;
+                encodePos += 4;
             }
         } else {
-            encode_pos = BlockQueryIndex(encoded_result, num_blocks, block_size,
-                    remainder, encode_pos, upper_bound,
+            encodePos = BlockQueryIndex(encoded_result, numBlocks, blockSize,
+                    remainder, encodePos, upper_bound,
                     result, result_length);
         }
 
@@ -363,8 +338,6 @@ public class SubcolumnQueryLessPartsTest {
         min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
                 ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
-
-        // int[] block_data = new int[remainder];
 
         int m = encoded_result[encode_pos];
         encode_pos += 1;
@@ -409,11 +382,8 @@ public class SubcolumnQueryLessPartsTest {
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
             if (type == 0) {
-
                 if (upper_bound <= 0) {
-                    encode_pos *= 8;
-                    encode_pos += bitWidthList[i] * remainder;
-                    encode_pos = (encode_pos + 7) / 8;
+                    encode_pos = (int) (((long) encode_pos * 8 + bitWidthList[i] * remainder + 7) / 8);
                     continue;
                 }
 
@@ -430,8 +400,7 @@ public class SubcolumnQueryLessPartsTest {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
                     } else if (subcolumnList[i][index] == value) {
-                        candidate_indices[new_length] = index;
-                        new_length++;
+                        candidate_indices[new_length++] = index; // 简化赋值逻辑
                     }
                 }
 
@@ -441,19 +410,13 @@ public class SubcolumnQueryLessPartsTest {
                 encode_pos = (encode_pos + 7) / 8;
 
             } else {
-
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
 
                 encode_pos += 2;
 
                 if (upper_bound <= 0) {
-                    encode_pos *= 8;
-                    encode_pos += bw * index;
-                    encode_pos = (encode_pos + 7) / 8;
-
-                    encode_pos *= 8;
-                    encode_pos += bitWidthList[i] * index;
-                    encode_pos = (encode_pos + 7) / 8;
+                    encode_pos = (int) (((long) encode_pos * 8 + bw * index + 7) / 8);
+                    encode_pos = (int) (((long) encode_pos * 8 + bitWidthList[i] * index + 7) / 8);
                     continue;
                 }
 
@@ -482,8 +445,7 @@ public class SubcolumnQueryLessPartsTest {
                             result[result_length[0]] = block_size * block_index + index_candidate;
                             result_length[0]++;
                         } else if (rle_values[rleIndex] == value) {
-                            candidate_indices[new_length] = index_candidate;
-                            new_length++;
+                            candidate_indices[new_length++] = index_candidate; // 简化赋值逻辑
                         }
                     }
                 }

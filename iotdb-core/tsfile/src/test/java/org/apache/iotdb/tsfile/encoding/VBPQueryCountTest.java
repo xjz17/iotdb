@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 
-public class VBPQuerySmallerTest {
+public class VBPQueryCountTest {
 
     public static int bytes2Integer(byte[] encoded, int start, int num) {
         int value = 0;
@@ -49,21 +49,11 @@ public class VBPQuerySmallerTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        // BitSet bitset_result = idx.select(HBPIndex.Op.LT, bound_query_range);
 
-        // for (int i = 0; i < bitset_result.length(); i++) {
-        //     if (bitset_result.get(i)) {
-        //         result[result_length[0]] = i + (block_index * block_size);
-        //         result_length[0]++;
-        //     }
-        // }
+        int count = idx.countResult(HBPIndex.Op.EQ, bound_query_range);
 
-        int[] query_result = idx.selectResult(HBPIndex.Op.LT, bound_query_range);
-
-        for (int i = 0; i < query_result.length; i++) {
-            result[result_length[0]] = query_result[i] + (block_index * block_size);
-            result_length[0]++;
-        }
+        result[result_length[0]] = count;
+        result_length[0]++;
 
         return encode_pos;
 
