@@ -797,7 +797,7 @@ public class SubcolumnAddDictionaryTest {
         String outputPath = output_parent_dir + "subcolumn_dictionary.csv";
 
         // int block_size = 512;
-        int block_size = 256;
+        int block_size = 512;
 
         // int repeatTime = 100;
         int repeatTime = 500;
