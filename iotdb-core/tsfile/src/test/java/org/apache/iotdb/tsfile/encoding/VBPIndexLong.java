@@ -54,7 +54,115 @@ public class VBPIndexLong {
     public int[] select(Op op, long C) {
         long codeMask = (k == 64) ? ~0L : ((1L << k) - 1L);
         long Ck = (C & codeMask);
-        return selectInternal(op, Ck);
+        // return selectInternal(op, Ck);
+
+        // return selectInternal2(op, Ck);
+        return selectInternal3(op, Ck);
+    }
+
+    private int[] selectInternal2(Op op, long Ck) {
+        List<Integer> out = new ArrayList<>();
+        for (int row = 0; row < n; row++) {
+            long code = 0;
+            // 逐位重构代码值
+            for (int t = 0; t < k; t++) {
+                int wordIdx = row / W;
+                int bitPos = row % W;
+                long bitVal = (planes[t][wordIdx] >> bitPos) & 1L;
+                code |= (bitVal << t);
+            }
+            // 根据操作符比较并筛选
+            switch (op) {
+                case EQ:
+                    if (code == Ck)
+                        out.add(row);
+                    break;
+                case NE:
+                    if (code != Ck)
+                        out.add(row);
+                    break;
+                case LT:
+                    if (code < Ck)
+                        out.add(row);
+                    break;
+                case LE:
+                    if (code <= Ck)
+                        out.add(row);
+                    break;
+                case GT:
+                    if (code > Ck)
+                        out.add(row);
+                    break;
+                case GE:
+                    if (code >= Ck)
+                        out.add(row);
+                    break;
+            }
+        }
+        return out.stream().mapToInt(i -> i).toArray();
+    }
+
+    private int[] selectInternal3(Op op, long Ck) {
+        List<Integer> out = new ArrayList<>();
+        for (int row = 0; row < n; row++) {
+            int wordIdx = row / W;
+            int bitPos = row % W;
+            switch (op) {
+                case EQ:
+                    boolean match = true;
+                    for (int t = 0; t < k; t++) {
+                        long bitVal = (planes[t][wordIdx] >> bitPos) & 1L;
+                        long cBit = (Ck >> t) & 1L;
+                        if (bitVal != cBit) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        out.add(row);
+                    }
+                    break;
+                case NE:
+                    boolean notMatch = false;
+                    for (int t = 0; t < k; t++) {
+                        long bitVal = (planes[t][wordIdx] >> bitPos) & 1L;
+                        long cBit = (Ck >> t) & 1L;
+                        if (bitVal != cBit) {
+                            notMatch = true;
+                            break;
+                        }
+                    }
+                    if (notMatch) {
+                        out.add(row);
+                    }
+                    break;
+                default:
+                    long code = 0;
+                    for (int t = 0; t < k; t++) {
+                        long bitVal = (planes[t][wordIdx] >> bitPos) & 1L;
+                        code |= (bitVal << t);
+                    }
+                    switch (op) {
+                        case LT:
+                            if (code < Ck)
+                                out.add(row);
+                            break;
+                        case LE:
+                            if (code <= Ck)
+                                out.add(row);
+                            break;
+                        case GT:
+                            if (code > Ck)
+                                out.add(row);
+                            break;
+                        case GE:
+                            if (code >= Ck)
+                                out.add(row);
+                            break;
+                    }
+            }
+        }
+        return out.stream().mapToInt(i -> i).toArray();
     }
 
     private int[] selectInternal(Op op, long Ck) {
@@ -239,24 +347,28 @@ public class VBPIndexLong {
         int[] lt4 = idx.select(Op.LT, 4);
         System.out.print("< 4 -> ");
         for (int i = 0; i < lt4.length; i++) {
-            System.out.print(lt4[i] + (i + 1 == lt4.length ? "\n" : " "));
+            System.out.print(lt4[i] + " ");
         }
+        System.out.println();
 
         int[] eq4 = idx.select(Op.EQ, 4);
         System.out.print("= 4 -> ");
         for (int i = 0; i < eq4.length; i++) {
-            System.out.print(eq4[i] + (i + 1 == eq4.length ? "\n" : " "));
+            System.out.print(eq4[i] + " ");
         }
+        System.out.println();
 
         int[] ge6 = idx.select(Op.GE, 6);
         System.out.print(">= 6 -> ");
         for (int i = 0; i < ge6.length; i++) {
-            System.out.print(ge6[i] + (i + 1 == ge6.length ? "\n" : " "));
+            System.out.print(ge6[i] + " ");
         }
+        System.out.println();
 
         for (int i = 0; i < idx.size(); i++) {
-            System.out.print(idx.getCode(i) + (i + 1 == idx.size() ? "\n" : " "));
+            System.out.print(idx.getCode(i) + " ");
         }
+        System.out.println();
 
         System.out.println("count(<5) = " + idx.count(Op.LT, 5));
     }

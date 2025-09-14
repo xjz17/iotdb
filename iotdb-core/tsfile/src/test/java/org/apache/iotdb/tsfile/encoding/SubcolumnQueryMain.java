@@ -687,7 +687,8 @@ public class SubcolumnQueryMain {
             // String outputPath = output_parent_dir + "subcolumn_query_equal_new_beta_" + beta + ".csv";
             // String outputPath = output_parent_dir + "subcolumn_query_count_new_beta_" + beta + ".csv";
             // String outputPath = output_parent_dir + "subcolumn_query_max_new_beta_" + beta + ".csv";
-            String outputPath = output_parent_dir + "subcolumn_query_sum2_beta_" + beta + ".csv";
+            // String outputPath = output_parent_dir + "subcolumn_query_sum2_beta_" + beta + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_query_count2_beta_" + beta + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -777,7 +778,8 @@ public class SubcolumnQueryMain {
                     // SubcolumnQueryMaxNewTest.Query(encoded_result);
                     // SubcolumnQueryGreaterLessTest.Query(encoded_result, queryRange.get(datasetName),
                     //         queryLessRange.get(datasetName));
-                    SubcolumnQuerySum2Test.Query(encoded_result, queryRange.get(datasetName));
+                    SubcolumnQueryCount2Test.Query(encoded_result);
+                    // SubcolumnQuerySum2Test.Query(encoded_result, queryRange.get(datasetName));
 
                 }
 
