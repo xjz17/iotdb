@@ -50,7 +50,7 @@ public class VBPQueryCountTest {
         VBPIndexLong idx = indexList.get(block_index);
 
 
-        int count = idx.countResult(HBPIndex.Op.EQ, bound_query_range);
+        int count = idx.count(VBPIndexLong.Op.EQ, bound_query_range);
 
         result[result_length[0]] = count;
         result_length[0]++;

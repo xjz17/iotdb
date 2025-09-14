@@ -15,24 +15,6 @@ import java.util.HashMap;
 
 public class VBPQuerySumTest {
 
-    public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
-        cur_byte[encode_pos] = (byte) (integer >> 24);
-        cur_byte[encode_pos + 1] = (byte) (integer >> 16);
-        cur_byte[encode_pos + 2] = (byte) (integer >> 8);
-        cur_byte[encode_pos + 3] = (byte) (integer);
-    }
-
-    public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
-        cur_byte[encode_pos] = (byte) (integer >> 56);
-        cur_byte[encode_pos + 1] = (byte) (integer >> 48);
-        cur_byte[encode_pos + 2] = (byte) (integer >> 40);
-        cur_byte[encode_pos + 3] = (byte) (integer >> 32);
-        cur_byte[encode_pos + 4] = (byte) (integer >> 24);
-        cur_byte[encode_pos + 5] = (byte) (integer >> 16);
-        cur_byte[encode_pos + 6] = (byte) (integer >> 8);
-        cur_byte[encode_pos + 7] = (byte) (integer);
-    }
-
     public static int bytes2Integer(byte[] encoded, int start, int num) {
         int value = 0;
 
@@ -55,50 +37,6 @@ public class VBPQuerySumTest {
         return value;
     }
 
-    public static int bitWidth(int value) {
-        return 32 - Integer.numberOfLeadingZeros(value);
-    }
-
-    public static int bitWidth(long value) {
-        return 64 - Long.numberOfLeadingZeros(value);
-    }
-
-    public static int BlockEncoder(long[] data, int block_index, int block_size, int remainder,
-            int encode_pos, ArrayList<VBPIndexLong> indexList, byte[] encoded_result) {
-
-        long[] block_data = new long[remainder];
-        System.arraycopy(data, block_index * block_size, block_data, 0, remainder);
-
-        long min_value = Long.MAX_VALUE;
-        long max_value = Long.MIN_VALUE;
-        for (long value : block_data) {
-            if (value < min_value) {
-                min_value = value;
-            }
-            if (value > max_value) {
-                max_value = value;
-            }
-        }
-
-        for (int i = 0; i < remainder; i++) {
-            block_data[i] -= min_value;
-        }
-
-        long2Bytes(min_value, encode_pos, encoded_result);
-        encode_pos += 8;
-
-        int bw = bitWidth(max_value - min_value);
-
-        int2Bytes(bw, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        VBPIndexLong idx = new VBPIndexLong(bw, block_data);
-        indexList.add(idx);
-
-        return encode_pos;
-
-    }
-
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
             int encode_pos, ArrayList<VBPIndexLong> indexList, long[] result, int[] result_length) {
 
@@ -110,7 +48,10 @@ public class VBPQuerySumTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        result[0] += idx.sum() + (min_value * remainder);
+        // result[0] += idx.sum2() + (min_value * remainder);
+
+        result[result_length[0]] = idx.sum() + (min_value * remainder);
+        result_length[0]++;
 
         // for (int i = 0; i < remainder; i++) {
         //     long value = idx.getCode(i) + min_value;
@@ -121,40 +62,6 @@ public class VBPQuerySumTest {
 
         return encode_pos;
 
-    }
-
-    public static int Encoder(long[] data, int block_size, ArrayList<VBPIndexLong> indexList, byte[] encoded_result) {
-        int data_length = data.length;
-        int encode_pos = 0;
-
-        int2Bytes(data_length, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        int2Bytes(block_size, encode_pos, encoded_result);
-        encode_pos += 4;
-
-        int num_blocks = data_length / block_size;
-
-        int remainder = data_length % block_size;
-
-        for (int i = 0; i < num_blocks; i++) {
-            encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, indexList, encoded_result);
-        }
-
-        // if (remainder <= 3) {
-        // for (int i = 0; i < remainder; i++) {
-        // long value = data[num_blocks * block_size + i];
-        // long2Bytes(value, encode_pos, encoded_result);
-        // encode_pos += 8;
-        // }
-        // } else {
-        encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos, indexList,
-                encoded_result);
-        // }
-
-        // System.out.println("beta: " + beta[0]);
-
-        return encode_pos;
     }
 
     public static void Decoder(byte[] encoded_result, ArrayList<VBPIndexLong> indexList) {
@@ -168,8 +75,7 @@ public class VBPQuerySumTest {
 
         int num_blocks = data_length / block_size;
 
-        long[] result = new long[1];
-        result[0] = Long.MIN_VALUE;
+        long[] result = new long[data_length];
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
@@ -189,187 +95,6 @@ public class VBPQuerySumTest {
         encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
                 encode_pos, indexList, result, result_length);
         // }
-    }
-
-    public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
-        int decimalIndex = str.indexOf(".");
-
-        // 如果没有小数点，精度为0
-        if (decimalIndex == -1) {
-            return 0;
-        }
-
-        // 获取小数点后的部分并返回其长度
-        return str.substring(decimalIndex + 1).length();
-    }
-
-    public static String extractFileName(String path) {
-        if (path == null || path.isEmpty()) {
-            return "";
-        }
-
-        File file = new File(path);
-        String fileName = file.getName();
-
-        int dotIndex = fileName.lastIndexOf('.');
-
-        if (dotIndex == -1 || dotIndex == 0) {
-            return fileName;
-        }
-
-        return fileName.substring(0, dotIndex);
-    }
-
-    @Test
-    public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // // String parent_dir = "D:/encoding-subcolumn/";
-        //
-        String input_parent_dir = parent_dir + "dataset/";
-        //
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // // String output_parent_dir = parent_dir + "result/";
-        //
-        // String outputPath = output_parent_dir + "vbp_query.csv";
-
-        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
-        // //"D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
-
-        // String input_parent_dir = parent_dir + "dataset/";
-
-        // String output_parent_dir = parent_dir + "result/vbp_query/";
-
-        String outputPath = output_parent_dir + "vbp_query_sum.csv";
-        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
-
-        int block_size = 512;
-
-        int repeatTime = 100;
-        // repeatTime = 500;
-
-        // repeatTime = 1;
-
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
-        writer.setRecordDelimiter('\n');
-
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio"
-        };
-        writer.writeRecord(head);
-
-        File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
-        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
-
-        for (File file : csvFiles) {
-            String datasetName = extractFileName(file.toString());
-            System.out.println(datasetName);
-
-            InputStream inputStream = Files.newInputStream(file.toPath());
-
-            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Double> data1 = new ArrayList<>();
-
-            int max_decimal = 0;
-            while (loader.readRecord()) {
-                String f_str = loader.getValues()[0];
-                if (f_str.isEmpty()) {
-                    continue;
-                }
-                int cur_decimal = getDecimalPrecision(f_str);
-                if (cur_decimal > max_decimal) {
-                    max_decimal = cur_decimal;
-                }
-                data1.add(Double.valueOf(f_str));
-            }
-            inputStream.close();
-
-            if (max_decimal > 17) {
-                max_decimal = 17;
-            }
-
-            long[] data2_arr = new long[data1.size()];
-
-            long max_mul = (long) Math.pow(10, max_decimal);
-            for (int i = 0; i < data1.size(); i++) {
-                data2_arr[i] = (long) (data1.get(i) * max_mul);
-            }
-
-            // test
-            // for (int i = 0; i < data2_arr.length; i++) {
-            // System.out.print(data2_arr[i] + " ");
-            // }
-            // System.out.println();
-
-            System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 8];
-
-            long encodeTime = 0;
-            long decodeTime = 0;
-            double ratio = 0;
-            double compressed_size = 0;
-
-            int length = 0;
-
-            ArrayList<VBPIndexLong> indexList = new ArrayList<>();
-
-            long s = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                // clear indexList
-                indexList.clear();
-
-                length = Encoder(data2_arr, block_size, indexList, encoded_result);
-            }
-
-            long e = System.nanoTime();
-            encodeTime += ((e - s) / repeatTime);
-            compressed_size += length;
-
-            for (VBPIndexLong idx : indexList) {
-                compressed_size += idx.k * idx.wordsPerPlane * Long.BYTES;
-            }
-
-            double ratioTmp;
-
-            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-
-            ratio += ratioTmp;
-
-            System.out.println("Decode");
-
-            // long[] data2_arr_decoded = new long[data2_arr.length];
-
-            s = System.nanoTime();
-
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Decoder(encoded_result, indexList);
-            }
-
-            e = System.nanoTime();
-            decodeTime += ((e - s) / repeatTime);
-
-            String[] record = {
-                    datasetName,
-                    "VBP",
-                    String.valueOf(encodeTime),
-                    String.valueOf(decodeTime),
-                    String.valueOf(data1.size()),
-                    String.valueOf(compressed_size),
-                    String.valueOf(ratio)
-            };
-            writer.writeRecord(record);
-            System.out.println(ratio);
-        }
-
-        writer.close();
     }
 
 }

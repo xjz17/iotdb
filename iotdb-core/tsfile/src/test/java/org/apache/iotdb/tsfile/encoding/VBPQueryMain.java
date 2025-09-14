@@ -52,7 +52,7 @@ public class VBPQueryMain {
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
+        String output_parent_dir = "D:/encoding-subcolumn/result/vbp_query/";
 
         // String output_parent_dir = parent_dir + "result/";
         // String outputPath = output_parent_dir + "vbp_query.csv";
@@ -70,7 +70,8 @@ public class VBPQueryMain {
         // String outputPath = output_parent_dir + "vbp_query_equal.csv";
         // String outputPath = output_parent_dir + "vbp_query_greater_less.csv";
         // String outputPath = output_parent_dir + "vbp_query_count.csv";
-        String outputPath = output_parent_dir + "vbp_query_max_new.csv";
+        // String outputPath = output_parent_dir + "vbp_query_max.csv";
+        String outputPath = output_parent_dir + "vbp_query_sum.csv";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
@@ -222,7 +223,8 @@ public class VBPQueryMain {
                 // VBPQueryEqualTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
                 // VBPQueryGreaterLessTest.Decoder(encoded_result, indexList, queryRange.get(datasetName), queryLessRange.get(datasetName));
                 // VBPQueryCountTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
-                VBPQueryMaxTest.Decoder(encoded_result, indexList);
+                // VBPQueryMaxTest.Decoder(encoded_result, indexList);
+                VBPQuerySumTest.Decoder(encoded_result, indexList);
             }
 
             e = System.nanoTime();
@@ -252,10 +254,8 @@ public class VBPQueryMain {
         //
         String input_parent_dir = parent_dir + "dataset/";
         //
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // // String output_parent_dir = parent_dir + "result/";
-        //
-        // String outputPath = output_parent_dir + "vbp_query.csv";
+        String output_parent_dir = "D:/encoding-subcolumn/result/vbp_query/";
+        // // String output_parent_dir = parent_dir + "result/vbp_query/";
 
         // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         // //"D:/github/xjz17/subcolumn/";
@@ -266,7 +266,6 @@ public class VBPQueryMain {
         // String output_parent_dir = parent_dir + "result/vbp_query/";
 
         String outputPath = output_parent_dir + "vbp_query_less_parts_new.csv";
-        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 

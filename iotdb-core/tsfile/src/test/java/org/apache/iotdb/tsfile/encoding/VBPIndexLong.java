@@ -14,6 +14,10 @@ public class VBPIndexLong {
     // planes[t][w] : bitplane for bit t (0=LSB ... k-1=MSB), word index w
     public final long[][] planes;
 
+    public enum Op {
+        EQ, NE, LT, LE, GT, GE
+    }
+
     /**
      * Build VBP index from k-bit codes.
      *
@@ -47,20 +51,13 @@ public class VBPIndexLong {
         }
     }
 
-    public BitSet select(HBPIndex.Op op, long C) {
-        // mask C into k bits safely using long shifts
+    public int[] select(Op op, long C) {
         long codeMask = (k == 64) ? ~0L : ((1L << k) - 1L);
         long Ck = (C & codeMask);
         return selectInternal(op, Ck);
     }
 
-    public int[] selectResult(HBPIndex.Op op, long C) {
-        long codeMask = (k == 64) ? ~0L : ((1L << k) - 1L);
-        long Ck = (C & codeMask);
-        return selectInternalResult(op, Ck);
-    }
-
-    private int[] selectInternalResult(HBPIndex.Op op, long Ck) {
+    private int[] selectInternal(Op op, long Ck) {
         // 创建一个动态数组用于存储匹配的行索引
         List<Integer> out = new ArrayList<>();
 
@@ -125,14 +122,8 @@ public class VBPIndexLong {
         return out.stream().mapToInt(i -> i).toArray();
     }
 
-    /** Count matches for op C. */
-    public long count(HBPIndex.Op op, long C) {
-        BitSet bs = select(op, C);
-        return bs.cardinality();
-    }
-
-    public int countResult(HBPIndex.Op op, long C) {
-        int[] res = selectResult(op, C);
+    public int count(Op op, long C) {
+        int[] res = select(op, C);
         return res.length;
     }
 
@@ -157,116 +148,47 @@ public class VBPIndexLong {
         return code;
     }
 
-    /* ---------- Core vertical scan ---------- */
-
-    private BitSet selectInternal(HBPIndex.Op op, long Ck) {
-        BitSet out = new BitSet(n);
-        // For each 64-bit word index, compute E/L/G across planes
-        for (int w = 0; w < wordsPerPlane; w++) {
-            // compute valid mask for this word (last word may be partial)
-            int bitsInThisWord = Math.min(W, n - w * W);
-            long validMask = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
-
-            long E = validMask; // equal-so-far
-            long L = 0L; // less-than
-            long G = 0L; // greater-than
-
-            // iterate bits from MSB (k-1) down to 0
-            for (int t = k - 1; t >= 0; t--) {
-                long B = planes[t][w] & validMask; // current bit plane word (masked)
-                long cb = (Ck >>> t) & 1;
-                if (cb == 1) {
-                    // C has 1: if X has 0 -> X < C
-                    L |= (E & (~B));
-                    // equality continues only where X has 1
-                    E &= B;
-                } else {
-                    // C has 0: if X has 1 -> X > C
-                    G |= (E & B);
-                    // equality continues only where X has 0
-                    E &= (~B);
-                }
-            }
-
-            long res;
-            switch (op) {
-                case EQ:
-                    res = E;
-                    break;
-                case NE:
-                    res = (~E) & validMask;
-                    break;
-                case LT:
-                    res = L;
-                    break;
-                case LE:
-                    res = (L | E) & validMask;
-                    break;
-                case GT:
-                    res = G;
-                    break;
-                case GE:
-                    res = (G | E) & validMask;
-                    break;
-                default:
-                    res = 0L;
-            }
-
-            // write bits from res into BitSet (base index = w * 64)
-            int base = w * W;
-            long tmp = res;
-            while (tmp != 0L) {
-                int t = Long.numberOfTrailingZeros(tmp);
-                out.set(base + t);
-                tmp &= (tmp - 1);
-            }
-        }
-        return out;
-    }
-
     public int findMaxIndex() {
         if (n == 0)
             return -1;
 
         // 初始化候选位置，开始时所有有效位置都是候选
-        long[] candidates = new long[wordsPerPlane];
-        for (int w = 0; w < wordsPerPlane; w++) {
-            int bitsInThisWord = Math.min(W, n - w * W);
-            // 为最后一个word创建有效位掩码
-            candidates[w] = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
+        boolean[] candidates = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            candidates[i] = true; // 所有行都作为候选
         }
 
         // 从最高位(MSB)开始处理到最低位(LSB)
         for (int t = k - 1; t >= 0; t--) {
-            long[] nextCandidates = new long[wordsPerPlane];
             boolean hasOnes = false;
 
             // 检查当前候选位置中是否有在第t位为1的
-            for (int w = 0; w < wordsPerPlane; w++) {
-                long onesInThisBit = planes[t][w] & candidates[w];
-                if (onesInThisBit != 0) {
-                    nextCandidates[w] = onesInThisBit;
-                    hasOnes = true;
+            for (int row = 0; row < n; row++) {
+                if (candidates[row]) { // 仅对仍然是候选的行进行检查
+                    if ((planes[t][row / W] & (1L << (row % W))) != 0) {
+                        hasOnes = true;
+                    } else {
+                        candidates[row] = false; // 不再是候选
+                    }
                 }
             }
 
-            // 如果找到了第t位为1的位置，只保留这些位置
-            // 否则，保留第t位为0的位置
-            if (hasOnes) {
-                candidates = nextCandidates;
-            } else {
-                // 保留第t位为0的位置
-                for (int w = 0; w < wordsPerPlane; w++) {
-                    candidates[w] = candidates[w] & (~planes[t][w]);
+            if (!hasOnes) {
+                // 如果在第t位没有找到1，则继续降低有效候选
+                for (int row = 0; row < n; row++) {
+                    if (candidates[row]) {
+                        if ((planes[t][row / W] & (1L << (row % W))) != 0) {
+                            candidates[row] = false; // 取消候选
+                        }
+                    }
                 }
             }
         }
 
-        // 在剩余的候选位置中找到第一个设置的位
-        for (int w = 0; w < wordsPerPlane; w++) {
-            if (candidates[w] != 0) {
-                int bitPos = Long.numberOfTrailingZeros(candidates[w]);
-                return w * W + bitPos;
+        // 找到第一个设置的位
+        for (int row = 0; row < n; row++) {
+            if (candidates[row]) {
+                return row; // 找到第一行依然是候选的行
             }
         }
 
@@ -283,21 +205,16 @@ public class VBPIndexLong {
         for (int t = 0; t < k; t++) {
             long bitContribution = 0L;
 
-            // 统计第t个bit-plane中所有为1的位的个数
-            for (int w = 0; w < wordsPerPlane; w++) {
-                // 获取当前word中的有效位掩码
-                int bitsInThisWord = Math.min(W, n - w * W);
-                long validMask = (bitsInThisWord == 64) ? ~0L : ((1L << bitsInThisWord) - 1L);
-
-                // 获取第t个bit-plane在当前word中的值，并应用有效位掩码
-                long planeWord = planes[t][w] & validMask;
-
-                // 统计这个word中1的个数
-                bitContribution += Long.bitCount(planeWord);
+            // 逐位处理每一行
+            for (int i = 0; i < n; i++) {
+                // 获取当前行的word
+                long planeWord = planes[t][i / W];
+                // 检查当前行在第t位是否为1并直接更新计数
+                bitContribution += (planeWord >> (i % W)) & 1; // 直接加上该位的值
             }
 
             // 第t位的权重是2^t，将贡献加到总和中
-            totalSum += bitContribution << t;
+            totalSum += (bitContribution << t);
         }
 
         return totalSum;
@@ -319,19 +236,28 @@ public class VBPIndexLong {
 
         System.out.println("n = " + idx.size());
 
-        BitSet lt4 = idx.select(HBPIndex.Op.LT, 4);
-        System.out.println("< 4 -> " + lt4);
+        int[] lt4 = idx.select(Op.LT, 4);
+        System.out.print("< 4 -> ");
+        for (int i = 0; i < lt4.length; i++) {
+            System.out.print(lt4[i] + (i + 1 == lt4.length ? "\n" : " "));
+        }
 
-        BitSet eq4 = idx.select(HBPIndex.Op.EQ, 4);
-        System.out.println("= 4 -> " + eq4);
+        int[] eq4 = idx.select(Op.EQ, 4);
+        System.out.print("= 4 -> ");
+        for (int i = 0; i < eq4.length; i++) {
+            System.out.print(eq4[i] + (i + 1 == eq4.length ? "\n" : " "));
+        }
 
-        BitSet ge6 = idx.select(HBPIndex.Op.GE, 6);
-        System.out.println(">= 6 -> " + ge6);
+        int[] ge6 = idx.select(Op.GE, 6);
+        System.out.print(">= 6 -> ");
+        for (int i = 0; i < ge6.length; i++) {
+            System.out.print(ge6[i] + (i + 1 == ge6.length ? "\n" : " "));
+        }
 
         for (int i = 0; i < idx.size(); i++) {
             System.out.print(idx.getCode(i) + (i + 1 == idx.size() ? "\n" : " "));
         }
 
-        System.out.println("count(<5) = " + idx.count(HBPIndex.Op.LT, 5));
+        System.out.println("count(<5) = " + idx.count(Op.LT, 5));
     }
 }

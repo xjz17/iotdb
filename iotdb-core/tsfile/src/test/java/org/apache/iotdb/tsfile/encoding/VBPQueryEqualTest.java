@@ -49,7 +49,7 @@ public class VBPQueryEqualTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        // BitSet bitset_result = idx.select(HBPIndex.Op.EQ, bound_query_range);
+        // BitSet bitset_result = idx.select(VBPIndexLong.Op.EQ, bound_query_range);
 
         // for (int i = 0; i < bitset_result.length(); i++) {
         //     if (bitset_result.get(i)) {
@@ -58,7 +58,7 @@ public class VBPQueryEqualTest {
         //     }
         // }
 
-        int[] query_result = idx.selectResult(HBPIndex.Op.EQ, bound_query_range);
+        int[] query_result = idx.selectResult(VBPIndexLong.Op.EQ, bound_query_range);
 
         for (int i = 0; i < query_result.length; i++) {
             result[result_length[0]] = query_result[i] + (block_index * block_size);

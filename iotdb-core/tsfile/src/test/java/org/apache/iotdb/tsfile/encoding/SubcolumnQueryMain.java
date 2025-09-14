@@ -777,8 +777,7 @@ public class SubcolumnQueryMain {
                     // SubcolumnQueryMaxNewTest.Query(encoded_result);
                     // SubcolumnQueryGreaterLessTest.Query(encoded_result, queryRange.get(datasetName),
                     //         queryLessRange.get(datasetName));
-                    SubcolumnQuerySum2Test.Query(encoded_result, queryRange.get(datasetName),
-                            queryLessRange.get(datasetName));
+                    SubcolumnQuerySum2Test.Query(encoded_result, queryRange.get(datasetName));
 
                 }
 

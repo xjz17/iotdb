@@ -49,7 +49,7 @@ public class VBPQuerySmallerTest {
 
         VBPIndexLong idx = indexList.get(block_index);
 
-        // BitSet bitset_result = idx.select(HBPIndex.Op.LT, bound_query_range);
+        // BitSet bitset_result = idx.select(VBPIndexLong.Op.LT, bound_query_range);
 
         // for (int i = 0; i < bitset_result.length(); i++) {
         //     if (bitset_result.get(i)) {
@@ -58,7 +58,7 @@ public class VBPQuerySmallerTest {
         //     }
         // }
 
-        int[] query_result = idx.selectResult(HBPIndex.Op.LT, bound_query_range);
+        int[] query_result = idx.selectResult(VBPIndexLong.Op.LT, bound_query_range);
 
         for (int i = 0; i < query_result.length; i++) {
             result[result_length[0]] = query_result[i] + (block_index * block_size);
