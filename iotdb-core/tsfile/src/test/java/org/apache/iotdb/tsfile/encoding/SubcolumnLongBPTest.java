@@ -859,7 +859,7 @@ public class SubcolumnLongBPTest {
     }
 
     @Test
-    public void testSubcolumn() throws IOException {
+    public void test0() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
         // String parent_dir = "D:/encoding-subcolumn/";
 

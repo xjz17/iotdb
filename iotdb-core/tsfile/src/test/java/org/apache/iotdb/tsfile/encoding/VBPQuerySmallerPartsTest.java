@@ -67,8 +67,8 @@ public class VBPQuerySmallerPartsTest {
         //     }
         // }
 
-        int[] query_result1 = idx1.selectResult(VBPIndexLong.Op.LT, bound_query_range);
-        int[] query_result2 = idx2.selectResult(VBPIndexLong.Op.LT, bound_query_range);
+        int[] query_result1 = idx1.select(VBPIndexLong.Op.LT, bound_query_range);
+        int[] query_result2 = idx2.select(VBPIndexLong.Op.LT, bound_query_range);
 
         int i = 0, j = 0;
         while (i < query_result1.length && j < query_result2.length) {

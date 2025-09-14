@@ -61,8 +61,8 @@ public class VBPQueryGreaterLessTest {
         // }
         // }
 
-        int[] query_result = idx.selectResult(VBPIndexLong.Op.GT, bound_query_range);
-        int[] query_result_less = idx.selectResult(VBPIndexLong.Op.LT, bound_query_less_range);
+        int[] query_result = idx.select(VBPIndexLong.Op.GT, bound_query_range);
+        int[] query_result_less = idx.select(VBPIndexLong.Op.LT, bound_query_less_range);
 
         int i = 0, j = 0;
 
