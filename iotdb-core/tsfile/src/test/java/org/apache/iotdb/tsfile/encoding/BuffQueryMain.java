@@ -47,13 +47,13 @@ public class BuffQueryMain {
     }
 
     @Test
-    public void testQueryBeta() throws IOException {
+    public void test0() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        // String output_parent_dir = "D:/encoding-subcolumn/result/buff_query/";
-        String output_parent_dir = parent_dir + "result/buff_query/";
+        String output_parent_dir = "D:/encoding-subcolumn/result/buff_query/";
+        // String output_parent_dir = parent_dir + "result/buff_query/";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
@@ -106,7 +106,8 @@ public class BuffQueryMain {
         // String outputPath = output_parent_dir + "buff_query_equal.csv";
         // String outputPath = output_parent_dir + "buff_query_greater_less.csv";
         // String outputPath = output_parent_dir + "buff_query_sum.csv";
-        String outputPath = output_parent_dir + "buff_query_count.csv";
+        // String outputPath = output_parent_dir + "buff_query_count.csv";
+        String outputPath = output_parent_dir + "buff_query_count2.csv";
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -193,7 +194,8 @@ public class BuffQueryMain {
                 // queryRange.get(datasetName),
                 // queryLessRange.get(datasetName));
                 // SubcolumnQuerySumTest.Query(encoded_result);
-                SubcolumnQueryCountTest.Query(encoded_result, queryRange.get(datasetName));
+                // SubcolumnQueryCountTest.Query(encoded_result, queryRange.get(datasetName));
+                SubcolumnQueryCount2Test.Query(encoded_result);
             }
 
             e = System.nanoTime();

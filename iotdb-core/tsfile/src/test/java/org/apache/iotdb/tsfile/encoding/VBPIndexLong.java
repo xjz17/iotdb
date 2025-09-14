@@ -235,6 +235,10 @@ public class VBPIndexLong {
         return res.length;
     }
 
+    public int count() {
+        return n;
+    }
+
     public int size() {
         return n;
     }
