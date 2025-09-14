@@ -108,51 +108,55 @@ public class ParquetSelectLess {
      * Query less than from packed blocks
      * 优化版本：使用直接位操作而不是 selectWord64 提高性能
      */
-    public static int[] queryLessThanFromBlocks(long[][] blocks, int totalValues, int k, int offset, int upperBound, int blockSize) {
-        if (k <= 0) throw new IllegalArgumentException("k must be > 0");
-        int fieldsPerWord = 64 / k;
-        long fieldMask = (k >= 64) ? ~0L : ((1L << k) - 1L);
+    public static int[] queryLessThanFromBlocks(
+            long[][] packedBlocks,
+            int n,
+            int k,
+            int min,
+            int upper,          // 传入比较上限
+            int blockSize) {
 
-        // 预计算每个块中的值数量
-        int numBlocks = blocks.length;
-        int[] valuesInBlock = new int[numBlocks];
-        for (int i = 0; i < numBlocks; i++) {
-            valuesInBlock[i] = Math.min(blockSize, totalValues - i * blockSize);
-        }
+        List<Integer> hits = new ArrayList<>();
+        int numBlocks = packedBlocks.length;
 
-        // 预分配足够大的结果数组
-        int[] temp = new int[totalValues];
-        int outLen = 0;
+        for (int b = 0; b < numBlocks; b++) {
+            long[] block = packedBlocks[b];
+            int startIdx = b * blockSize;
+            int blockCount = Math.min(blockSize, n - startIdx);
 
-        // 直接使用位操作提取值，而不是通过 selectWord64
-        for (int blockIdx = 0; blockIdx < numBlocks; blockIdx++) {
-            int blockValues = valuesInBlock[blockIdx];
-            int wordsInBlock = blocks[blockIdx].length;
-
-            for (int widx = 0; widx < wordsInBlock; widx++) {
-                long word = blocks[blockIdx][widx];
-
-                for (int b = 0; b < fieldsPerWord; b++) {
-                    int localIndex = widx * fieldsPerWord + b;
-                    if (localIndex >= blockValues) break;
-
-                    int globalIndex = blockIdx * blockSize + localIndex;
-                    if (globalIndex >= totalValues) break;
-
-                    // 直接提取值：右移然后与掩码
-                    int val = (int) ((word >>> (b * k)) & fieldMask);
-                    int actual = val + offset;
-                    if (actual < upperBound) {
-                        temp[outLen++] = globalIndex;
-                    }
+            for (int i = 0; i < blockCount; i++) {
+                long val = extractKbitValue(block, i, k); // shifted value
+                long original = val + (long) min;
+                // 关键改动：小于比较
+                if (original < upper) {
+                    hits.add(startIdx + i);
                 }
             }
         }
 
-        // 返回精确大小的结果数组
-        int[] res = new int[outLen];
-        System.arraycopy(temp, 0, res, 0, outLen);
-        return res;
+        // 转为 int[]
+        int[] out = new int[hits.size()];
+        for (int i = 0; i < hits.size(); i++) {
+            out[i] = hits.get(i);
+        }
+        return out;
+    }
+    private static long extractKbitValue(long[] valuesWords, int idx, int k) {
+        long bitPos = (long) idx * (long) k;
+        int w = (int) (bitPos >>> 6);
+        int off = (int) (bitPos & 63L);
+        if (off + k <= 64) {
+            long word = valuesWords[w];
+            long mask = (k == 64) ? ~0L : ((1L << k) - 1L);
+            return (word >>> off) & mask;
+        } else {
+            // 跨 word 边界
+            int lowBits = 64 - off;
+            long lowMask = (lowBits == 64) ? ~0L : ((1L << lowBits) - 1L);
+            long low = (valuesWords[w] >>> off) & lowMask;
+            long high = valuesWords[w + 1] & ((1L << (k - lowBits)) - 1L);
+            return (high << lowBits) | low;
+        }
     }
 
     // -----------------------
@@ -211,6 +215,10 @@ public class ParquetSelectLess {
         queryRange.put("Stocks-USA", 6000);
         queryRange.put("Wind-Speed", 60);
         queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
 
         int repeatTime = 200;
         List<String> integerDatasets = new ArrayList<>();
@@ -309,7 +317,7 @@ public class ParquetSelectLess {
 
             s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int upper = queryRange.getOrDefault(datasetName, 0) * max_mul;
+                int upper = queryRange.getOrDefault(datasetName, 0);
                 int[] hits = queryLessThanFromBlocks(packedBlocks, n, k, min, upper, block_size);
             }
             e = System.nanoTime();

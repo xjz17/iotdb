@@ -1,22 +1,22 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.csvreader.CsvReader;
-import com.csvreader.CsvWriter;
-
 // 把下面的方法放到与你的 main 同一个类里（作为 static 方法），或放入一个工具类并在 main 中调用。
-import java.util.ArrayList;
-import java.util.List;
-public class ParquetSelectGreater {
+
+
+public class ParquetSelectMax {
 
 //    // -------------------------
 //    // 辅助函数
@@ -236,27 +236,62 @@ public class ParquetSelectGreater {
         return blocks;
     }
 
-    public static int[] queryGreaterThanFromBlocks(long[][] packedBlocks, int n, int k, int min, int lower, int blockSize) {
-        List<Integer> hits = new ArrayList<>();
+//    public static int[] queryGreaterThanFromBlocks(long[][] packedBlocks, int n, int k, int min, int lower, int blockSize) {
+//        List<Integer> hits = new ArrayList<>();
+//        int numBlocks = packedBlocks.length;
+//        for (int b = 0; b < numBlocks; b++) {
+//            long[] block = packedBlocks[b];
+//            int startIdx = b * blockSize;
+//            int blockCount = Math.min(blockSize, n - startIdx);
+//            for (int i = 0; i < blockCount; i++) {
+//                long val = extractKbitValue(block, i, k); // shifted value
+//                long original = val + (long) min;
+//                if (original > lower) {
+//                    hits.add(startIdx + i);
+//                }
+//            }
+//        }
+//        // 转为 int[]
+//        int[] out = new int[hits.size()];
+//        for (int i = 0; i < hits.size(); i++) out[i] = hits.get(i);
+//        return out;
+//    }
+public static long calculateSumFromBlocks(long[][] packedBlocks, int n, int k, int min, int blockSize) {
+    long sum = 0L;
+    int numBlocks = packedBlocks.length;
+
+    for (int b = 0; b < numBlocks; b++) {
+        long[] block = packedBlocks[b];
+        int blockCount = Math.min(blockSize, n - b * blockSize);
+
+        for (int i = 0; i < blockCount; i++) {
+            long val = extractKbitValue(block, i, k); // 提取压缩值
+            int original = (int) (val + min);         // 转换为原始值
+            sum += original;                          // 累加到总和
+        }
+    }
+
+    return sum;
+}
+    public static int findMaxFromBlocks(long[][] packedBlocks, int n, int k, int min, int blockSize) {
+        int maxVal = Integer.MIN_VALUE;
         int numBlocks = packedBlocks.length;
+
         for (int b = 0; b < numBlocks; b++) {
             long[] block = packedBlocks[b];
-            int startIdx = b * blockSize;
-            int blockCount = Math.min(blockSize, n - startIdx);
+            int blockCount = Math.min(blockSize, n - b * blockSize);
+
             for (int i = 0; i < blockCount; i++) {
-                long val = extractKbitValue(block, i, k); // shifted value
-                long original = val + (long) min;
-                if (original > lower) {
-                    hits.add(startIdx + i);
+                long val = extractKbitValue(block, i, k); // 提取压缩值
+                int original = (int) (val + min);         // 转换为原始值
+                if (original > maxVal) {
+                    maxVal = original;
                 }
             }
         }
-        // 转为 int[]
-        int[] out = new int[hits.size()];
-        for (int i = 0; i < hits.size(); i++) out[i] = hits.get(i);
-        return out;
-    }
 
+        return maxVal;
+    }
 
     /* ------- 辅助位操作（逐位最慢实现） ------- */
 
@@ -294,11 +329,29 @@ public class ParquetSelectGreater {
             return (high << lowBits) | low;
         }
     }
+    public static int countFromBlocks(long[][] packedBlocks, int k, int blockSize) {
+        int totalCount = 0;
 
+        for (long[] block : packedBlocks) {
+            // 计算每个块中的值数量
+            // 每个块最多有 blockSize 个值，但最后一个块可能不满
+            // 我们可以通过块的总位数除以每个值的位数来计算实际值数量
+            long totalBitsInBlock = (long) block.length * 64L;
+            int valuesInBlock = (int) (totalBitsInBlock / k);
+
+            // 确保不超过块大小
+            valuesInBlock = Math.min(valuesInBlock, blockSize);
+
+            totalCount += valuesInBlock;
+        }
+
+        return totalCount;
+    }
     // -------------------------
     // 优化的 main 函数
     // -------------------------
-    public static void main(String[] args) throws IOException {
+    @Test
+    public void maxTest() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/query_parquetproto/";
@@ -327,7 +380,7 @@ public class ParquetSelectGreater {
         List<String> integerDatasets = new ArrayList<>();
         integerDatasets.add("Wine-Tasting");
 
-        String outputPath = output_parent_dir + "parquetselect_query_greater.csv";
+        String outputPath = output_parent_dir + "parquetselect_query_max.csv";
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
         String[] head = {
@@ -397,8 +450,7 @@ public class ParquetSelectGreater {
 
             // 预热JVM
 //            packToBlocks(shifted, k, block_size);
-            queryGreaterThanFromBlocks(packToBlocks(shifted, k, block_size), n, k, min,
-                    queryRange.getOrDefault(datasetName, 0), block_size);
+            findMaxFromBlocks(packToBlocks(shifted, k, block_size), n, k, min, block_size);
 
             // encoding benchmark: repeatedly pack
             long s = System.nanoTime();
@@ -425,7 +477,310 @@ public class ParquetSelectGreater {
             int lower = queryRange.getOrDefault(datasetName, 0);
             s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] hits = queryGreaterThanFromBlocks(packedBlocks, n, k, min, lower, block_size);
+                int hits = findMaxFromBlocks(packedBlocks, n, k, min, block_size);
+                // hits not used further here, just to simulate query work
+            }
+            e = System.nanoTime();
+            decodeTime += ((e - s) / repeatTime);
+
+            String[] record = {
+                    datasetName,
+                    "ParquetSelect-proto",
+                    String.valueOf(encodeTime),
+                    String.valueOf(decodeTime),
+                    String.valueOf(n),
+                    String.valueOf((long) compressed_size),
+                    String.valueOf(ratioTmp)
+            };
+            writer.writeRecord(record);
+
+            System.out.println("k (bits): " + k + " compressed bytes: " + (long) compressed_size + " ratio: " + ratioTmp);
+        }
+
+        writer.close();
+        System.out.println("Done. Results written to " + outputPath);
+    }
+
+
+    @Test
+    public void sumTest() throws IOException {
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        String output_parent_dir = parent_dir + "result/query_parquetproto/";
+
+        int block_size = 512;
+
+        HashMap<String, Integer> queryRange = new HashMap<>();
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
+
+
+        int repeatTime = 200;
+        List<String> integerDatasets = new ArrayList<>();
+        integerDatasets.add("Wine-Tasting");
+
+        String outputPath = output_parent_dir + "parquetselect_query_sum.csv";
+        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
+        String[] head = {
+                "Dataset",
+                "Encoding Algorithm",
+                "Encoding Time",
+                "Decoding Time",
+                "Points",
+                "Compressed Size",
+                "Compression Ratio"
+        };
+        writer.writeRecord(head);
+
+        File directory = new File(input_parent_dir);
+        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+        if (csvFiles == null) {
+            System.err.println("No csv files under " + input_parent_dir);
+            writer.close();
+            return;
+        }
+
+        for (File file : csvFiles) {
+            String datasetName = extractFileName(file.toString());
+            System.out.println("Dataset: " + datasetName);
+            if(!queryRange.containsKey(datasetName)) continue;
+
+            InputStream inputStream = Files.newInputStream(file.toPath());
+            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+            ArrayList<Float> data1 = new ArrayList<>();
+
+            int max_decimal = 0;
+            while (loader.readRecord()) {
+                String f_str = loader.getValues()[0];
+                if (f_str.isEmpty()) continue;
+                int cur_decimal = getDecimalPrecision(f_str);
+                if (cur_decimal > max_decimal) max_decimal = cur_decimal;
+                data1.add(Float.valueOf(f_str));
+            }
+            inputStream.close();
+
+            int n = data1.size();
+            int[] data2_arr = new int[n];
+            int max_mul = (int) Math.pow(10, max_decimal);
+            for (int i = 0; i < n; i++) {
+                data2_arr[i] = (int) (data1.get(i) * max_mul);
+            }
+
+            // compute min/max and needed bitwidth
+            int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+            for (int v : data2_arr) {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            long range = (long) max - (long) min;
+            int k = neededBitsForRange(range);
+            if (k < 1) k = 1;
+            if (k > 32) k = 32;
+
+            // pack values (subtract min to make non-negative)
+            int[] shifted = new int[n];
+            for (int i = 0; i < n; i++) shifted[i] = data2_arr[i] - min;
+            long[][] packedBlocks = null;
+
+            long encodeTime = 0;
+            long decodeTime = 0;
+            double compressed_size = 0;
+
+            // 预热JVM
+//            packToBlocks(shifted, k, block_size);
+            calculateSumFromBlocks(packToBlocks(shifted, k, block_size), n, k, min, block_size);
+
+            // encoding benchmark: repeatedly pack
+            long s = System.nanoTime();
+//            for (int repeat = 0; repeat < repeatTime; repeat++) {
+            packedBlocks = packToBlocks(shifted, k, block_size);
+//            }
+            long e = System.nanoTime();
+            encodeTime += ((e - s) / repeatTime);
+
+            // 计算压缩大小
+            for (long[] block : packedBlocks) {
+                compressed_size += block.length * Long.BYTES;
+            }
+
+            double ratioTmp;
+            if (integerDatasets.contains(datasetName)) {
+                ratioTmp = compressed_size / (double) (n * Integer.BYTES);
+            } else {
+                ratioTmp = compressed_size / (double) (n * Long.BYTES);
+            }
+
+            System.out.println("Querying...");
+
+            int lower = queryRange.getOrDefault(datasetName, 0);
+            s = System.nanoTime();
+            for (int repeat = 0; repeat < repeatTime; repeat++) {
+                calculateSumFromBlocks(packedBlocks, n, k, min, block_size);
+                // hits not used further here, just to simulate query work
+            }
+            e = System.nanoTime();
+            decodeTime += ((e - s) / repeatTime);
+
+            String[] record = {
+                    datasetName,
+                    "ParquetSelect-proto",
+                    String.valueOf(encodeTime),
+                    String.valueOf(decodeTime),
+                    String.valueOf(n),
+                    String.valueOf((long) compressed_size),
+                    String.valueOf(ratioTmp)
+            };
+            writer.writeRecord(record);
+
+            System.out.println("k (bits): " + k + " compressed bytes: " + (long) compressed_size + " ratio: " + ratioTmp);
+        }
+
+        writer.close();
+        System.out.println("Done. Results written to " + outputPath);
+    }
+
+    @Test
+    public void countTest() throws IOException {
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String input_parent_dir = parent_dir + "dataset/";
+        String output_parent_dir = parent_dir + "result/query_parquetproto/";
+
+        int block_size = 512;
+
+        HashMap<String, Integer> queryRange = new HashMap<>();
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
+
+
+        int repeatTime = 200;
+        List<String> integerDatasets = new ArrayList<>();
+        integerDatasets.add("Wine-Tasting");
+
+        String outputPath = output_parent_dir + "parquetselect_query_count.csv";
+        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
+        String[] head = {
+                "Dataset",
+                "Encoding Algorithm",
+                "Encoding Time",
+                "Decoding Time",
+                "Points",
+                "Compressed Size",
+                "Compression Ratio"
+        };
+        writer.writeRecord(head);
+
+        File directory = new File(input_parent_dir);
+        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+        if (csvFiles == null) {
+            System.err.println("No csv files under " + input_parent_dir);
+            writer.close();
+            return;
+        }
+
+        for (File file : csvFiles) {
+            String datasetName = extractFileName(file.toString());
+            System.out.println("Dataset: " + datasetName);
+            if(!queryRange.containsKey(datasetName)) continue;
+
+            InputStream inputStream = Files.newInputStream(file.toPath());
+            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+            ArrayList<Float> data1 = new ArrayList<>();
+
+            int max_decimal = 0;
+            while (loader.readRecord()) {
+                String f_str = loader.getValues()[0];
+                if (f_str.isEmpty()) continue;
+                int cur_decimal = getDecimalPrecision(f_str);
+                if (cur_decimal > max_decimal) max_decimal = cur_decimal;
+                data1.add(Float.valueOf(f_str));
+            }
+            inputStream.close();
+
+            int n = data1.size();
+            int[] data2_arr = new int[n];
+            int max_mul = (int) Math.pow(10, max_decimal);
+            for (int i = 0; i < n; i++) {
+                data2_arr[i] = (int) (data1.get(i) * max_mul);
+            }
+
+            // compute min/max and needed bitwidth
+            int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+            for (int v : data2_arr) {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            long range = (long) max - (long) min;
+            int k = neededBitsForRange(range);
+            if (k < 1) k = 1;
+            if (k > 32) k = 32;
+
+            // pack values (subtract min to make non-negative)
+            int[] shifted = new int[n];
+            for (int i = 0; i < n; i++) shifted[i] = data2_arr[i] - min;
+            long[][] packedBlocks = null;
+
+            long encodeTime = 0;
+            long decodeTime = 0;
+            double compressed_size = 0;
+
+            // 预热JVM
+//            packToBlocks(shifted, k, block_size);
+            calculateSumFromBlocks(packToBlocks(shifted, k, block_size), n, k, min, block_size);
+
+            // encoding benchmark: repeatedly pack
+            long s = System.nanoTime();
+//            for (int repeat = 0; repeat < repeatTime; repeat++) {
+            packedBlocks = packToBlocks(shifted, k, block_size);
+//            }
+            long e = System.nanoTime();
+            encodeTime += ((e - s) / repeatTime);
+
+            // 计算压缩大小
+            for (long[] block : packedBlocks) {
+                compressed_size += block.length * Long.BYTES;
+            }
+
+            double ratioTmp;
+            if (integerDatasets.contains(datasetName)) {
+                ratioTmp = compressed_size / (double) (n * Integer.BYTES);
+            } else {
+                ratioTmp = compressed_size / (double) (n * Long.BYTES);
+            }
+
+            System.out.println("Querying...");
+
+            int lower = queryRange.getOrDefault(datasetName, 0);
+            s = System.nanoTime();
+            for (int repeat = 0; repeat < repeatTime; repeat++) {
+               int hits = countFromBlocks( packedBlocks,k, block_size);
                 // hits not used further here, just to simulate query work
             }
             e = System.nanoTime();

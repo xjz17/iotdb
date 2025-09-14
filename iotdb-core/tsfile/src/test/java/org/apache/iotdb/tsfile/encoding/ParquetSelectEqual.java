@@ -135,55 +135,106 @@ public class ParquetSelectEqual {
     // -------------------------
     // 优化的等于查询函数
     // -------------------------
-    public static int[] queryEqualFromBlocks(long[][] blocks, int totalValues, int k, int offset, int targetValue, int blockSize) {
-        if (k <= 0) throw new IllegalArgumentException("k must be > 0");
-        int fieldsPerWord = 64 / k;
-        long fieldMask = (k >= 64) ? ~0L : ((1L << k) - 1L);
+//    public static int[] queryEqualFromBlocks(long[][] blocks, int totalValues, int k, int offset, int targetValue, int blockSize) {
+//        if (k <= 0) throw new IllegalArgumentException("k must be > 0");
+//        int fieldsPerWord = 64 / k;
+//        long fieldMask = (k >= 64) ? ~0L : ((1L << k) - 1L);
+//
+//        // 预计算每个块中的值数量
+//        int numBlocks = blocks.length;
+//        int[] valuesPerBlock = new int[numBlocks];
+//        for (int i = 0; i < numBlocks - 1; i++) {
+//            valuesPerBlock[i] = blockSize;
+//        }
+//        valuesPerBlock[numBlocks - 1] = totalValues - (numBlocks - 1) * blockSize;
+//
+//        // 使用更高效的直接位操作而不是selectWord64
+//        int[] temp = new int[totalValues];
+//        int outLen = 0;
+//
+//        for (int blockIdx = 0; blockIdx < numBlocks; blockIdx++) {
+//            long[] block = blocks[blockIdx];
+//            int valuesInBlock = valuesPerBlock[blockIdx];
+//            int wordsInBlock = (valuesInBlock + fieldsPerWord - 1) / fieldsPerWord;
+//
+//            for (int widx = 0; widx < wordsInBlock; widx++) {
+//                long word = block[widx];
+//
+//                // 直接提取字段而不是使用selectWord64
+//                for (int b = 0; b < fieldsPerWord; b++) {
+//                    int localIndex = widx * fieldsPerWord + b;
+//                    if (localIndex >= valuesInBlock) break;
+//
+//                    int globalIndex = blockIdx * blockSize + localIndex;
+//                    // 使用直接位移和掩码操作提取值
+//                    int val = (int) ((word >>> (b * k)) & fieldMask);
+//                    int actual = val + offset;
+//                    if (actual == targetValue) {  // 修改为等于比较
+//                        temp[outLen++] = globalIndex;
+//                    }
+//                }
+//            }
+//        }
+//
+//        // 只返回实际需要的部分
+//        if (outLen == totalValues) {
+//            return temp; // 所有值都满足条件
+//        }
+//
+//        int[] res = new int[outLen];
+//        System.arraycopy(temp, 0, res, 0, outLen);
+//        return res;
+//    }
 
-        // 预计算每个块中的值数量
-        int numBlocks = blocks.length;
-        int[] valuesPerBlock = new int[numBlocks];
-        for (int i = 0; i < numBlocks - 1; i++) {
-            valuesPerBlock[i] = blockSize;
-        }
-        valuesPerBlock[numBlocks - 1] = totalValues - (numBlocks - 1) * blockSize;
+    public static int[] queryEqualFromBlocks(
+            long[][] packedBlocks,
+            int n,
+            int k,
+            int min,
+            int upper,          // 传入比较上限
+            int blockSize) {
 
-        // 使用更高效的直接位操作而不是selectWord64
-        int[] temp = new int[totalValues];
-        int outLen = 0;
+        List<Integer> hits = new ArrayList<>();
+        int numBlocks = packedBlocks.length;
 
-        for (int blockIdx = 0; blockIdx < numBlocks; blockIdx++) {
-            long[] block = blocks[blockIdx];
-            int valuesInBlock = valuesPerBlock[blockIdx];
-            int wordsInBlock = (valuesInBlock + fieldsPerWord - 1) / fieldsPerWord;
+        for (int b = 0; b < numBlocks; b++) {
+            long[] block = packedBlocks[b];
+            int startIdx = b * blockSize;
+            int blockCount = Math.min(blockSize, n - startIdx);
 
-            for (int widx = 0; widx < wordsInBlock; widx++) {
-                long word = block[widx];
-
-                // 直接提取字段而不是使用selectWord64
-                for (int b = 0; b < fieldsPerWord; b++) {
-                    int localIndex = widx * fieldsPerWord + b;
-                    if (localIndex >= valuesInBlock) break;
-
-                    int globalIndex = blockIdx * blockSize + localIndex;
-                    // 使用直接位移和掩码操作提取值
-                    int val = (int) ((word >>> (b * k)) & fieldMask);
-                    int actual = val + offset;
-                    if (actual == targetValue) {  // 修改为等于比较
-                        temp[outLen++] = globalIndex;
-                    }
+            for (int i = 0; i < blockCount; i++) {
+                long val = extractKbitValue(block, i, k); // shifted value
+                long original = val + (long) min;
+                // 关键改动：小于比较
+                if (original == upper) {
+                    hits.add(startIdx + i);
                 }
             }
         }
 
-        // 只返回实际需要的部分
-        if (outLen == totalValues) {
-            return temp; // 所有值都满足条件
+        // 转为 int[]
+        int[] out = new int[hits.size()];
+        for (int i = 0; i < hits.size(); i++) {
+            out[i] = hits.get(i);
         }
-
-        int[] res = new int[outLen];
-        System.arraycopy(temp, 0, res, 0, outLen);
-        return res;
+        return out;
+    }
+    private static long extractKbitValue(long[] valuesWords, int idx, int k) {
+        long bitPos = (long) idx * (long) k;
+        int w = (int) (bitPos >>> 6);
+        int off = (int) (bitPos & 63L);
+        if (off + k <= 64) {
+            long word = valuesWords[w];
+            long mask = (k == 64) ? ~0L : ((1L << k) - 1L);
+            return (word >>> off) & mask;
+        } else {
+            // 跨 word 边界
+            int lowBits = 64 - off;
+            long lowMask = (lowBits == 64) ? ~0L : ((1L << lowBits) - 1L);
+            long low = (valuesWords[w] >>> off) & lowMask;
+            long high = valuesWords[w + 1] & ((1L << (k - lowBits)) - 1L);
+            return (high << lowBits) | low;
+        }
     }
 
     // -------------------------
@@ -227,6 +278,10 @@ public class ParquetSelectEqual {
         queryEqualValue.put("Stocks-USA", 6000);
         queryEqualValue.put("Wind-Speed", 60);
         queryEqualValue.put("Wine-Tasting", 10);
+        queryEqualValue.put("Arade4", 10000000);
+        queryEqualValue.put("EPM-Education", 200);
+        queryEqualValue.put("POI-lat", 0);
+        queryEqualValue.put("Gov10", 100000);
 
         int repeatTime = 100;
         List<String> integerDatasets = new ArrayList<>();

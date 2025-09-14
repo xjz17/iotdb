@@ -1,22 +1,19 @@
 package org.apache.iotdb.tsfile.encoding;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.*;
+
 // 把下面的方法放到与你的 main 同一个类里（作为 static 方法），或放入一个工具类并在 main 中调用。
-import java.util.ArrayList;
-import java.util.List;
-public class ParquetSelectGreater {
+
+
+public class ParquetSelectLessPart {
 
 //    // -------------------------
 //    // 辅助函数
@@ -256,8 +253,75 @@ public class ParquetSelectGreater {
         for (int i = 0; i < hits.size(); i++) out[i] = hits.get(i);
         return out;
     }
+    public static int[] queryTwoColumnSerialRange(
+            long[][] packedA, int kA, int minA, int upperA, int lowerA,
+            long[][] packedB, int kB, int minB, int upperB, int lowerB,
+            int n, int blockSize) {
 
 
+// 第一步：对列 A 进行过滤，得到一个 BitSet（或 boolean[]）
+        BitSet passA = queryRangeBitmapFromBlocks(packedA, n, kA, minA, upperA, lowerA, blockSize);
+
+
+// 第二步：仅对 passA 为 true 的索引在列 B 上做过滤
+        List<Integer> hits = new ArrayList<>();
+
+
+// 遍历所有通过 A 的索引（使用 BitSet.nextSetBit 加速遍历稀疏位图）
+        int idx = passA.nextSetBit(0);
+        while (idx >= 0 && idx < n) {
+            long val = extractKbitValue(packedB, idx, kB, blockSize);
+            long original = val + (long) minB;
+            if (original < upperB && original > lowerB) {
+                hits.add(idx);
+            }
+            idx = passA.nextSetBit(idx + 1);
+        }
+
+
+// 转为 int[] 返回
+        int[] out = new int[hits.size()];
+        for (int i = 0; i < hits.size(); i++) out[i] = hits.get(i);
+        return out;
+    }
+    public static BitSet queryRangeBitmapFromBlocks(
+            long[][] packedBlocks,
+            int n,
+            int k,
+            int min,
+            int upper,
+            int lower,
+            int blockSize) {
+
+
+        BitSet pass = new BitSet(n);
+        int numBlocks = packedBlocks.length;
+
+
+        for (int b = 0; b < numBlocks; b++) {
+            long[] block = packedBlocks[b];
+            int startIdx = b * blockSize;
+            int blockCount = Math.min(blockSize, n - startIdx);
+
+
+            for (int i = 0; i < blockCount; i++) {
+                long val = extractKbitValue(block, i, k);
+                long original = val + (long) min;
+                if (original < upper && original > lower) {
+                    pass.set(startIdx + i);
+                }
+            }
+        }
+
+
+        return pass;
+    }
+    private static long extractKbitValue(long[][] packedBlocks, int globalIdx, int k, int blockSize) {
+        int blockId = globalIdx / blockSize;
+        int inBlockIdx = globalIdx % blockSize;
+        long[] block = packedBlocks[blockId];
+        return extractKbitValue(block, inBlockIdx, k);
+    }
     /* ------- 辅助位操作（逐位最慢实现） ------- */
 
     private static int getBit(long[] words, long bitIndex) {
@@ -286,7 +350,6 @@ public class ParquetSelectGreater {
             long mask = (k == 64) ? ~0L : ((1L << k) - 1L);
             return (word >>> off) & mask;
         } else {
-            // 跨 word 边界
             int lowBits = 64 - off;
             long lowMask = (lowBits == 64) ? ~0L : ((1L << lowBits) - 1L);
             long low = (valuesWords[w] >>> off) & lowMask;
@@ -294,7 +357,6 @@ public class ParquetSelectGreater {
             return (high << lowBits) | low;
         }
     }
-
     // -------------------------
     // 优化的 main 函数
     // -------------------------
@@ -327,7 +389,7 @@ public class ParquetSelectGreater {
         List<String> integerDatasets = new ArrayList<>();
         integerDatasets.add("Wine-Tasting");
 
-        String outputPath = output_parent_dir + "parquetselect_query_greater.csv";
+        String outputPath = output_parent_dir + "parquetselect_query_less_parts.csv";
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
         String[] head = {
@@ -374,75 +436,100 @@ public class ParquetSelectGreater {
             for (int i = 0; i < n; i++) {
                 data2_arr[i] = (int) (data1.get(i) * max_mul);
             }
-
-            // compute min/max and needed bitwidth
-            int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
-            for (int v : data2_arr) {
-                if (v < min) min = v;
-                if (v > max) max = v;
+// --- 在读完 data2_arr（长度为 n）之后，替换下面这段代码 ---
+// 将单列对半分成两列（每列长度 n2 = n/2）
+            int mid = n / 2;                   // 向下取整
+            int n2 = mid;                      // 作为新“记录数”用于两列并行/串行逻辑
+            if (n2 == 0) {
+                System.err.println("Too few rows to split into two columns for dataset " + datasetName);
+                continue;
             }
-            long range = (long) max - (long) min;
-            int k = neededBitsForRange(range);
-            if (k < 1) k = 1;
-            if (k > 32) k = 32;
 
-            // pack values (subtract min to make non-negative)
-            int[] shifted = new int[n];
-            for (int i = 0; i < n; i++) shifted[i] = data2_arr[i] - min;
-            long[][] packedBlocks = null;
+// 构造两列原始整数数组
+            int[] colA_raw = Arrays.copyOfRange(data2_arr, 0, n2);
+            int[] colB_raw = Arrays.copyOfRange(data2_arr, n2, n2 + n2); // 若 n 为奇数，最后一个元素被忽略
 
-            long encodeTime = 0;
-            long decodeTime = 0;
+// 为 A 列计算 min/max/bitwidth kA
+            int minA = Integer.MAX_VALUE, maxA = Integer.MIN_VALUE;
+            for (int v : colA_raw) { if (v < minA) minA = v; if (v > maxA) maxA = v; }
+            long rangeA = (long) maxA - (long) minA;
+            int kA = neededBitsForRange(rangeA);
+            if (kA < 1) kA = 1; if (kA > 32) kA = 32;
+
+// 为 B 列计算 min/max/bitwidth kB
+            int minB = Integer.MAX_VALUE, maxB = Integer.MIN_VALUE;
+            for (int v : colB_raw) { if (v < minB) minB = v; if (v > maxB) maxB = v; }
+            long rangeB = (long) maxB - (long) minB;
+            int kB = neededBitsForRange(rangeB);
+            if (kB < 1) kB = 1; if (kB > 32) kB = 32;
+
+// 构造 shifted 数组（减去对应的 min，使得所有值非负）
+            int[] shiftedA = new int[n2];
+            int[] shiftedB = new int[n2];
+            for (int i = 0; i < n2; i++) {
+                shiftedA[i] = colA_raw[i] - minA;
+                shiftedB[i] = colB_raw[i] - minB;
+            }
+
+// 预热与编码基准（只做一次 pack 以测编码耗时的近似值，沿用你的 repeatTime 用法）
+            long encodeTimeA = 0, encodeTimeB = 0;
+            long s_enc = System.nanoTime();
+            long[][] packedA = packToBlocks(shiftedA, kA, block_size);
+            long e_enc = System.nanoTime();
+            encodeTimeA += ((e_enc - s_enc) / repeatTime); // 保持与原代码同样的除法
+
+            s_enc = System.nanoTime();
+            long[][] packedB = packToBlocks(shiftedB, kB, block_size);
+            e_enc = System.nanoTime();
+            encodeTimeB += ((e_enc - s_enc) / repeatTime);
+
+// 计算合并后的压缩大小（字节）
             double compressed_size = 0;
+            for (long[] block : packedA) compressed_size += block.length * Long.BYTES;
+            for (long[] block : packedB) compressed_size += block.length * Long.BYTES;
 
-            // 预热JVM
-//            packToBlocks(shifted, k, block_size);
-            queryGreaterThanFromBlocks(packToBlocks(shifted, k, block_size), n, k, min,
-                    queryRange.getOrDefault(datasetName, 0), block_size);
-
-            // encoding benchmark: repeatedly pack
-            long s = System.nanoTime();
-//            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                packedBlocks = packToBlocks(shifted, k, block_size);
-//            }
-            long e = System.nanoTime();
-            encodeTime += ((e - s) / repeatTime);
-
-            // 计算压缩大小
-            for (long[] block : packedBlocks) {
-                compressed_size += block.length * Long.BYTES;
-            }
-
+// 压缩比（仍按原逻辑，注意现在总点数为 n2 * 2 或者你想按每列单独算）
             double ratioTmp;
             if (integerDatasets.contains(datasetName)) {
-                ratioTmp = compressed_size / (double) (n * Integer.BYTES);
+                ratioTmp = compressed_size / (double) (n2 * Integer.BYTES * 2); // 两列合计占用的原始大小
             } else {
-                ratioTmp = compressed_size / (double) (n * Long.BYTES);
+                ratioTmp = compressed_size / (double) (n2 * Long.BYTES * 2);
             }
 
-            System.out.println("Querying...");
+            System.out.println("Querying (two-column serial) ...");
 
-            int lower = queryRange.getOrDefault(datasetName, 0);
-            s = System.nanoTime();
+// 使用同一个阈值（dataset 的 queryRange）作为 lower（你可以改成不同阈值）
+            int queryLower = queryRange.getOrDefault(datasetName, 0);
+// 为了兼容原来的判断 (original < upper && original > lower)，这里我们把 upper 设为 Integer.MAX_VALUE
+            int queryUpper = Integer.MAX_VALUE;
+
+// 计时：重复多次调用两列串行过滤
+            long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] hits = queryGreaterThanFromBlocks(packedBlocks, n, k, min, lower, block_size);
-                // hits not used further here, just to simulate query work
+                int[] hits = queryTwoColumnSerialRange(
+                        packedA, kA, minA, queryUpper, queryLower,
+                        packedB, kB, minB, queryUpper, queryLower,
+                        n2, block_size);
+                // hits 未做后续处理，仅用于模拟查询负载
             }
-            e = System.nanoTime();
-            decodeTime += ((e - s) / repeatTime);
+            long e = System.nanoTime();
+            long decodeTime = ((e - s) / repeatTime);
 
+// 写出记录（注意把 Points 更新成 n2）
             String[] record = {
                     datasetName,
-                    "ParquetSelect-proto",
-                    String.valueOf(encodeTime),
+                    "ParquetSelect-proto (split2cols)",
+                    String.valueOf((encodeTimeA + encodeTimeB)),
                     String.valueOf(decodeTime),
-                    String.valueOf(n),
+                    String.valueOf(n2),
                     String.valueOf((long) compressed_size),
                     String.valueOf(ratioTmp)
             };
             writer.writeRecord(record);
 
-            System.out.println("k (bits): " + k + " compressed bytes: " + (long) compressed_size + " ratio: " + ratioTmp);
+            System.out.println("kA (bits): " + kA + " kB (bits): " + kB + " compressed bytes: " + (long) compressed_size + " ratio: " + ratioTmp);
+
+
         }
 
         writer.close();
