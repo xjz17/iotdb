@@ -3,6 +3,7 @@ package org.apache.iotdb.tsfile.encoding;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -400,9 +401,9 @@ public class ParquetSelectGreater {
 
             // encoding benchmark: repeatedly pack
             long s = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
+//            for (int repeat = 0; repeat < repeatTime; repeat++) {
                 packedBlocks = packToBlocks(shifted, k, block_size);
-            }
+//            }
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
 
