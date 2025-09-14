@@ -16,6 +16,13 @@ import com.csvreader.CsvWriter;
 
 public class SubcolumnQueryGreaterTest {
 
+    // 在类里添加一个全局可复用候选缓冲（避免每块 new）
+    private static final ThreadLocal<int[]> THREAD_CAND_BUF = ThreadLocal.withInitial(() -> new int[8192]); // 初始大小按最大 block_size 调整
+    private static final ThreadLocal<int[]> THREAD_RUN_BUF = ThreadLocal.withInitial(() -> new int[1024]);
+    private static final ThreadLocal<int[]> THREAD_VAL_BUF = ThreadLocal.withInitial(() -> new int[1024]);
+
+    // 更快的 readBits（放到类中）
+
     public static void Query(byte[] encoded_result, int lower_bound) {
 
         int encode_pos = 0;

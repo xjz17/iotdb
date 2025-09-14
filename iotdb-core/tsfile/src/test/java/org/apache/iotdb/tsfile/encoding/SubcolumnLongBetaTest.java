@@ -217,11 +217,16 @@ public class SubcolumnLongBetaTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+//        String parent_dir = "D:/github/xjz17/subcolumn/";
+//
+//        String input_parent_dir = parent_dir + "dataset/";
+//
+//        String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
 
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         String input_parent_dir = parent_dir + "dataset/";
-        
-        String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
+        String output_parent_dir = parent_dir + "result/compression_vs_beta/";
+
         // String output_parent_dir = parent_dir + "result/compression_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,

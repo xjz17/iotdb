@@ -64,8 +64,10 @@ public class SubcolumnQueryEqualNewTest {
         }
     }
 
+
+
     public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encodePos, int target, int[] result, int[] result_length) {
+                                      int encodePos, int target, int[] result, int[] result_length) {
 
         // 读取最小增量
         int minDelta0 = SubcolumnTest.bytes2Integer(encoded_result, encodePos, 4);
@@ -76,22 +78,19 @@ public class SubcolumnQueryEqualNewTest {
 
         target -= minDelta0; // 调整目标值
 
-        // 初始化候选索引
-        int[] candidate_indices = new int[remainder];
-        int candidate_length = remainder;
-        for (int i = 0; i < remainder; i++) {
-            candidate_indices[i] = i;
-        }
-
         if (m == 0) {
             if (target == 0) {
                 for (int i = 0; i < remainder; i++) {
-                    result[result_length[0]] = block_size * block_index + i;
-                    result_length[0]++;
+                    result[result_length[0]++] = block_size * block_index + i;
                 }
             }
             return encodePos;
         }
+
+        // 初始化候选索引（一次分配）
+        int[] candidate_indices = new int[remainder];
+        int candidate_length = remainder;
+        for (int i = 0; i < remainder; i++) candidate_indices[i] = i;
 
         int bw = SubcolumnTest.bitWidth(block_size);
         int beta = encoded_result[encodePos] & 0xFF;
@@ -104,67 +103,99 @@ public class SubcolumnQueryEqualNewTest {
         int[] encodingType = new int[l];
         encodePos = SubcolumnTest.decodeBitPacking(encoded_result, encodePos, 1, l, encodingType);
 
-        // 处理每个子列
+        // 处理每个子列（从高位到低位）
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
-            if (type == 0) { // 类型 0：plain bit-packed
+            int bitWidth = bitWidthList[i];
+
+            if (type == 0) { // plain bit-packed
                 if (target < 0) {
-                    long bitPos = ((long) encodePos) * 8L + (long) bitWidthList[i] * (long) remainder;
-                    encodePos = (int) ((bitPos + 7) / 8);
+                    // skip this subcolumn: compute byte position advance
+                    long skipBits = (long) bitWidth * (long) remainder;
+                    long bitPos = ((long) encodePos) * 8L + skipBits;
+                    encodePos = (int) ((bitPos + 7L) >>> 3);
                     continue;
                 }
 
-                long bitPos = ((long) encodePos) * 8L;
-                int new_length = 0;
+                final int expectedValue = (target >> (i * beta)) & ((1 << beta) - 1);
+                long baseBitPos = ((long) encodePos) * 8L; // start bit pos of this subcolumn
 
-                for (int j = 0; j < candidate_length; j++) {
-                    int index = candidate_indices[j];
-                    int subValue = SubcolumnTest.bytesToInt(encoded_result, (int) (bitPos + index * bitWidthList[i]),
-                            bitWidthList[i]);
-                    int expectedValue = (target >> (i * beta)) & ((1 << beta) - 1);
-                    if (subValue == expectedValue) {
-                        candidate_indices[new_length++] = index;
+                // Heuristic: if many candidates remain, sequential scan is better;
+                // otherwise random-access per candidate is better.
+                if (candidate_length > (remainder >> 1)) {
+                    // sequential scan across all remainder values
+                    int new_length = 0;
+                    long bitPos = baseBitPos;
+                    for (int pos = 0; pos < remainder; pos++) {
+                        int subValue = SubcolumnTest.bytesToInt(encoded_result, (int) (bitPos + (long) pos * bitWidth),
+                                bitWidth);
+                        if (subValue == expectedValue) {
+                            candidate_indices[new_length++] = pos;
+                        }
                     }
+                    candidate_length = new_length;
+                } else {
+                    // random-access for just the candidate positions (current approach),
+                    // but avoid recomputing expectedValue and some arithmetic.
+                    int new_length = 0;
+                    for (int j = 0; j < candidate_length; j++) {
+                        int idx = candidate_indices[j];
+                        int subValue = SubcolumnTest.bytesToInt(encoded_result,
+                                (int) (baseBitPos + (long) idx * bitWidth), bitWidth);
+                        if (subValue == expectedValue) {
+                            candidate_indices[new_length++] = idx;
+                        }
+                    }
+                    candidate_length = new_length;
                 }
 
-                candidate_length = new_length;
-                bitPos += (long) remainder * bitWidthList[i];
-                encodePos = (int) ((bitPos + 7) / 8);
+                // advance encodePos past this packed block
+                long advBits = (long) bitWidth * (long) remainder;
+                long endBitPos = baseBitPos + advBits;
+                encodePos = (int) ((endBitPos + 7L) >>> 3);
 
-            } else { // 类型 1：RLE + bitpacked values
+            } else { // type == 1: RLE + bitpacked values
+                // read length of runs (index)
                 int index = ((encoded_result[encodePos] & 0xFF) << 8) | (encoded_result[encodePos + 1] & 0xFF);
                 encodePos += 2;
 
                 if (target < 0) {
-                    long bitPos = ((long) encodePos) * 8L + (long) bw * index;
-                    encodePos = (int) ((bitPos + 7) / 8);
-                    bitPos = ((long) encodePos) * 8L + (long) bitWidthList[i] * index;
-                    encodePos = (int) ((bitPos + 7) / 8);
+                    // skip both run_length and rle_values payloads:
+                    long skipBitsRunLens = (long) bw * index;
+                    long bitPos = ((long) encodePos) * 8L + skipBitsRunLens;
+                    encodePos = (int) ((bitPos + 7L) >>> 3);
+
+                    long skipBitsValues = (long) bitWidth * index;
+                    bitPos = ((long) encodePos) * 8L + skipBitsValues;
+                    encodePos = (int) ((bitPos + 7L) >>> 3);
                     continue;
                 }
 
+                // decode run lengths and values
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
-
                 encodePos = SubcolumnTest.decodeBitPacking(encoded_result, encodePos, bw, index, run_length);
-                encodePos = SubcolumnTest.decodeBitPacking(encoded_result, encodePos, bitWidthList[i], index,
-                        rle_values);
+                encodePos = SubcolumnTest.decodeBitPacking(encoded_result, encodePos, bitWidth, index, rle_values);
 
+                final int expectedValue = (target >> (i * beta)) & ((1 << beta) - 1);
+
+                // Candidate indices are sorted; advance rleIndex monotonically.
                 int new_length = 0;
                 int rleIndex = 0;
-                int currentPos = 0;
-                int expectedValue = (target >> (i * beta)) & ((1 << beta) - 1);
+                int currentPos = 0; // current starting pos of the run rleIndex
 
                 for (int j = 0; j < candidate_length; j++) {
-                    int index_candidate = candidate_indices[j];
+                    int idxCandidate = candidate_indices[j];
 
-                    while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
+                    // move rleIndex forward until its run covers idxCandidate (or we run out)
+                    while (rleIndex < index && currentPos + run_length[rleIndex] <= idxCandidate) {
                         currentPos += run_length[rleIndex];
                         rleIndex++;
                     }
 
                     if (rleIndex < index && rle_values[rleIndex] == expectedValue) {
-                        candidate_indices[new_length++] = index_candidate;
+                        // idxCandidate falls into a run with matching value
+                        candidate_indices[new_length++] = idxCandidate;
                     }
                 }
 
@@ -172,10 +203,9 @@ public class SubcolumnQueryEqualNewTest {
             }
         }
 
-        // 处理匹配的候选索引
+        // 输出最终匹配的索引
         for (int i = 0; i < candidate_length; i++) {
-            result[result_length[0]] = block_size * block_index + candidate_indices[i];
-            result_length[0]++;
+            result[result_length[0]++] = block_size * block_index + candidate_indices[i];
         }
 
         return encodePos;
