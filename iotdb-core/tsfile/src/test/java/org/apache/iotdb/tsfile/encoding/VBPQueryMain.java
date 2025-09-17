@@ -432,5 +432,198 @@ public class VBPQueryMain {
         writer.close();
     }
 
+    @Test
+    public void testMaterialize() throws IOException {
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // // String parent_dir = "D:/encoding-subcolumn/";
+        //
+        String input_parent_dir = parent_dir + "dataset/";
+        //
+        String output_parent_dir = "D:/encoding-subcolumn/result/materialization/";
+
+        String outputPath = output_parent_dir + "bitweaving_materialization.csv";
+
+        HashMap<String, Integer> queryRange = new HashMap<>();
+
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
+        queryRange.put("Arade4", 10000000);
+        queryRange.put("EPM-Education", 200);
+        queryRange.put("POI-lat", 0);
+        queryRange.put("Gov10", 100000);
+
+        int block_size = 512;
+
+        int repeatTime = 100;
+        // repeatTime = 500;
+
+        // repeatTime = 1;
+
+        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
+
+        String[] head = {
+                "Dataset",
+                "Encoding Algorithm",
+                "Decoding Time",
+                "Points",
+        };
+        writer.writeRecord(head);
+
+        File directory = new File(input_parent_dir);
+        // File[] csvFiles = directory.listFiles();
+        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+
+        for (File file : csvFiles) {
+            String datasetName = extractFileName(file.toString());
+            System.out.println(datasetName);
+            if (!queryRange.containsKey(datasetName)) {
+                continue;
+            }
+
+            InputStream inputStream = Files.newInputStream(file.toPath());
+
+            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+            ArrayList<Double> data1 = new ArrayList<>();
+
+            int max_decimal = 0;
+            while (loader.readRecord()) {
+                String f_str = loader.getValues()[0];
+                if (f_str.isEmpty()) {
+                    continue;
+                }
+                int cur_decimal = getDecimalPrecision(f_str);
+                if (cur_decimal > max_decimal) {
+                    max_decimal = cur_decimal;
+                }
+                data1.add(Double.valueOf(f_str));
+            }
+            inputStream.close();
+
+            if (max_decimal > 17) {
+                max_decimal = 17;
+            }
+
+            // long[] data2_arr = new long[data1.size()];
+            int totalSize = data1.size();
+            int halfSize = totalSize / 2;
+
+            long[] col1_data = new long[halfSize];
+            long[] col2_data = new long[halfSize];
+
+            long max_mul = (long) Math.pow(10, max_decimal);
+            for (int i = 0; i < halfSize; i++) {
+                col1_data[i] = (long) (data1.get(i) * max_mul);
+            }
+
+            for (int i = 0; i < halfSize; i++) {
+                col2_data[i] = (long) (data1.get(i + halfSize) * max_mul);
+            }
+
+            System.out.println(max_decimal);
+
+            byte[] encoded_result1 = new byte[col1_data.length * 8];
+            byte[] encoded_result2 = new byte[col2_data.length * 8];
+
+            long encodeTime = 0;
+            long decodeTime = 0;
+            double ratio = 0;
+            double compressed_size = 0;
+
+            int length = 0;
+
+            ArrayList<VBPIndexLong> indexList1 = new ArrayList<>();
+            ArrayList<VBPIndexLong> indexList2 = new ArrayList<>();
+
+            long s = System.nanoTime();
+            for (int repeat = 0; repeat < repeatTime; repeat++) {
+                // clear indexList
+                indexList1.clear();
+                indexList2.clear();
+
+                length = VBPIndexLongTest.Encoder(col1_data, block_size, indexList1, encoded_result1);
+
+                length = VBPIndexLongTest.Encoder(col2_data, block_size, indexList2, encoded_result2);
+            }
+
+            long e = System.nanoTime();
+            encodeTime += ((e - s) / repeatTime);
+            compressed_size += length;
+
+            for (VBPIndexLong idx : indexList1) {
+                compressed_size += idx.k * idx.wordsPerPlane * Long.BYTES;
+            }
+
+            for (VBPIndexLong idx : indexList2) {
+                compressed_size += idx.k * idx.wordsPerPlane * Long.BYTES;
+            }
+
+            double ratioTmp;
+
+            ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+
+            ratio += ratioTmp;
+
+            System.out.println("Decode");
+
+            // long[] data2_arr_decoded = new long[data2_arr.length];
+
+            s = System.nanoTime();
+
+            int[] res1 = new int[data1.size()];
+            int[] res2 = new int[data1.size()];
+            int[] len1 = new int[1];
+            int[] len2 = new int[1];
+
+            int[] result = new int[data1.size()];
+            int[] result_length = new int[1];
+
+            for (int repeat = 0; repeat < repeatTime; repeat++) {
+                VBPMaterializeTest.Decoder(encoded_result1, indexList1, queryRange.get(datasetName), res1, len1);
+
+                VBPMaterializeTest.Decoder(encoded_result2, indexList2, queryRange.get(datasetName), res2, len2);
+
+                int i = 0, j = 0;
+                int idx = 0;
+                while (i < len1[0] && j < len2[0]) {
+                    if (res1[i] == res2[j]) {
+                        result[idx] = res1[i];
+                        idx++;
+                        i++;
+                        j++;
+                    } else if (res1[i] < res2[j]) {
+                        i++;
+                    } else {
+                        j++;
+                    }
+                }
+
+            }
+
+            e = System.nanoTime();
+            decodeTime += ((e - s) / repeatTime);
+
+            String[] record = {
+                    datasetName,
+                    "BitWeaving",
+                    String.valueOf(decodeTime),
+                    String.valueOf(data1.size()),
+            };
+            writer.writeRecord(record);
+            System.out.println(ratio);
+        }
+
+        writer.close();
+    }
+
 
 }
