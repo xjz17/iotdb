@@ -9,11 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Random;
 
-import static java.lang.Math.floor;
-
-public class UpdateInsertLargerTest {
+public class UpdateLargerTest {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -497,11 +498,16 @@ public class UpdateInsertLargerTest {
 
                 encode_pos += 2;
 
+//                System.out.println("------------------------------------------------");
+
                 int[] run_length = new int[index];
                 int[] rle_values = new int[index];
+//                System.out.println(encode_pos);
 
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+//                System.out.println(encode_pos);
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, index, rle_values);
+//                System.out.println(encode_pos);
 
                 int currentIndex = 0;
                 for (int j = 0; j < index; j++) {
@@ -703,6 +709,7 @@ public class UpdateInsertLargerTest {
         int lower_bound = (int) (Math.pow(2,max_m * beta[0]));
         beta[1] = lower_bound;
         beta[2] = encode_pos;
+        beta[3] = remainder;
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
@@ -719,6 +726,76 @@ public class UpdateInsertLargerTest {
         // System.out.println("beta: " + beta[0]);
 
         return encode_pos;
+    }
+    public static boolean compareBits(byte[] encoded_result, int new_decode_pos, int index, int bitWidth, int value) {
+        // 计算起始位位置
+        int bit_pos = bitWidth * index;
+
+        // 计算起始字节和位偏移
+        int startByte = new_decode_pos + (bit_pos / 8);
+        int bitOffset = bit_pos % 8;
+
+        // 确保值不会超出指定位数范围
+        int maskedValue = value & ((1 << bitWidth) - 1);
+
+        // 读取指定位段
+        int readValue = 0;
+        int bitsRemaining = bitWidth;
+        int currentByteIndex = startByte;
+        int currentBitOffset = bitOffset;
+
+        while (bitsRemaining > 0 && currentByteIndex < encoded_result.length) {
+            // 计算当前字节中可以读取的位数
+            int bitsInThisByte = Math.min(8 - currentBitOffset, bitsRemaining);
+
+            // 从当前字节提取指定位
+            int byteValue = encoded_result[currentByteIndex] & 0xFF;
+            int extractedBits = (byteValue >> (8 - currentBitOffset - bitsInThisByte)) & ((1 << bitsInThisByte) - 1);
+
+            // 将提取的位添加到结果中
+            readValue = (readValue << bitsInThisByte) | extractedBits;
+
+            // 更新计数器
+            bitsRemaining -= bitsInThisByte;
+            currentByteIndex++;
+            currentBitOffset = 0; // 后续字节从第0位开始
+        }
+
+        // 比较读取的值与给定值的低位
+        return readValue == maskedValue;
+    }
+    public static void updateBits(byte[] encoded_result, int new_decode_pos, int bit_pos, int bitWidth, int value) {
+        // 计算起始字节和位偏移
+        int startByte = new_decode_pos + (bit_pos / 8);
+        int bitOffset = bit_pos % 8;
+
+        // 确保值不会超出指定位数范围
+        int maskedValue = value & ((1 << bitWidth) - 1);
+
+        // 处理跨字节更新
+        int bitsRemaining = bitWidth;
+        int currentByteIndex = startByte;
+        int currentBitOffset = bitOffset;
+
+        while (bitsRemaining > 0) {
+            // 计算当前字节中可以更新的位数
+            int bitsInThisByte = Math.min(8 - currentBitOffset, bitsRemaining);
+
+            // 创建掩码：清除目标位
+            int clearMask = ~(((1 << bitsInThisByte) - 1) << (8 - currentBitOffset - bitsInThisByte));
+
+            // 准备要设置的值（移位到正确位置）
+            int valuePart = (maskedValue << (bitWidth - bitsRemaining)) >>> (bitWidth - bitsInThisByte);
+            int shiftedValue = valuePart << (8 - currentBitOffset - bitsInThisByte);
+
+            // 更新当前字节
+            encoded_result[currentByteIndex] = (byte) ((encoded_result[currentByteIndex] & clearMask) | shiftedValue);
+
+            // 更新计数器
+            bitsRemaining -= bitsInThisByte;
+            currentByteIndex++;
+            currentBitOffset = 0; // 后续字节从第0位开始
+        }
     }
     @Test
     public void testQuery() throws IOException {
@@ -745,15 +822,15 @@ public class UpdateInsertLargerTest {
         updateRange.put("Wind-Speed", 50);
         updateRange.put("Wine-Tasting", 0);
 
-        int repeatTime = 1;
+        int repeatTime = 500;
 
-        // repeatTime = 1;
+         repeatTime = 1;
 
         List<String> integerDatasets = new ArrayList<>();
         integerDatasets.add("Wine-Tasting");
 
 //        int beta = 1;
-        String outputPath = output_parent_dir + "subcolumn_insert_larger.csv";
+        String outputPath = output_parent_dir + "subcolumn_update_larger.csv";
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -780,6 +857,7 @@ public class UpdateInsertLargerTest {
             System.out.println(datasetName);
             if(datasetName.equals("POI-lon") || datasetName.equals("POI-lat"))
                 continue;
+//            if(!datasetName.equals("Stocks-USA")) continue;
 
             InputStream inputStream = Files.newInputStream(file.toPath());
 
@@ -814,7 +892,7 @@ public class UpdateInsertLargerTest {
             double compressed_size = 0;
 
             int length = 0;
-            int[] beta = new int[3];
+            int[] beta = new int[4];
             beta[0] = 2;
 
             long s = System.nanoTime();
@@ -841,9 +919,8 @@ public class UpdateInsertLargerTest {
             if(remainder < 4){
                 continue;
             }
+            Decoder(encoded_result);
 
-            int num_blocks = data_length / block_size;
-            int number_of_insert_values = block_size - remainder;
 //            s = System.nanoTime();
 
             int random_lower_bound = beta[1];
@@ -855,7 +932,7 @@ public class UpdateInsertLargerTest {
 //                remaining_values[i] = randomNumber;
 //            }
             Random random = new Random();
-            int randomNumber = random.nextInt(Integer.MAX_VALUE - random_lower_bound) + random_lower_bound;
+            int randomNumber =( random.nextInt(Integer.MAX_VALUE - random_lower_bound) + random_lower_bound) << 2;
 
 //            for (int repeat = 0; repeat < repeatTime; repeat++) {
 //                data2_arr[num_blocks * block_size + remainder] = randomNumber;
@@ -878,12 +955,17 @@ public class UpdateInsertLargerTest {
 //                int encode_pos = length;
 
                 int beta_o = beta[0];
+                int remaining_pos = beta[3];
 
+                //
                 int new_block_encode_length = beta[2];
                 int m = bytes2Integer(encoded_result, new_block_encode_length+4, 1);
                 int bitwidth_random = bitWidth(randomNumber);
+//                System.out.println("bitwidth_random:"+bitwidth_random);
+//                System.out.println("m:"+m);
                 if(bitwidth_random>m*beta_o){
-                    System.out.println("inserted");
+
+                    System.out.println("updated");
                     // 计算要加几个sub-column
                     int number_of_sub_column_random = (bitwidth_random + beta_o - 1) / beta_o;
                     int add_number_of_sub_column =  number_of_sub_column_random - m;
@@ -912,8 +994,8 @@ public class UpdateInsertLargerTest {
                         bit_width_add_sub_columns[i] = bitWidth(add_sub_columns[i]);
                     }
 
-                    int[][] subcolumnList = new int[l][remainder];
-                    int[][] new_subcolumnList = new int[l][remainder+1];
+//                    int[][] subcolumnList = new int[l][remainder];
+//                    int[][] new_subcolumnList = new int[l][remainder+1];
 
                     int[] encodingType = new int[l];
                     int[] new_encodingType = new int[number_of_sub_column_random];
@@ -930,18 +1012,9 @@ public class UpdateInsertLargerTest {
                         int bitWidth = bitWidthList[j];
                         if(encodingType[j] == 0){
                             // if bit-packing
-                            new_decode_pos = decodeBitPacking(encoded_result, new_decode_pos, bitWidth, remainder,
-                                    subcolumnList[j]);
-
-//                            if(is_changed[j]){
-//
-//
-//                            }else{
-                            System.arraycopy(subcolumnList[j], 0, new_subcolumnList[j], 0, remainder);
-                            new_subcolumnList[j][remainder] = add_sub_columns[j];
-                            pos_of_new_encoded_result = bitPacking(new_subcolumnList[j], bit_width_add_sub_columns[j],
-                                    pos_of_new_encoded_result, new_encoded_result, remainder+1);
-//                            }
+                            int bit_pos = (remaining_pos-1)*bitWidth;
+                            updateBits(encoded_result, new_decode_pos, bit_pos, bitWidth, add_sub_columns[j]);
+                            new_decode_pos += ((bit_pos+bitWidth+7)/8);
                         }
                         else {
 //                            System.out.println(encoded_result[new_decode_pos]);
@@ -951,31 +1024,20 @@ public class UpdateInsertLargerTest {
 
                             new_decode_pos += 2;
 
-                            int[] run_length = new int[index];
-                            int[] rle_values = new int[index];
+                            int pre_new_decode_pos = new_decode_pos;
 
-                            new_decode_pos = decodeBitPacking(encoded_result, new_decode_pos, bw, index, run_length);
-                            new_decode_pos = decodeBitPacking(encoded_result, new_decode_pos, bitWidth, index, rle_values);
 
-//                            System.out.println(Arrays.toString(run_length));
-//                            System.out.println(Arrays.toString(rle_values));
-                            if(rle_values[index-1] == add_sub_columns[j]){
-                                run_length[index-1] += 1;
-                                new_encoded_result[pos_of_new_encoded_result] = (byte) (index >> 8);
-                                pos_of_new_encoded_result += 1;
-                                new_encoded_result[pos_of_new_encoded_result] = (byte) (index & 0xFF);
-                                pos_of_new_encoded_result += 1;
-//                                System.out.println(index);
-//                                System.out.println(remainder);
-//                                System.out.println(bw);
-                                pos_of_new_encoded_result = bitPacking(run_length, bw, pos_of_new_encoded_result, new_encoded_result, index);
-                                pos_of_new_encoded_result = bitPacking(rle_values, bit_width_add_sub_columns[j], pos_of_new_encoded_result, new_encoded_result, index);
-
-                            }else{
+                            new_decode_pos += (bw*index + 7)/8;
+                            if(!compareBits(encoded_result, (new_decode_pos-1),index, bitWidth, add_sub_columns[j]) ){
+                                int[] run_length = new int[index];
+                                int[] rle_values = new int[index];
+                                new_decode_pos = pre_new_decode_pos;
+                                new_decode_pos = decodeBitPacking(encoded_result, new_decode_pos, bw, index, run_length);
+                                new_decode_pos = decodeBitPacking(encoded_result, new_decode_pos, bitWidth, index, rle_values);
                                 int[] new_run_length = new int[index+1];
                                 int[] new_rle_values = new int[index+1];
-                                System.arraycopy(new_run_length, 0, run_length, 0, index);
-                                System.arraycopy(new_rle_values, 0, rle_values, 0, index);
+                                System.arraycopy( run_length, 0, new_run_length, 0, index);
+                                System.arraycopy( rle_values, 0, new_rle_values, 0, index);
                                 new_run_length[index] = 1;
                                 new_rle_values[index] = add_sub_columns[j];
 
@@ -988,15 +1050,16 @@ public class UpdateInsertLargerTest {
 //                                System.out.println(remainder);
 //                                System.out.println(bw);
                                 pos_of_new_encoded_result = bitPacking(new_run_length, bw, pos_of_new_encoded_result, new_encoded_result, index);
-
                                 pos_of_new_encoded_result = bitPacking(new_rle_values, bit_width_add_sub_columns[j], pos_of_new_encoded_result, new_encoded_result, index);
 
-
+                            }else{
+                                new_decode_pos += (bitWidth*index + 7)/8;
                             }
 
                         }
                     }
-                    for (int j=l; j<add_number_of_sub_column; j++){
+                    for (int j=l; j<number_of_sub_column_random; j++){
+//                        System.out.println("add new subcolumn");
                         new_encodingType[j]=1;
                         int[] run_length = {remainder,1};
                         int[] rle_values = {0,add_sub_columns[j]};
@@ -1007,7 +1070,6 @@ public class UpdateInsertLargerTest {
                         pos_of_new_encoded_result = bitPacking(run_length, bw, pos_of_new_encoded_result, new_encoded_result, 2);
                         pos_of_new_encoded_result = bitPacking(rle_values, bit_width_add_sub_columns[j], pos_of_new_encoded_result, new_encoded_result, 2);
                     }
-
 
                 }
 

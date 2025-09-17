@@ -186,7 +186,40 @@ public class ParquetSelectEqual {
 //        return res;
 //    }
 
-    public static int[] queryEqualFromBlocks(
+//    public static int[] queryEqualFromBlocks(
+//            long[][] packedBlocks,
+//            int n,
+//            int k,
+//            int min,
+//            int upper,          // 传入比较上限
+//            int blockSize) {
+//
+//        List<Integer> hits = new ArrayList<>();
+//        int numBlocks = packedBlocks.length;
+//
+//        for (int b = 0; b < numBlocks; b++) {
+//            long[] block = packedBlocks[b];
+//            int startIdx = b * blockSize;
+//            int blockCount = Math.min(blockSize, n - startIdx);
+//
+//            for (int i = 0; i < blockCount; i++) {
+//                long val = extractKbitValue(block, i, k); // shifted value
+//                long original = val + (long) min;
+//                // 关键改动：小于比较
+//                if (original == upper) {
+//                    hits.add(startIdx + i);
+//                }
+//            }
+//        }
+//
+//        // 转为 int[]
+//        int[] out = new int[hits.size()];
+//        for (int i = 0; i < hits.size(); i++) {
+//            out[i] = hits.get(i);
+//        }
+//        return out;
+//    }
+    public static long[] queryEqualFromBlocks(
             long[][] packedBlocks,
             int n,
             int k,
@@ -194,7 +227,7 @@ public class ParquetSelectEqual {
             int upper,          // 传入比较上限
             int blockSize) {
 
-        List<Integer> hits = new ArrayList<>();
+        List<Long> hits = new ArrayList<>(); // 改为存储Long值
         int numBlocks = packedBlocks.length;
 
         for (int b = 0; b < numBlocks; b++) {
@@ -203,17 +236,18 @@ public class ParquetSelectEqual {
             int blockCount = Math.min(blockSize, n - startIdx);
 
             for (int i = 0; i < blockCount; i++) {
-                long val = extractKbitValue(block, i, k); // shifted value
-                long original = val + (long) min;
-                // 关键改动：小于比较
+                long val = extractKbitValue(block, i, k); // 提取压缩值
+                long original = val + (long) min; // 恢复原始值
+
+                // 关键改动：返回原始值而不是索引
                 if (original == upper) {
-                    hits.add(startIdx + i);
+                    hits.add(original); // 添加原始值到结果列表
                 }
             }
         }
 
-        // 转为 int[]
-        int[] out = new int[hits.size()];
+        // 转为 long[]
+        long[] out = new long[hits.size()];
         for (int i = 0; i < hits.size(); i++) {
             out[i] = hits.get(i);
         }
@@ -384,7 +418,7 @@ public class ParquetSelectEqual {
             int target = queryEqualValue.getOrDefault(datasetName, 0) * max_mul;
             s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] hits = queryEqualFromBlocks(packedBlocks, n, k, min, target, block_size);
+                long[] hits = queryEqualFromBlocks(packedBlocks, n, k, min, target, block_size);
                 // hits not used further here, just to simulate query work
             }
             e = System.nanoTime();
