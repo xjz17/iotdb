@@ -66,10 +66,12 @@ public class VBPQueryMain {
         // String output_parent_dir = parent_dir + "result/vbp_query/";
 
         // String outputPath = output_parent_dir + "vbp_query_greater_new.csv";
-        // String outputPath = output_parent_dir + "vbp_query_less.csv";
-        String outputPath = output_parent_dir + "vbp_query_equal_new.csv";
+        // String outputPath = output_parent_dir + "vbp_query_less_new.csv";
+        // String outputPath = output_parent_dir + "vbp_query_equal_new.csv";
         // String outputPath = output_parent_dir + "vbp_query_greater_less.csv";
+        // String outputPath = output_parent_dir + "vbp_query_greater_less_new.csv";
         // String outputPath = output_parent_dir + "vbp_query_count.csv";
+        String outputPath = output_parent_dir + "vbp_query_count2.csv";
         // String outputPath = output_parent_dir + "vbp_query_max.csv";
         // String outputPath = output_parent_dir + "vbp_query_sum.csv";
 
@@ -220,9 +222,10 @@ public class VBPQueryMain {
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 // VBPQueryGreaterTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
                 // VBPQuerySmallerTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
-                VBPQueryEqualTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
+                // VBPQueryEqualTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
                 // VBPQueryGreaterLessTest.Decoder(encoded_result, indexList, queryRange.get(datasetName), queryLessRange.get(datasetName));
                 // VBPQueryCountTest.Decoder(encoded_result, indexList, queryRange.get(datasetName));
+                VBPQueryCount2Test.Decoder(encoded_result, indexList);
                 // VBPQueryMaxTest.Decoder(encoded_result, indexList);
                 // VBPQuerySumTest.Decoder(encoded_result, indexList);
             }
