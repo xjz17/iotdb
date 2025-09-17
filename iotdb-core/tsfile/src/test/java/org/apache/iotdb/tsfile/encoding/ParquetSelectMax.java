@@ -376,7 +376,7 @@ public static long calculateSumFromBlocks(long[][] packedBlocks, int n, int k, i
         queryRange.put("Gov10", 100000);
 
 
-        int repeatTime = 200;
+        int repeatTime = 100;
         List<String> integerDatasets = new ArrayList<>();
         integerDatasets.add("Wine-Tasting");
 

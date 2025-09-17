@@ -746,7 +746,7 @@ public class UpdateInsertSmallerTest {
         updateRange.put("Wind-Speed", 50);
 //        updateRange.put("Wine-Tasting", 0);
 
-        int repeatTime = 200;
+        int repeatTime = 500;
 
         // repeatTime = 1;
 
