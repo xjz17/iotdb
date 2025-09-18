@@ -356,6 +356,7 @@ public class SubcolumnCountWithNULLTest {
                 double compressed_size = 0;
 
                 int length = 0;
+                int all_data_size = data1.size();
 
                 java.util.BitSet bitmap = new java.util.BitSet(data1.size());
                 int new_array_index = 0;
@@ -470,7 +471,7 @@ public class SubcolumnCountWithNULLTest {
 //                SubcolumnCountWithNULLTest.Query(encoded_result, queryRange.get(datasetName));
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
                     int count = bitmap.cardinality();
-                    System.out.println(data1.size()-count);
+//                    System.out.println(data1.size()-count);
                 }
 
                 e = System.nanoTime();
@@ -481,7 +482,7 @@ public class SubcolumnCountWithNULLTest {
                         "Sub-columns",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
-                        String.valueOf(data1.size()),
+                        String.valueOf(all_data_size),
                         String.valueOf(compressed_size),
                         String.valueOf(ratio)
                 };
