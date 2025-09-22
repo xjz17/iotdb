@@ -882,7 +882,7 @@ public class SubcolumnLongTest {
         int block_size = 512;
 
         int repeatTime = 100;
-        // int repeatTime = 500;
+        repeatTime = 500;
 
         // repeatTime = 1;
 
@@ -953,6 +953,11 @@ public class SubcolumnLongTest {
             double compressed_size = 0;
 
             int length = 0;
+
+            //
+            for (int i = 0; i < 10; i++) {
+                length = Encoder(data2_arr, block_size, encoded_result);
+            }
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {

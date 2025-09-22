@@ -57,17 +57,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -204,17 +204,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -344,17 +344,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -485,17 +485,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -636,17 +636,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -824,17 +824,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -973,17 +973,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
@@ -1126,17 +1126,17 @@ public class SubcolumnQueryMain {
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
-        queryRange.put("Wine-Tasting", 10);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
+        queryRange.put("Wine-Tasting", 0);
         queryRange.put("Arade4", 10000000);
         queryRange.put("EPM-Education", 200);
         queryRange.put("POI-lat", 0);
