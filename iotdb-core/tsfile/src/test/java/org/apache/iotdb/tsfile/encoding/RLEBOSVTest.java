@@ -11,11 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static java.lang.Math.*;
 
 public class RLEBOSVTest {
-
+    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     public static int getBitWith(int num) {
         if (num == 0)
             return 1;

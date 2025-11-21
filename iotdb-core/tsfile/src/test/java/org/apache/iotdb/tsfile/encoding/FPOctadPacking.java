@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 public class FPOctadPacking {
 
     private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv");
-    private static final int CHUNK_SIZE = 1000;
+    private static final int CHUNK_SIZE = 8192;
 
     static String trimStr(String s) {
         if (s == null) return "";

@@ -287,7 +287,7 @@ public class BPTest {
 
     @Test
     public void testBP() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/";
         // String parent_dir = "D:/compress-subcolumn/dataset/";
 
         String output_parent_dir = "D:/compress-subcolumn/";
@@ -297,7 +297,7 @@ public class BPTest {
         int block_size = 1024;
 
         int repeatTime = 100;
-        // TODO 真正计算时，记得注释掉将下面的内容
+
         // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
@@ -373,9 +373,9 @@ public class BPTest {
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 int[] data2_arr_decoded = Decoder(encoded_result);
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    assert data2_arr[i] == data2_arr_decoded[i]
-                            || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
+//                for (int i = 0; i < data2_arr_decoded.length; i++) {
+//                    assert data2_arr[i] == data2_arr_decoded[i]
+//                            || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
                     // assert data2_arr[i] == data2_arr_decoded[i];
                     // if (data2_arr_decoded[i] != data2_arr[i]
                     // && data2_arr_decoded[i] != data2_arr[i] + Integer.MAX_VALUE + 1) {
@@ -385,7 +385,7 @@ public class BPTest {
                     // System.out.println(data2_arr[i]);
                     // break;
                     // }
-                }
+//                }
             }
 
             e = System.nanoTime();

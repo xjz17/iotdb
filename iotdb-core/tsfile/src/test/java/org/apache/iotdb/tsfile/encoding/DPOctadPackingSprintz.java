@@ -255,6 +255,8 @@ public class DPOctadPackingSprintz {
         }
         return bitWidths;
     }
+
+
     public static int computeMinPackingCost(int[] bitWidths) {
         int N = bitWidths.length;
         if (N == 0) {
@@ -270,61 +272,73 @@ public class DPOctadPackingSprintz {
             }
         }
 
-        // Precompute bit width needed to store pack size s: ceil(log2(s + 1))
-        int[] sizeBitWidth = new int[N + 1];
-        for (int s = 1; s <= N; s++) {
-            sizeBitWidth[s] = 32 - Integer.numberOfLeadingZeros(s);
-        }
+        int minTotalCost = Integer.MAX_VALUE;
 
-        // DP table: dp[i][p][s] = min cost for first i octads, p packs, max size bit width s
-        // Initialize with infinity
-        int[][][] dp = new int[N + 1][N + 1][11]; // s <= 10 since log2(1000) ~ 10
-        for (int i = 0; i <= N; i++) {
-            for (int p = 0; p <= N; p++) {
-                Arrays.fill(dp[i][p], Integer.MAX_VALUE / 2);
+        // Enumerate all possible C values (ceil(log2(max_pack_size + 1)))
+        int maxPossibleC = 32 - Integer.numberOfLeadingZeros(N); // ceil(log2(N + 1))
+
+        for (int C = 1; C <= maxPossibleC; C++) {
+            int low_C = (C == 1) ? 1 : (1 << (C - 1));
+            int high_C = Math.min((1 << C) - 1, N);
+
+            // DP table: dp[i][a] - min cost for first i octads, a=1 if at least one pack >= low_C
+            int[][] dp = new int[N + 1][2];
+            int[][] prevState = new int[N + 1][2]; // for backtracking
+            int[][] packSize = new int[N + 1][2]; // for backtracking
+
+            // Initialize DP table
+            for (int i = 0; i <= N; i++) {
+                dp[i][0] = Integer.MAX_VALUE / 2;
+                dp[i][1] = Integer.MAX_VALUE / 2;
             }
-        }
-        dp[0][0][0] = 0; // Base case
+            dp[0][0] = 0;
 
-        for (int i = 1; i <= N; i++) {
-            for (int k = 0; k < i; k++) {
-                int len = i - k;
-                int currentMaxB = maxB[k][i - 1];
-                int currentSizeBitWidth = sizeBitWidth[len];
+            for (int i = 1; i <= N; i++) {
+                for (int k = Math.max(1, i - high_C + 1); k <= i; k++) {
+                    int packLength = i - k + 1;
+                    int currentMaxB = maxB[k - 1][i - 1]; // convert to 0-based indexing
 
-                for (int prevP = 0; prevP <= k; prevP++) {
-                    for (int prevS = 0; prevS <= 10; prevS++) {
-                        if (dp[k][prevP][prevS] == Integer.MAX_VALUE / 2) {
-                            continue;
+                    // Calculate pack cost: 8 * packLength * currentMaxB + 5 + C
+                    int packCost = 8 * packLength * currentMaxB + 5 + C;
+
+                    // Update DP states based on pack size
+                    if (packLength < low_C) {
+                        // Cannot transition to state 1 with small packs
+                        if (dp[k - 1][0] + packCost < dp[i][0]) {
+                            dp[i][0] = dp[k - 1][0] + packCost;
+                            prevState[i][0] = k - 1;
+                            packSize[i][0] = packLength;
                         }
-
-                        int newP = prevP + 1;
-                        int newS = Math.max(prevS, currentSizeBitWidth);
-                        int aPart = 8 * len * currentMaxB;
-                        int bPart = 5;
-                        int cPartDelta = newP * newS - prevP * prevS;
-
-                        int totalCost = dp[k][prevP][prevS] + aPart + bPart + cPartDelta;
-                        if (totalCost < dp[i][newP][newS]) {
-                            dp[i][newP][newS] = totalCost;
+                        if (dp[k - 1][1] + packCost < dp[i][1]) {
+                            dp[i][1] = dp[k - 1][1] + packCost;
+                            prevState[i][1] = k - 1;
+                            packSize[i][1] = packLength;
+                        }
+                    } else {
+                        // Large pack can transition both states to state 1
+                        if (dp[k - 1][0] + packCost < dp[i][1]) {
+                            dp[i][1] = dp[k - 1][0] + packCost;
+                            prevState[i][1] = k - 1;
+                            packSize[i][1] = packLength;
+                        }
+                        if (dp[k - 1][1] + packCost < dp[i][1]) {
+                            dp[i][1] = dp[k - 1][1] + packCost;
+                            prevState[i][1] = k - 1;
+                            packSize[i][1] = packLength;
                         }
                     }
                 }
             }
-        }
 
-        // Find the minimal cost among all possible p and s for dp[N][p][s]
-        int minCost = Integer.MAX_VALUE;
-        for (int p = 1; p <= N; p++) {
-            for (int s = 1; s <= 10; s++) {
-                if (dp[N][p][s] < minCost) {
-                    minCost = dp[N][p][s];
-                }
+            // Update minimum total cost for this C value
+            if (dp[N][1] < minTotalCost) {
+                minTotalCost = dp[N][1];
             }
         }
 
-        return minCost;
+        return minTotalCost;
     }
+
     static String trimStr(String s) {
         if (s == null) return "";
         int a = 0;
