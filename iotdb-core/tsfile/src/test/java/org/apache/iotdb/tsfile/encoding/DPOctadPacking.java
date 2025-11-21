@@ -293,7 +293,7 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
                     }
                 }
             }
-            int time_of_repeat = 50;
+            int time_of_repeat = 10;
             for(int pack_size_exp = 3; pack_size_exp < 10; pack_size_exp++) {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
 
@@ -340,7 +340,7 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
                         }
                         int[] encodePos = new int[1];
                         byte[] res = compressWithOptimalPacking( paddedArray,  bitWidths, pack_size,encodePos);
-                        int cur_cost = encodePos[0];
+                        int cur_cost = encodePos[0]*8;
 //                        int cur_cost = computeMinPackingCost(bitWidths,pack_size);
 
 //                    PackingResult result = packOctads(bitWidths, model, null); // 禁用决策跟踪

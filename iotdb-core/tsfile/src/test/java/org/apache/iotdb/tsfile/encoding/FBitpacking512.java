@@ -432,7 +432,7 @@ public class FBitpacking512 {
                         int actual_length = paddedArray.length;
                         int[] bitWidths = new int[actual_length / pack_size]; // 存储每8个值的位宽结果
 
-                        int cost_bits = 0;
+//                        int cost_bits = 0;
                         for (int scaledInts_i = 0; scaledInts_i < actual_length; scaledInts_i += pack_size) {
                             // 1. 找出当前8个元素中的最大值
                             int maxInGroup = 0;
@@ -447,11 +447,11 @@ public class FBitpacking512 {
 
                             // 3. 存储结果
                             bitWidths[scaledInts_i / pack_size] = bitWidth;
-                            cost_bits += (bitWidth*pack_size);
+//                            cost_bits += (bitWidth*pack_size);
                         }
 
                         int fixed_block = CHUNK_SIZE / pack_size;
-                        byte[] compressedData = encodeBitPacking(paddedArray, bitWidths, pack_size, cost_bits);
+                        byte[] compressedData = encodeBitPacking(paddedArray, bitWidths, pack_size);
                         int cur_cost = compressedData.length * 8; // 转换为bit数
 //                        int cur_cost = computeMinPackingCost(bitWidths, fixed_block, pack_size);
 
@@ -488,7 +488,7 @@ public class FBitpacking512 {
         }
 
     }
-    public static byte[] encodeBitPacking(int[] paddedArray, int[] bitWidths, int pack_size, int cost_bits) {
+    public static byte[] encodeBitPacking(int[] paddedArray, int[] bitWidths, int pack_size) {
         List<Byte> result = new ArrayList<>();
 
         // 1. 对bitWidths进行RLE编码
@@ -509,16 +509,24 @@ public class FBitpacking512 {
         int totalGroups = bitWidths.length;
 
         // 计算bit-packed数据的总字节数 - 修正计算方式
-        int totalBitPackedBytes = (cost_bits+7)/8;
+//        int totalBitPackedBytes = (cost_bits+7)/8;
 //        for (int i = 0; i < totalGroups; i++) {
 //            // 每组需要 ceil(8 * bitWidth / 8) = bitWidth 字节
 //            totalBitPackedBytes += bitWidths[i];
 //        }
 
         // 确保数组足够大，添加一些额外空间以防万一
-        byte[] bitPackedData = new byte[totalBitPackedBytes + totalGroups+32];
-        int encodePos = 0;
+        int max_bit_width = 0;
 
+        for (int i = 0; i < totalGroups; i++) {
+            if (bitWidths[i] > max_bit_width) {
+                max_bit_width = bitWidths[i];
+            }
+        }
+        int totalBitPackedBytes = (max_bit_width*pack_size*totalGroups+7)/8;
+        byte[] bitPackedData = new byte[totalBitPackedBytes +32];
+        bitPackedData[0] = (byte) max_bit_width;
+        int encodePos = 1;
         // 对每组数据进行bit-packing
         for (int group = 0; group < totalGroups; group++) {
             int startIndex = group * pack_size;
@@ -531,8 +539,8 @@ public class FBitpacking512 {
                 }
             }
 
-            bitPackedData[encodePos++] = (byte) bitWidths[group];
-            encodePos = bitPacking(groupData, 0, bitWidths[group], encodePos, bitPackedData);
+//            bitPackedData[encodePos++] = (byte) bitWidths[group];
+            encodePos = bitPacking(groupData, 0,max_bit_width , encodePos, bitPackedData);
         }
 
 
