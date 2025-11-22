@@ -19,10 +19,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RLEPackBitWidthTest {
-//    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv","POI-lat.csv",
-//            "POI-lon.csv","Air-sensor.csv","Basel-temp.csv");
-static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
+    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     private static final int CHUNK_SIZE = 1024;
+
     public static int getBitWith(int num) {
         if (num == 0)
             return 1;
@@ -297,8 +296,6 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
                         bitWidths[scaledInts_i / 8] = bitWidth;
                         cost_bits += (bitWidth*8);
                     }
-
-                    // 替换computeMinPackingCost为实际的压缩编码
                     byte[] compressedData = encodeBitPackingWithRLE(paddedArray, bitWidths, 8,cost_bits);
                     int cur_cost = compressedData.length * 8; // 转换为bit数
 
@@ -324,156 +321,10 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
         }
     }
 
-    /**
-     * 实际的压缩编码函数：将paddedArray按照bitWidths进行bit-packing，并对bitWidths进行RLE编码
-     */
-    public static byte[] encodeBitPackingWithRLE(int[] paddedArray, int[] bitWidths, int pack_size, int cost_bits) {
-        List<Byte> result = new ArrayList<>();
-
-        // 1. 对bitWidths进行RLE编码
-        List<Byte> rleEncoded = encodeRLE(bitWidths);
-
-        // 2. 将RLE编码的bitWidths写入结果
-        // 首先写入RLE数据的长度（4字节）
-//        int rleLength = rleEncoded.size();
-//        result.add((byte) (rleLength >> 24));
-//        result.add((byte) (rleLength >> 16));
-//        result.add((byte) (rleLength >> 8));
-//        result.add((byte) rleLength);
-
-        // 写入RLE数据
-        result.addAll(rleEncoded);
-
-        // 3. 对paddedArray进行bit-packing
-        int totalGroups = bitWidths.length;
-
-        // 计算bit-packed数据的总字节数 - 修正计算方式
-        int totalBitPackedBytes = (cost_bits+7)/8;
-//        for (int i = 0; i < totalGroups; i++) {
-//            // 每组需要 ceil(8 * bitWidth / 8) = bitWidth 字节
-//            totalBitPackedBytes += bitWidths[i];
-//        }
-
-        // 确保数组足够大，添加一些额外空间以防万一
-        byte[] bitPackedData = new byte[totalBitPackedBytes + 32];
-        int encodePos = 0;
-
-        // 对每组数据进行bit-packing
-        for (int group = 0; group < totalGroups; group++) {
-            int startIndex = group * pack_size;
-            ArrayList<Integer> groupData = new ArrayList<>();
-            for (int i = 0; i < pack_size; i++) {
-                if (startIndex + i < paddedArray.length) {
-                    groupData.add(paddedArray[startIndex + i]);
-                } else {
-                    groupData.add(0); // 用0填充不足的部分
-                }
-            }
-
-            // 确保不会越界
-//            if (encodePos + bitWidths[group] <= bitPackedData.length) {
-            encodePos = bitPacking(groupData, 0, bitWidths[group], encodePos, bitPackedData);
-//            } else {
-//                // 如果空间不足，扩展数组
-//                byte[] newBitPackedData = new byte[bitPackedData.length + 32];
-//                System.arraycopy(bitPackedData, 0, newBitPackedData, 0, bitPackedData.length);
-//                bitPackedData = newBitPackedData;
-//                encodePos = bitPacking(groupData, 0, bitWidths[group], encodePos, bitPackedData);
-//            }
-        }
-
-        // 4. 将bit-packed数据写入结果（只写入实际使用的部分）
-        for (int i = 0; i < encodePos; i++) {
-            result.add(bitPackedData[i]);
-        }
-
-        // 转换为byte数组返回
-        byte[] finalResult = new byte[result.size()];
-        for (int i = 0; i < result.size(); i++) {
-            finalResult[i] = result.get(i);
-        }
-
-        return finalResult;
-    }
-
-    /**
-     * RLE编码bitWidths数组
-     * chunksize = 1024
-     * packsize = 8
-     * runlength = 128
-     * runcount =
-     */
-    public static List<Byte> encodeRLE(int[] bitWidths) {
-        List<Byte> result = new ArrayList<>();
-
-        if (bitWidths.length == 0) {
-            return result;
-        }
-        int length_bitWidths_list = bitWidths.length;
-//        int currentValue = bitWidths[0];
-//        int runLength = 1;
-        int run_count = 0;
-
-        int[] run_lengths = new int[length_bitWidths_list];
-        int[] run_values = new int[length_bitWidths_list];
-        int pre_bit_width = bitWidths[0];
-        int pre_run_length = 1;
-
-        for (int i = 1; i < length_bitWidths_list; i++) {
-            if (bitWidths[i] == pre_bit_width) {
-                pre_run_length++;
-            } else {
-                run_lengths[run_count] = pre_run_length;
-                run_values[run_count++] = pre_bit_width;
-                // 写入当前游程
-//                encodeRLERun(result, runLength, currentValue);
-                pre_bit_width = bitWidths[i];
-                pre_run_length = 1;
-            }
-        }
-        run_lengths[run_count] = pre_run_length;
-        run_values[run_count++] = pre_bit_width;
-
-        result.add((byte) (run_count >> 24));
-        result.add((byte) (run_count >> 16));
-        result.add((byte) (run_count >> 8));
-        result.add((byte) run_count);
-        for (int i = 0; i < run_count; i++) {
-            encodeRLERun(result, run_lengths[i], run_values[i]);
-        }
-        // 写入最后一个游程
-//        encodeRLERun(result, runLength, currentValue);
-
-        return result;
-    }
-
-    /**
-     * 编码单个RLE游程
-     */
-    private static void encodeRLERun(List<Byte> result, int runLength, int value) {
-        // 使用变长编码存储游程长度
-//        while (runLength > 0) {
-//            int byteValue = runLength & 0xFF; // 取7位
-//            runLength >>= 7;
-//            if (runLength > 0) {
-//                byteValue |= 0x80; // 设置最高位表示还有后续字节
-//            }
-        result.add((byte) (runLength >> 24));
-        result.add((byte) (runLength >> 16));
-        result.add((byte) (runLength >> 8));
-        result.add((byte) runLength);
-        result.add((byte) (value >> 24));
-        result.add((byte) (value >> 16));
-        result.add((byte) (value >> 8));
-        result.add((byte) value);
-
-    }
-
     @Test
     public void TestVarPackSize() throws IOException {
         // 示例数据（实际应替换为真实时间序列）
         System.out.println("\nPerformance Testing...");
-//        String csvFilePath = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
         String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE_vary_pack_size";
         File outputDir = new File(outputDirstr);
@@ -519,11 +370,6 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
                 }
             }
             int time_of_repeat = 50;
-//            System.out.println(numbers.size());
-
-
-            // 方法：强化学习
-//            long modelStart =  System.nanoTime();
 
             for(int pack_size_exp = 3; pack_size_exp < 10; pack_size_exp++){
                 int pack_size = (int) Math.pow(2,pack_size_exp);
@@ -539,7 +385,6 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
 
                         int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
                                 .stream().max(Integer::compare).orElse(0);
-
 
                         int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
 
@@ -574,17 +419,10 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
                         int fixed_block = CHUNK_SIZE / pack_size;
                         byte[] compressedData = encodeBitPackingWithRLE(paddedArray, bitWidths, pack_size, cost_bits);
                         int cur_cost = compressedData.length * 8; // 转换为bit数
-//                        int cur_cost = computeMinPackingCost(bitWidths,fixed_block,pack_size);
 
                         long duration = System.nanoTime() - startTime;
                         modelTime += (duration);
                         modelCost +=  cur_cost;
-//                    if(i==0)
-//                        for (int episode = 0; episode < 10; episode++) {
-//                            trainEpisode(scaledInts, episode);
-//                        }
-//                    List<Integer> optimalK = predictOptimalK(scaledInts);
-//                    System.out.println("Optimal k sequence: " + optimalK);
                     }
 
                 }
@@ -609,6 +447,242 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
 
     }
 
+    // 新增方法：测试不同chunk size的表现
+    @Test
+    public void TestVariableChunkSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Chunk Sizes...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE_vary_m";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        // 定义要测试的chunk sizes (m*8 where m is 16, 32, 64, 128, 256, 512, 1024)
+        int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "m",
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Pack Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10; // 减少重复次数以加快测试速度
+
+            // 测试每个chunk size
+            for (int chunkSize : chunkSizes) {
+                System.out.println("Testing chunk size: " + chunkSize);
+
+                for(int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
+                    int pack_size = (int) Math.pow(2, pack_size_exp);
+                    int modelCost = 0;
+                    long modelTime = 0;
+
+                    for (int j = 0; j < time_of_repeat; j++) {
+                        int totalCost = 0;
+                        for (int i = 0; i < numbers.size(); i += chunkSize) {
+
+                            List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunkSize, numbers.size()));
+                            if (chunkNumbers.size() == 1 || chunkNumbers.size() == 2)
+                                continue;
+
+                            int decimalMax = decimalPlaces.subList(i, Math.min(i + chunkSize, numbers.size()))
+                                    .stream().max(Integer::compare).orElse(0);
+
+                            int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+
+                            long startTime = System.nanoTime();
+                            int remainder = scaledInts.length % pack_size;
+                            int paddingLength = (remainder == 0) ? 0 : pack_size - remainder;
+
+                            int[] paddedArray = new int[scaledInts.length + paddingLength];
+                            System.arraycopy(scaledInts, 0, paddedArray, 0, scaledInts.length);
+                            int actual_length = paddedArray.length;
+                            int[] bitWidths = new int[actual_length / pack_size];
+
+                            int cost_bits = 0;
+                            for (int scaledInts_i = 0; scaledInts_i < actual_length; scaledInts_i += pack_size) {
+                                int maxInGroup = 0;
+                                for (int scaledInts_j = scaledInts_i; scaledInts_j < scaledInts_i + pack_size; scaledInts_j++) {
+                                    if (paddedArray[scaledInts_j] > maxInGroup) {
+                                        maxInGroup = paddedArray[scaledInts_j];
+                                    }
+                                }
+                                int bitWidth = 32 - Integer.numberOfLeadingZeros(maxInGroup);
+                                bitWidths[scaledInts_i / pack_size] = bitWidth;
+                                cost_bits += (bitWidth * pack_size);
+                            }
+
+                            byte[] compressedData = encodeBitPackingWithRLE(paddedArray, bitWidths, pack_size, cost_bits);
+                            int cur_cost = compressedData.length * 8;
+                            long duration = System.nanoTime() - startTime;
+                            modelTime += duration;
+                            modelCost += cur_cost;
+                        }
+                    }
+
+                    modelCost /= time_of_repeat;
+                    modelTime = modelTime / time_of_repeat;
+                    double model_ratio = (double) modelCost / (double) (numbers.size() * 64);
+                    double modelTime_throughput = (double) (numbers.size() * 8000) / (double) (modelTime);
+
+                    String[] record = {
+                            String.valueOf(chunkSize/8),
+                            file.toString(),
+                            "BP+RLE",
+                            String.valueOf(modelTime_throughput),
+                            String.valueOf(numbers.size()),
+                            String.valueOf(modelCost),
+                            String.valueOf(pack_size),
+                            String.valueOf(model_ratio)
+                    };
+                    writer.writeRecord(record);
+                }
+            }
+            writer.close();
+        }
+    }
+
+    /**
+     * 实际的压缩编码函数：将paddedArray按照bitWidths进行bit-packing，并对bitWidths进行RLE编码
+     */
+    public static byte[] encodeBitPackingWithRLE(int[] paddedArray, int[] bitWidths, int pack_size, int cost_bits) {
+        List<Byte> result = new ArrayList<>();
+
+        // 1. 对bitWidths进行RLE编码
+        List<Byte> rleEncoded = encodeRLE(bitWidths);
+
+        // 2. 将RLE编码的bitWidths写入结果
+        // 写入RLE数据
+        result.addAll(rleEncoded);
+
+        // 3. 对paddedArray进行bit-packing
+        int totalGroups = bitWidths.length;
+
+        // 计算bit-packed数据的总字节数 - 修正计算方式
+        int totalBitPackedBytes = (cost_bits+7)/8;
+
+        // 确保数组足够大，添加一些额外空间以防万一
+        byte[] bitPackedData = new byte[totalBitPackedBytes + 32];
+        int encodePos = 0;
+
+        // 对每组数据进行bit-packing
+        for (int group = 0; group < totalGroups; group++) {
+            int startIndex = group * pack_size;
+            ArrayList<Integer> groupData = new ArrayList<>();
+            for (int i = 0; i < pack_size; i++) {
+                if (startIndex + i < paddedArray.length) {
+                    groupData.add(paddedArray[startIndex + i]);
+                } else {
+                    groupData.add(0); // 用0填充不足的部分
+                }
+            }
+
+            encodePos = bitPacking(groupData, 0, bitWidths[group], encodePos, bitPackedData);
+        }
+
+        // 4. 将bit-packed数据写入结果（只写入实际使用的部分）
+        for (int i = 0; i < encodePos; i++) {
+            result.add(bitPackedData[i]);
+        }
+
+        // 转换为byte数组返回
+        byte[] finalResult = new byte[result.size()];
+        for (int i = 0; i < result.size(); i++) {
+            finalResult[i] = result.get(i);
+        }
+
+        return finalResult;
+    }
+
+    /**
+     * RLE编码bitWidths数组
+     * chunksize = 1024
+     * packsize = 8
+     * runlength = 128
+     * runcount =
+     */
+    public static List<Byte> encodeRLE(int[] bitWidths) {
+        List<Byte> result = new ArrayList<>();
+
+        if (bitWidths.length == 0) {
+            return result;
+        }
+        int length_bitWidths_list = bitWidths.length;
+        int run_count = 0;
+
+        int[] run_lengths = new int[length_bitWidths_list];
+        int[] run_values = new int[length_bitWidths_list];
+        int pre_bit_width = bitWidths[0];
+        int pre_run_length = 1;
+
+        for (int i = 1; i < length_bitWidths_list; i++) {
+            if (bitWidths[i] == pre_bit_width) {
+                pre_run_length++;
+            } else {
+                run_lengths[run_count] = pre_run_length;
+                run_values[run_count++] = pre_bit_width;
+                pre_bit_width = bitWidths[i];
+                pre_run_length = 1;
+            }
+        }
+        run_lengths[run_count] = pre_run_length;
+        run_values[run_count++] = pre_bit_width;
+
+        result.add((byte) (run_count >> 24));
+        result.add((byte) (run_count >> 16));
+        result.add((byte) (run_count >> 8));
+        result.add((byte) run_count);
+        for (int i = 0; i < run_count; i++) {
+            encodeRLERun(result, run_lengths[i], run_values[i]);
+        }
+
+        return result;
+    }
+
+    /**
+     * 编码单个RLE游程
+     */
+    private static void encodeRLERun(List<Byte> result, int runLength, int value) {
+//        result.add((byte) (runLength >> 24));
+//        result.add((byte) (runLength >> 16));
+//        result.add((byte) (runLength >> 8));
+        result.add((byte) runLength);
+//        result.add((byte) (value >> 16));
+//        result.add((byte) (value >> 8));
+        result.add((byte) value);
+    }
 
     public static int computeMinPackingCost(int[] bitWidths, int fixed_pack, int pack_size) {
         int blocksize= bitWidths.length;
@@ -646,20 +720,13 @@ static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data",
             run_lengths[run_count] = pre_run_length;
             run_values[run_count++] = pre_bit_width;
 
-//            System.out.println(run_count);
             totalCost += 64;
             for (int i = 0; i < run_count; i++) {
                 totalCost += 32;
             }
-
-
         }
         System.out.println(blocksize);
-        // Store max bit width
-//        totalCost += 5 * blocksize / fixed_pack;
-
 
         return totalCost;
     }
-
 }
