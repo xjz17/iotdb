@@ -684,28 +684,57 @@ public class FBitpacking512 {
             }
 
             int time_of_repeat = 50; // 减少重复次数以加快测试速度
+//            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+//            int[] scaledInts_all = scaleNumbers(numbers, decimalMax);
 
+            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+// 分批处理，每1024个元素一批
+            int batchSize = 1024;
+            List<int[]> batches = new ArrayList<>();
+
+            for (int i = 0; i < numbers.size(); i += batchSize) {
+                int end = Math.min(numbers.size(), i + batchSize);
+                List<String> batch = numbers.subList(i, end);
+                int[] scaledBatch = scaleNumbers(batch, decimalMax);
+                batches.add(scaledBatch);
+            }
+
+            // 计算总长度并拼接所有批次的结果
+            int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+            int[] scaledInts_all = new int[totalLength];
+
+            int currentIndex = 0;
+            for (int[] batch : batches) {
+                System.arraycopy(batch, 0, scaledInts_all, currentIndex, batch.length);
+                currentIndex += batch.length;
+            }
             // 测试每个chunk size
             for (int chunkSize : chunkSizes) {
                 System.out.println("Testing chunk size: " + chunkSize);
+//                System.out.println(numbers.subList(0,1000));
 
                 for(int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
                     int pack_size = (int) Math.pow(2, pack_size_exp);
                     int modelCost = 0;
                     long modelTime = 0;
 
+
                     for (int j = 0; j < time_of_repeat; j++) {
                         int totalCost = 0;
                         for (int i = 0; i < numbers.size(); i += chunkSize) {
 
-                            List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunkSize, numbers.size()));
-                            if (chunkNumbers.size() == 1 || chunkNumbers.size() == 2)
-                                continue;
+//                            List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunkSize, numbers.size()));
 
-                            int decimalMax = decimalPlaces.subList(i, Math.min(i + chunkSize, numbers.size()))
-                                    .stream().max(Integer::compare).orElse(0);
+//                            if (chunkNumbers.size() == 1 || chunkNumbers.size() == 2)
+//                                continue;
+//                            int decimalMax = decimalPlaces.subList(i, Math.min(i + chunkSize, numbers.size()))
+//                                    .stream().max(Integer::compare).orElse(0);
 
-                            int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                            int end = Math.min(i + chunkSize, numbers.size());
+                            int[] scaledInts = new int[end-i];
+                            if (end - i >= 0) System.arraycopy(scaledInts_all, i, scaledInts, 0, end - i);
+
 
                             long startTime = System.nanoTime();
                             int remainder = scaledInts.length % pack_size;
@@ -716,6 +745,10 @@ public class FBitpacking512 {
                             System.arraycopy(scaledInts, 0, paddedArray, 0, scaledInts.length);
                             int actual_length = paddedArray.length;
                             int[] bitWidths = new int[actual_length / pack_size];
+//                            if(i==0){
+//                                System.out.println(Arrays.toString(paddedArray));
+//                            }
+
 
                             for (int scaledInts_i = 0; scaledInts_i < actual_length; scaledInts_i += pack_size) {
                                 int maxInGroup = 0;
@@ -727,11 +760,13 @@ public class FBitpacking512 {
 
                                 int bitWidth = 32 - Integer.numberOfLeadingZeros(maxInGroup);
                                 bitWidths[scaledInts_i / pack_size] = bitWidth;
+//                                System.out.println(bitWidth);
                             }
 
                             byte[] compressedData = encodeBitPacking(paddedArray, bitWidths, pack_size);
                             int cur_cost = compressedData.length * 8;
                             long duration = System.nanoTime() - startTime;
+
                             modelTime += (duration);
                             modelCost += cur_cost;
                         }
@@ -756,6 +791,7 @@ public class FBitpacking512 {
                 }
             }
             writer.close();
+//            break;
         }
     }
 }

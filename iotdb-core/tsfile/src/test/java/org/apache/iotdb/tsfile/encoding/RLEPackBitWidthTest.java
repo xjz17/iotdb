@@ -752,7 +752,29 @@ public class RLEPackBitWidthTest {
                 }
             }
 
-            int time_of_repeat = 10; // 减少重复次数以加快测试速度
+            int time_of_repeat = 50; // 减少重复次数以加快测试速度
+            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+// 分批处理，每1024个元素一批
+            int batchSize = 1024;
+            List<int[]> batches = new ArrayList<>();
+
+            for (int i = 0; i < numbers.size(); i += batchSize) {
+                int end = Math.min(numbers.size(), i + batchSize);
+                List<String> batch = numbers.subList(i, end);
+                int[] scaledBatch = scaleNumbers(batch, decimalMax);
+                batches.add(scaledBatch);
+            }
+
+            // 计算总长度并拼接所有批次的结果
+            int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+            int[] scaledInts_all = new int[totalLength];
+
+            int currentIndex = 0;
+            for (int[] batch : batches) {
+                System.arraycopy(batch, 0, scaledInts_all, currentIndex, batch.length);
+                currentIndex += batch.length;
+            }
 
             // 测试每个chunk size
             for (int chunkSize : chunkSizes) {
@@ -767,14 +789,17 @@ public class RLEPackBitWidthTest {
                         int totalCost = 0;
                         for (int i = 0; i < numbers.size(); i += chunkSize) {
 
-                            List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunkSize, numbers.size()));
-                            if (chunkNumbers.size() == 1 || chunkNumbers.size() == 2)
-                                continue;
-
-                            int decimalMax = decimalPlaces.subList(i, Math.min(i + chunkSize, numbers.size()))
-                                    .stream().max(Integer::compare).orElse(0);
-
-                            int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+//                            List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunkSize, numbers.size()));
+//                            if (chunkNumbers.size() == 1 || chunkNumbers.size() == 2)
+//                                continue;
+//
+//                            int decimalMax = decimalPlaces.subList(i, Math.min(i + chunkSize, numbers.size()))
+//                                    .stream().max(Integer::compare).orElse(0);
+//
+//                            int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                            int end = Math.min(i + chunkSize, numbers.size());
+                            int[] scaledInts = new int[end-i];
+                            if (end - i >= 0) System.arraycopy(scaledInts_all, i, scaledInts, 0, end - i);
 
                             long startTime = System.nanoTime();
                             int remainder = scaledInts.length % pack_size;
