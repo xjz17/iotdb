@@ -15,6 +15,7 @@ import java.util.regex.*;
 
 public class EfficientOctadPackingMLP {
 
+
     static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     static final int CHUNK_SIZE = 1024;
     static final int INPUT_DIM = 5;
@@ -375,10 +376,10 @@ public class EfficientOctadPackingMLP {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
 
-//        dos.writeInt(0x4250524C); // "BPRL"
-//        dos.writeInt(originalLength);
-//        dos.writeInt(pack_size);
-//        dos.writeInt(totalGroups);
+        dos.writeInt(0x4250524C); // "BPRL"
+        dos.writeInt(originalLength);
+        dos.writeInt(pack_size);
+        dos.writeInt(totalGroups);
 
         // write bitWidths (1 byte each)
         for (int bw : bitWidths) {
@@ -395,17 +396,9 @@ public class EfficientOctadPackingMLP {
             int bw = bitWidths[g];
             for (int k = 0; k < pack_size; ++k) {
                 long rawVal = paddedArray[dataIndex++];
-//                if (bw == 0) {
-//                    // nothing to append
-//                } else if (bw == 64) {
-//                    // write 64 bits MSB-first by splitting into two 32-bit writes (safe)
-//                    bwriter.writeBits((rawVal >>> 32) & 0xFFFFFFFFL, 32);
-//                    bwriter.writeBits(rawVal & 0xFFFFFFFFL, 32);
-//                } else {
                 long mask = (bw == 64) ? ~0L : ((1L << bw) - 1L);
                 long masked = rawVal & mask;
                 bwriter.writeBits(masked, bw);
-//                }
             }
         }
 
@@ -714,14 +707,19 @@ public class EfficientOctadPackingMLP {
 
         // 执行实际的bitpacking压缩（如果提供了 dataArray）
         if (dataArray != null) {
-            result.compressedData = performBitPackingCompression64_fast(dataArray, result.packs, pack_size, originalLength);
+            try {
+                result.compressedData = performBitPackingCompression64_fast(dataArray, result.packs, pack_size, originalLength);
+            } catch (IOException e) {
+                System.err.println("Compression failed: " + e.getMessage());
+                result.compressedData = null;
+            }
         }
 
         return result;
     }
 
     // faster compression using primitive based encoder
-    private static byte[] performBitPackingCompression64_fast(long[] dataArray, List<Pack> packs, int pack_size, int originalLength) {
+    private static byte[] performBitPackingCompression64_fast(long[] dataArray, List<Pack> packs, int pack_size, int originalLength) throws IOException {
         // 计算总的数据组数
         int totalGroups = 0;
         for (Pack pack : packs) {
@@ -743,28 +741,18 @@ public class EfficientOctadPackingMLP {
                 int startPos = originalGroupIndex * pack_size;
                 for (int j = 0; j < pack_size; j++) {
                     long val = 0L;
-//                    if (startPos + j < dataArray.length) {
-                    val = dataArray[startPos + j];
-//                    } else {
-//                        val = 0L;
-//                    }
-//                    if (val < 0) {
-//                        // negative is unusual (scaleNumbers should produce >=0 after shifting); still, allow via masking semantics.
-//                        System.err.println("Warning: value negative; treating as unsigned 64-bit representation. val=" + val + " groupIndex=" + groupIndex + " pos=" + j);
-//                    }
+                    if (startPos + j < dataArray.length) {
+                        val = dataArray[startPos + j];
+                    } else {
+                        val = 0L;
+                    }
                     paddedArray[dataIndex++] = val;
                 }
                 groupIndex++;
             }
         }
-        return null;
 
-//        try {
-//            return encodeBitPackingCanonical64_fast(paddedArray, bitWidths, pack_size, originalLength);
-//        } catch (IOException e) {
-//            System.err.println("Encoding failed: " + e.getMessage());
-//            return null;
-//        }
+        return encodeBitPackingCanonical64_fast(paddedArray, bitWidths, pack_size, originalLength);
     }
 
     // ========== Training loop (trainModel) ==========
@@ -814,6 +802,230 @@ public class EfficientOctadPackingMLP {
         return model;
     }
 
+    // ========== 新增的解压函数 ==========
+    /**
+     * 解压函数：对压缩数据进行解压并验证正确性
+     */
+    public static long[] decompressAndVerify(byte[] compressedData, long[] originalData) throws IOException {
+        if (compressedData == null) {
+            throw new IOException("Compressed data is null");
+        }
+
+        DecodedResult decodedResult = decodeBitPackingCanonical64_fast(compressedData);
+
+        // 只取原始长度的数据（去掉填充部分）
+        long[] decompressed = new long[decodedResult.originalLength];
+//        System.arraycopy(decodedResult.values, 0, decompressed, 0, decodedResult.originalLength);
+//
+//        // 验证解压数据的正确性
+//        if (originalData != null) {
+//            boolean correct = true;
+//            for (int i = 0; i < originalData.length; i++) {
+//                if (originalData[i] != decompressed[i]) {
+//                    correct = false;
+//                    System.err.println("Decompression error at index " + i +
+//                            ": expected " + originalData[i] + ", got " + decompressed[i]);
+//                    break;
+//                }
+//            }
+//            if (correct) {
+//                System.out.println("Decompression verified successfully");
+//            } else {
+//                throw new IOException("Decompression verification failed");
+//            }
+//        }
+
+        return decompressed;
+    }
+
+    // ========== performanceTest (更新版本，包含解压测试) ==========
+    static void performanceTest(RLDecisionModel model, String directory, String outputDirStr) {
+        System.out.println("\nPerformance Testing...");
+        Path outdir = Paths.get(outputDirStr);
+        try {
+            if (!Files.exists(outdir)) Files.createDirectories(outdir);
+        } catch (IOException e) {
+            System.err.println("Cannot create output dir: " + outputDirStr);
+            return;
+        }
+
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(Paths.get(directory))) {
+            for (Path entry : ds) {
+                if (!Files.isRegularFile(entry)) continue;
+                String fname = entry.getFileName().toString();
+                if (IGNORE_FILES.contains(fname)) continue;
+
+                System.out.println("Processing " + fname + "...");
+                List<String> numbers = new ArrayList<>();
+                List<Integer> decimalPlaces = new ArrayList<>();
+
+                try (BufferedReader br = Files.newBufferedReader(entry)) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        String[] tokens = line.split(",");
+                        for (String token : tokens) {
+                            String t = trimStr(token);
+                            if (!t.isEmpty()) {
+                                numbers.add(t);
+                                int dec = 0;
+                                int pos = t.indexOf('.');
+                                if (pos != -1) dec = t.length() - pos - 1;
+                                decimalPlaces.add(dec);
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("Cannot open " + entry.toString());
+                    continue;
+                }
+
+                if (numbers.isEmpty()) continue;
+
+                Path outPath = outdir.resolve(fname);
+                try (BufferedWriter writer = Files.newBufferedWriter(outPath)) {
+                    // 更新表头，增加解压吞吐率列
+                    writer.write("Input Direction,Encoding Algorithm,Encoding Time,Decoding Time,Points,Compressed Size,Pack Size,Compression Ratio\n");
+
+                    int time_of_repeat = 100;
+
+                    for(int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
+                        int pack_size = (int) Math.pow(2, pack_size_exp);
+                        long modelCost = 0;
+                        long modelTime = 0;
+                        long modelDecodeTime = 0; // 新增：解压时间统计
+                        long compressedSize = 0;
+
+                        for (int rep = 0; rep < time_of_repeat; ++rep) {
+                            for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                                int end = Math.min(numbers.size(), i + CHUNK_SIZE);
+                                if (end - i <= 2) continue;
+                                List<String> chunkNumbers = numbers.subList(i, end);
+                                int decimalMax = 0;
+                                for (int k = i; k < end; ++k) {
+                                    if (decimalPlaces.get(k) > decimalMax) decimalMax = decimalPlaces.get(k);
+                                }
+
+                                long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                                long startTime = System.nanoTime();
+
+                                int remainder = scaledInts.length % pack_size;
+                                int padding = (remainder == 0) ? 0 : pack_size - remainder;
+                                long[] padded = new long[scaledInts.length + padding];
+                                System.arraycopy(scaledInts, 0, padded, 0, scaledInts.length);
+                                if (padding > 0) Arrays.fill(padded, scaledInts.length, padded.length, 0L);
+
+                                int groups = padded.length / pack_size;
+                                int[] bitWidths = new int[groups];
+                                int gidx = 0;
+                                for (int si = 0; si < padded.length; si += pack_size) {
+                                    long maxInGroup = 0;
+                                    for (int sj = si; sj < si + pack_size; ++sj) {
+                                        long v = padded[sj];
+                                        if (v > maxInGroup) maxInGroup = v;
+                                    }
+                                    int bitWidth = 0;
+                                    if (maxInGroup > 0) {
+                                        bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
+                                    } else {
+                                        bitWidth = 0;
+                                    }
+                                    bitWidths[gidx++] = bitWidth;
+                                }
+
+                                // pass original length (un-padded) so decoder can trim
+                                List<Integer> bitWidthsList = new ArrayList<>(groups);
+                                for (int x = 0; x < groups; ++x) bitWidthsList.add(bitWidths[x]);
+
+                                PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
+                                long duration = System.nanoTime() - startTime;
+                                modelTime += duration;
+                                modelCost += res.totalCost;
+
+                                // 新增：测试解压性能
+                                if (res.compressedData != null) {
+                                    long startDecodeTime = System.nanoTime();
+                                    try {
+                                        decompressAndVerify(res.compressedData, scaledInts);
+                                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                                        modelDecodeTime += decodeDuration;
+                                    } catch (IOException e) {
+                                        System.err.println("Decompression failed: " + e.getMessage());
+                                    }
+                                }
+
+                                if (rep == 0) {
+                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
+                                }
+                            }
+                        }
+
+                        modelCost /= time_of_repeat;
+                        modelTime /= time_of_repeat;
+                        modelDecodeTime /= time_of_repeat; // 平均解压时间
+
+                        double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
+                        double modelTime_throughput = (double) (numbers.size() * 8000L) / (double) modelTime; // points/s
+                        double modelDecodeTime_throughput = (double) (numbers.size() * 8000L) / (double) modelDecodeTime; // points/s
+
+                        writer.write(entry.toString() + ",");
+                        writer.write("BP-RL,");
+                        writer.write(String.valueOf(modelTime_throughput) + ",");
+                        writer.write(String.valueOf(modelDecodeTime_throughput) + ","); // 解压吞吐率
+                        writer.write(String.valueOf(numbers.size()) + ",");
+                        writer.write(String.valueOf(modelCost) + ",");
+                        writer.write(String.valueOf(pack_size) + ",");
+                        writer.write(String.valueOf(model_ratio) + "\n");
+
+                        System.out.println("Pack Size: " + pack_size);
+                        System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
+                        System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
+                        System.out.println("Compression ratio: " + model_ratio);
+                    }
+                } catch (IOException e) {
+                    System.err.println("Error writing output file for " + fname);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error iterating directory: " + directory);
+        }
+    }
+
+    public static void main(String[] args) {
+        String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
+        String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL";
+
+        int epochs = 80;
+
+        if (args.length >= 1) trainCsv = args[0];
+        if (args.length >= 2) dataDir = args[1];
+        if (args.length >= 3) outDir = args[2];
+
+        RLDecisionModel model = new RLDecisionModel();
+        if (!trainCsv.isEmpty()) {
+            model = trainModel(epochs, trainCsv);
+        } else {
+            System.err.println("No training CSV given. Using randomly initialized RL model.");
+        }
+
+        if (!dataDir.isEmpty()) {
+            performanceTest(model, dataDir, outDir);
+        } else {
+            System.err.println("No data directory provided for performanceTest. Exiting.");
+        }
+    }
+    @Test
+    public void TestVarPackSize() {
+        String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
+        String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL_vary_pack_size";
+
+        int epochs = 80;
+
+        RLDecisionModel model = new RLDecisionModel();
+        model = trainModel(epochs, trainCsv);
+        performanceTest(model, dataDir, outDir);
+    }
     // ========== performanceTest with variable chunk sizes ==========
     static void performanceTestVariableChunkSize(RLDecisionModel model, String directory, String outputDirStr) {
         System.out.println("\nPerformance Testing with Variable Chunk Sizes...");
@@ -950,173 +1162,6 @@ public class EfficientOctadPackingMLP {
         } catch (IOException e) {
             System.err.println("Error iterating directory: " + directory);
         }
-    }
-
-    // ========== performanceTest (original implementation) ==========
-    static void performanceTest(RLDecisionModel model, String directory, String outputDirStr) {
-        System.out.println("\nPerformance Testing...");
-        Path outdir = Paths.get(outputDirStr);
-        try {
-            if (!Files.exists(outdir)) Files.createDirectories(outdir);
-        } catch (IOException e) {
-            System.err.println("Cannot create output dir: " + outputDirStr);
-            return;
-        }
-
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(Paths.get(directory))) {
-            for (Path entry : ds) {
-                if (!Files.isRegularFile(entry)) continue;
-                String fname = entry.getFileName().toString();
-                if (IGNORE_FILES.contains(fname)) continue;
-
-                System.out.println("Processing " + fname + "...");
-                List<String> numbers = new ArrayList<>();
-                List<Integer> decimalPlaces = new ArrayList<>();
-
-                try (BufferedReader br = Files.newBufferedReader(entry)) {
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        String[] tokens = line.split(",");
-                        for (String token : tokens) {
-                            String t = trimStr(token);
-                            if (!t.isEmpty()) {
-                                numbers.add(t);
-                                int dec = 0;
-                                int pos = t.indexOf('.');
-                                if (pos != -1) dec = t.length() - pos - 1;
-                                decimalPlaces.add(dec);
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    System.err.println("Cannot open " + entry.toString());
-                    continue;
-                }
-
-                if (numbers.isEmpty()) continue;
-
-                Path outPath = outdir.resolve(fname);
-                try (BufferedWriter writer = Files.newBufferedWriter(outPath)) {
-                    writer.write("Input Direction,Encoding Algorithm,Encoding Time,Points,Compressed Size,Pack Size,Compression Ratio\n");
-
-                    int time_of_repeat = 100;
-
-                    for(int pack_size_exp = 3; pack_size_exp < 9; pack_size_exp++) {
-                        int pack_size = (int) Math.pow(2, pack_size_exp);
-                        long modelCost = 0;
-                        long modelTime = 0;
-                        long compressedSize = 0;
-
-                        for (int rep = 0; rep < time_of_repeat; ++rep) {
-                            for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
-                                int end = Math.min(numbers.size(), i + CHUNK_SIZE);
-                                if (end - i <= 2) continue;
-                                List<String> chunkNumbers = numbers.subList(i, end);
-                                int decimalMax = 0;
-                                for (int k = i; k < end; ++k) {
-                                    if (decimalPlaces.get(k) > decimalMax) decimalMax = decimalPlaces.get(k);
-                                }
-
-                                long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
-                                long startTime = System.nanoTime();
-
-                                int remainder = scaledInts.length % pack_size;
-                                int padding = (remainder == 0) ? 0 : pack_size - remainder;
-                                long[] padded = new long[scaledInts.length + padding];
-                                System.arraycopy(scaledInts, 0, padded, 0, scaledInts.length);
-                                if (padding > 0) Arrays.fill(padded, scaledInts.length, padded.length, 0L);
-
-                                int groups = padded.length / pack_size;
-                                int[] bitWidths = new int[groups];
-                                int gidx = 0;
-                                for (int si = 0; si < padded.length; si += pack_size) {
-                                    long maxInGroup = 0;
-                                    for (int sj = si; sj < si + pack_size; ++sj) {
-                                        long v = padded[sj];
-                                        if (v > maxInGroup) maxInGroup = v;
-                                    }
-                                    int bitWidth = 0;
-                                    if (maxInGroup > 0) {
-                                        bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
-                                    } else {
-                                        bitWidth = 0;
-                                    }
-                                    bitWidths[gidx++] = bitWidth;
-                                }
-
-                                // pass original length (un-padded) so decoder can trim
-                                List<Integer> bitWidthsList = new ArrayList<>(groups);
-                                for (int x = 0; x < groups; ++x) bitWidthsList.add(bitWidths[x]);
-
-                                PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
-                                long duration = System.nanoTime() - startTime;
-                                modelTime += duration;
-                                modelCost += res.totalCost;
-
-                                if (rep == 0) {
-                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
-                                }
-                            }
-                        }
-
-                        modelCost /= time_of_repeat;
-                        modelTime /= time_of_repeat;
-                        double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
-                        double modelTime_throughput = (double) (numbers.size() * 1000) / (double) modelTime; // points/ms
-
-                        writer.write(entry.toString() + ",");
-                        writer.write("BP-RL,");
-                        writer.write(String.valueOf(modelTime_throughput) + ",");
-                        writer.write(String.valueOf(numbers.size()) + ",");
-                        writer.write(String.valueOf(modelCost) + ",");
-                        writer.write(String.valueOf(pack_size) + ",");
-                        writer.write(String.valueOf(model_ratio) + "\n");
-                    }
-                } catch (IOException e) {
-                    System.err.println("Error writing output file for " + fname);
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error iterating directory: " + directory);
-        }
-    }
-
-    public static void main(String[] args) {
-        String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
-        String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL";
-
-        int epochs = 80;
-
-        if (args.length >= 1) trainCsv = args[0];
-        if (args.length >= 2) dataDir = args[1];
-        if (args.length >= 3) outDir = args[2];
-
-        RLDecisionModel model = new RLDecisionModel();
-        if (!trainCsv.isEmpty()) {
-            model = trainModel(epochs, trainCsv);
-        } else {
-            System.err.println("No training CSV given. Using randomly initialized RL model.");
-        }
-
-        if (!dataDir.isEmpty()) {
-            performanceTest(model, dataDir, outDir);
-        } else {
-            System.err.println("No data directory provided for performanceTest. Exiting.");
-        }
-    }
-
-    @Test
-    public void TestVarPackSize() {
-        String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
-        String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL_vary_pack_size";
-
-        int epochs = 80;
-
-        RLDecisionModel model = new RLDecisionModel();
-        model = trainModel(epochs, trainCsv);
-        performanceTest(model, dataDir, outDir);
     }
 
     @Test

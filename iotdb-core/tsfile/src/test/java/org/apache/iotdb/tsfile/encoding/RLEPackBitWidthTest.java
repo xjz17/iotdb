@@ -180,6 +180,69 @@ public class RLEPackBitWidthTest {
         return result_list;
     }
 
+    // 新增的解压函数
+    public static int[] decodeBitPackingWithRLE(byte[] compressedData, int originalLength, int pack_size) {
+        List<Integer> result = new ArrayList<>();
+        int pos = 0;
+
+        // 1. 解析RLE编码的bitWidths
+        // 读取run_count（4字节）
+        int runCount = bytes2Integer(compressedData, pos, 4);
+        pos += 4;
+
+        // 解析RLE游程
+        int[] bitWidths = decodeRLE(compressedData, pos, runCount);
+        pos += runCount * 2; // 每个游程占2字节
+
+        // 2. 解压bit-packed数据
+        int totalGroups = bitWidths.length;
+
+        for (int group = 0; group < totalGroups; group++) {
+            int bitWidth = bitWidths[group];
+
+            // 解压当前分组
+            ArrayList<Integer> groupData = new ArrayList<>();
+            unpack8Values(compressedData, pos, bitWidth, groupData);
+
+            // 添加解压出的数据
+            for (int i = 0; i < pack_size; i++) {
+                if (result.size() < originalLength) {
+                    result.add(groupData.get(i));
+                }
+            }
+
+            pos += bitWidth;
+        }
+
+        // 转换为数组返回
+        int[] decodedArray = new int[result.size()];
+        for (int i = 0; i < result.size(); i++) {
+            decodedArray[i] = result.get(i);
+        }
+        return decodedArray;
+    }
+
+    // 新增的RLE解码函数
+    public static int[] decodeRLE(byte[] data, int startPos, int runCount) {
+        List<Integer> bitWidths = new ArrayList<>();
+
+        for (int i = 0; i < runCount; i++) {
+            int runLength = data[startPos + i * 2] & 0xFF;
+            int value = data[startPos + i * 2 + 1] & 0xFF;
+
+            // 重复添加runLength次value
+            for (int j = 0; j < runLength; j++) {
+                bitWidths.add(value);
+            }
+        }
+
+        // 转换为数组
+        int[] result = new int[bitWidths.size()];
+        for (int i = 0; i < bitWidths.size(); i++) {
+            result[i] = bitWidths.get(i);
+        }
+        return result;
+    }
 
     private static int[] scaleNumbers(List<String> numbers, int decimalMax) {
         // 1. 预先计算缩放因子
@@ -216,6 +279,161 @@ public class RLEPackBitWidthTest {
         return result;
     }
 
+    /**
+     * 实际的压缩编码函数：将paddedArray按照bitWidths进行bit-packing，并对bitWidths进行RLE编码
+     */
+    public static byte[] encodeBitPackingWithRLE(int[] paddedArray, int[] bitWidths, int pack_size, int cost_bits) {
+        List<Byte> result = new ArrayList<>();
+
+        // 1. 对bitWidths进行RLE编码
+        List<Byte> rleEncoded = encodeRLE(bitWidths);
+
+        // 2. 将RLE编码的bitWidths写入结果
+        // 写入RLE数据
+        result.addAll(rleEncoded);
+
+        // 3. 对paddedArray进行bit-packing
+        int totalGroups = bitWidths.length;
+
+        // 计算bit-packed数据的总字节数 - 修正计算方式
+        int totalBitPackedBytes = (cost_bits+7)/8;
+
+        // 确保数组足够大，添加一些额外空间以防万一
+        byte[] bitPackedData = new byte[totalBitPackedBytes + 32];
+        int encodePos = 0;
+
+        // 对每组数据进行bit-packing
+        for (int group = 0; group < totalGroups; group++) {
+            int startIndex = group * pack_size;
+            ArrayList<Integer> groupData = new ArrayList<>();
+            for (int i = 0; i < pack_size; i++) {
+                if (startIndex + i < paddedArray.length) {
+                    groupData.add(paddedArray[startIndex + i]);
+                } else {
+                    groupData.add(0); // 用0填充不足的部分
+                }
+            }
+
+            encodePos = bitPacking(groupData, 0, bitWidths[group], encodePos, bitPackedData);
+        }
+
+        // 4. 将bit-packed数据写入结果（只写入实际使用的部分）
+        for (int i = 0; i < encodePos; i++) {
+            result.add(bitPackedData[i]);
+        }
+
+        // 转换为byte数组返回
+        byte[] finalResult = new byte[result.size()];
+        for (int i = 0; i < result.size(); i++) {
+            finalResult[i] = result.get(i);
+        }
+
+        return finalResult;
+    }
+
+    /**
+     * RLE编码bitWidths数组
+     * chunksize = 1024
+     * packsize = 8
+     * runlength = 128
+     * runcount =
+     */
+    public static List<Byte> encodeRLE(int[] bitWidths) {
+        List<Byte> result = new ArrayList<>();
+
+        if (bitWidths.length == 0) {
+            return result;
+        }
+        int length_bitWidths_list = bitWidths.length;
+        int run_count = 0;
+
+        int[] run_lengths = new int[length_bitWidths_list];
+        int[] run_values = new int[length_bitWidths_list];
+        int pre_bit_width = bitWidths[0];
+        int pre_run_length = 1;
+
+        for (int i = 1; i < length_bitWidths_list; i++) {
+            if (bitWidths[i] == pre_bit_width) {
+                pre_run_length++;
+            } else {
+                run_lengths[run_count] = pre_run_length;
+                run_values[run_count++] = pre_bit_width;
+                pre_bit_width = bitWidths[i];
+                pre_run_length = 1;
+            }
+        }
+        run_lengths[run_count] = pre_run_length;
+        run_values[run_count++] = pre_bit_width;
+
+        result.add((byte) (run_count >> 24));
+        result.add((byte) (run_count >> 16));
+        result.add((byte) (run_count >> 8));
+        result.add((byte) run_count);
+        for (int i = 0; i < run_count; i++) {
+            encodeRLERun(result, run_lengths[i], run_values[i]);
+        }
+
+        return result;
+    }
+
+    /**
+     * 编码单个RLE游程
+     */
+    private static void encodeRLERun(List<Byte> result, int runLength, int value) {
+//        result.add((byte) (runLength >> 24));
+//        result.add((byte) (runLength >> 16));
+//        result.add((byte) (runLength >> 8));
+        result.add((byte) runLength);
+//        result.add((byte) (value >> 16));
+//        result.add((byte) (value >> 8));
+        result.add((byte) value);
+    }
+
+    public static int computeMinPackingCost(int[] bitWidths, int fixed_pack, int pack_size) {
+        int blocksize= bitWidths.length;
+
+        int totalCost = 0;
+        int numBlocks = (int) Math.ceil((double) blocksize / fixed_pack);
+        // RLE compress bit width series: rle_count 8 bits, (run length 8 bits, bit width value: 6 bits) * run_count
+
+        // Calculate cost for each pack
+        for (int pack = 0; pack < numBlocks; pack++) {
+            int start = pack * fixed_pack;
+            int end = Math.min(start + fixed_pack, blocksize);
+            int cur_block_size = end - start;
+
+            // Find max bitWidth in current pack
+            int maxBitWidth = 0;
+            int[] run_lengths = new int[cur_block_size];
+            int[] run_values = new int[cur_block_size];
+            int run_count = 0;
+            int pre_bit_width = bitWidths[start];
+            int pre_run_length = 1;
+            totalCost += pack_size * bitWidths[start];
+
+            for (int i = start+1; i < end; i++) {
+                totalCost += pack_size * bitWidths[i];
+                if(pre_bit_width == bitWidths[i]) {
+                    pre_run_length++;
+                } else {
+                    run_lengths[run_count] = pre_run_length;
+                    run_values[run_count++] = pre_bit_width;
+                    pre_bit_width = bitWidths[i];
+                    pre_run_length = 1;
+                }
+            }
+            run_lengths[run_count] = pre_run_length;
+            run_values[run_count++] = pre_bit_width;
+
+            totalCost += 64;
+            for (int i = 0; i < run_count; i++) {
+                totalCost += 32;
+            }
+        }
+        System.out.println(blocksize);
+
+        return totalCost;
+    }
 
     public static void main(String[] args) throws IOException {
         String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
@@ -231,10 +449,12 @@ public class RLEPackBitWidthTest {
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
+            // 更新表头，增加解压吞吐率列
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
                     "Encoding Time",
+                    "Decoding Time",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -260,8 +480,10 @@ public class RLEPackBitWidthTest {
             }
             int time_of_repeat = 50;
 
-            int modelCost = 0;
+            long modelCost = 0;
             long modelTime = 0;
+            long modelDecodeTime = 0; // 新增：解压时间统计
+
             for(int j=0;j<time_of_repeat;j++){
                 int totalCost = 0;
                 for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
@@ -297,27 +519,59 @@ public class RLEPackBitWidthTest {
                         cost_bits += (bitWidth*8);
                     }
                     byte[] compressedData = encodeBitPackingWithRLE(paddedArray, bitWidths, 8,cost_bits);
-                    int cur_cost = compressedData.length * 8; // 转换为bit数
+                    long cur_cost = compressedData.length * 8; // 转换为bit数
 
                     long duration = System.nanoTime() - startTime;
                     modelTime += duration;
                     modelCost += cur_cost;
+
+                    // 新增：测试解压性能
+                    long startDecodeTime = System.nanoTime();
+                    int[] decodedData = decodeBitPackingWithRLE(compressedData, scaledInts.length, 8);
+                    long decodeDuration = System.nanoTime() - startDecodeTime;
+                    modelDecodeTime += decodeDuration;
+
+//                    // 可选：验证解压数据的正确性（只在第一次重复时验证）
+//                    if (j == 0) {
+//                        boolean correct = true;
+//                        for (int k = 0; k < scaledInts.length; k++) {
+//                            if (scaledInts[k] != decodedData[k]) {
+//                                correct = false;
+//                                System.err.println("Decompression error at index " + k +
+//                                        ": expected " + scaledInts[k] + ", got " + decodedData[k]);
+//                                break;
+//                            }
+//                        }
+////                        if (correct) {
+////                            System.out.println("Decompression verified successfully for chunk " + (i/CHUNK_SIZE));
+////                        }
+//                    }
                 }
             }
             modelCost /= time_of_repeat;
             modelTime = modelTime / time_of_repeat;
+            modelDecodeTime = modelDecodeTime / time_of_repeat; // 平均解压时间
+
             double model_ratio = (double) modelCost / (double) (numbers.size()*64);
-            double modelTime_throughput = (double)(numbers.size()*8000) / (double) (modelTime);
+            double modelTime_throughput = (double)(numbers.size()*8000L) / (double) (modelTime); // points per second
+            double modelDecodeTime_throughput = (double)(numbers.size()*8000L) / (double) (modelDecodeTime); // points per second
+
+            // 更新输出记录，包含解压吞吐率
             String[] record = {
                     file.toString(),
                     "BP+RLE",
                     String.valueOf(modelTime_throughput),
+                    String.valueOf(modelDecodeTime_throughput),
                     String.valueOf(numbers.size()),
                     String.valueOf(modelCost),
                     String.valueOf(model_ratio)
             };
             writer.writeRecord(record);
             writer.close();
+
+            System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
+            System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
+            System.out.println("Compression ratio: " + model_ratio);
         }
     }
 
@@ -572,161 +826,5 @@ public class RLEPackBitWidthTest {
             }
             writer.close();
         }
-    }
-
-    /**
-     * 实际的压缩编码函数：将paddedArray按照bitWidths进行bit-packing，并对bitWidths进行RLE编码
-     */
-    public static byte[] encodeBitPackingWithRLE(int[] paddedArray, int[] bitWidths, int pack_size, int cost_bits) {
-        List<Byte> result = new ArrayList<>();
-
-        // 1. 对bitWidths进行RLE编码
-        List<Byte> rleEncoded = encodeRLE(bitWidths);
-
-        // 2. 将RLE编码的bitWidths写入结果
-        // 写入RLE数据
-        result.addAll(rleEncoded);
-
-        // 3. 对paddedArray进行bit-packing
-        int totalGroups = bitWidths.length;
-
-        // 计算bit-packed数据的总字节数 - 修正计算方式
-        int totalBitPackedBytes = (cost_bits+7)/8;
-
-        // 确保数组足够大，添加一些额外空间以防万一
-        byte[] bitPackedData = new byte[totalBitPackedBytes + 32];
-        int encodePos = 0;
-
-        // 对每组数据进行bit-packing
-        for (int group = 0; group < totalGroups; group++) {
-            int startIndex = group * pack_size;
-            ArrayList<Integer> groupData = new ArrayList<>();
-            for (int i = 0; i < pack_size; i++) {
-                if (startIndex + i < paddedArray.length) {
-                    groupData.add(paddedArray[startIndex + i]);
-                } else {
-                    groupData.add(0); // 用0填充不足的部分
-                }
-            }
-
-            encodePos = bitPacking(groupData, 0, bitWidths[group], encodePos, bitPackedData);
-        }
-
-        // 4. 将bit-packed数据写入结果（只写入实际使用的部分）
-        for (int i = 0; i < encodePos; i++) {
-            result.add(bitPackedData[i]);
-        }
-
-        // 转换为byte数组返回
-        byte[] finalResult = new byte[result.size()];
-        for (int i = 0; i < result.size(); i++) {
-            finalResult[i] = result.get(i);
-        }
-
-        return finalResult;
-    }
-
-    /**
-     * RLE编码bitWidths数组
-     * chunksize = 1024
-     * packsize = 8
-     * runlength = 128
-     * runcount =
-     */
-    public static List<Byte> encodeRLE(int[] bitWidths) {
-        List<Byte> result = new ArrayList<>();
-
-        if (bitWidths.length == 0) {
-            return result;
-        }
-        int length_bitWidths_list = bitWidths.length;
-        int run_count = 0;
-
-        int[] run_lengths = new int[length_bitWidths_list];
-        int[] run_values = new int[length_bitWidths_list];
-        int pre_bit_width = bitWidths[0];
-        int pre_run_length = 1;
-
-        for (int i = 1; i < length_bitWidths_list; i++) {
-            if (bitWidths[i] == pre_bit_width) {
-                pre_run_length++;
-            } else {
-                run_lengths[run_count] = pre_run_length;
-                run_values[run_count++] = pre_bit_width;
-                pre_bit_width = bitWidths[i];
-                pre_run_length = 1;
-            }
-        }
-        run_lengths[run_count] = pre_run_length;
-        run_values[run_count++] = pre_bit_width;
-
-        result.add((byte) (run_count >> 24));
-        result.add((byte) (run_count >> 16));
-        result.add((byte) (run_count >> 8));
-        result.add((byte) run_count);
-        for (int i = 0; i < run_count; i++) {
-            encodeRLERun(result, run_lengths[i], run_values[i]);
-        }
-
-        return result;
-    }
-
-    /**
-     * 编码单个RLE游程
-     */
-    private static void encodeRLERun(List<Byte> result, int runLength, int value) {
-//        result.add((byte) (runLength >> 24));
-//        result.add((byte) (runLength >> 16));
-//        result.add((byte) (runLength >> 8));
-        result.add((byte) runLength);
-//        result.add((byte) (value >> 16));
-//        result.add((byte) (value >> 8));
-        result.add((byte) value);
-    }
-
-    public static int computeMinPackingCost(int[] bitWidths, int fixed_pack, int pack_size) {
-        int blocksize= bitWidths.length;
-
-        int totalCost = 0;
-        int numBlocks = (int) Math.ceil((double) blocksize / fixed_pack);
-        // RLE compress bit width series: rle_count 8 bits, (run length 8 bits, bit width value: 6 bits) * run_count
-
-        // Calculate cost for each pack
-        for (int pack = 0; pack < numBlocks; pack++) {
-            int start = pack * fixed_pack;
-            int end = Math.min(start + fixed_pack, blocksize);
-            int cur_block_size = end - start;
-
-            // Find max bitWidth in current pack
-            int maxBitWidth = 0;
-            int[] run_lengths = new int[cur_block_size];
-            int[] run_values = new int[cur_block_size];
-            int run_count = 0;
-            int pre_bit_width = bitWidths[start];
-            int pre_run_length = 1;
-            totalCost += pack_size * bitWidths[start];
-
-            for (int i = start+1; i < end; i++) {
-                totalCost += pack_size * bitWidths[i];
-                if(pre_bit_width == bitWidths[i]) {
-                    pre_run_length++;
-                } else {
-                    run_lengths[run_count] = pre_run_length;
-                    run_values[run_count++] = pre_bit_width;
-                    pre_bit_width = bitWidths[i];
-                    pre_run_length = 1;
-                }
-            }
-            run_lengths[run_count] = pre_run_length;
-            run_values[run_count++] = pre_bit_width;
-
-            totalCost += 64;
-            for (int i = 0; i < run_count; i++) {
-                totalCost += 32;
-            }
-        }
-        System.out.println(blocksize);
-
-        return totalCost;
     }
 }
