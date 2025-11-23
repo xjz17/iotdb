@@ -683,7 +683,7 @@ public class FBitpacking512 {
                 }
             }
 
-            int time_of_repeat = 10; // 减少重复次数以加快测试速度
+            int time_of_repeat = 50; // 减少重复次数以加快测试速度
 
             // 测试每个chunk size
             for (int chunkSize : chunkSizes) {

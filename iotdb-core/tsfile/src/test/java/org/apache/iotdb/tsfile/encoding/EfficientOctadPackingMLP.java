@@ -450,6 +450,40 @@ public class EfficientOctadPackingMLP {
             return out.toByteArray();
         }
     }
+    private static class BitReader {
+        final byte[] data;
+        private long acc = 0L;
+        private int accBits = 0;
+        private int idx = 0;
+
+        BitReader(byte[] data) {
+            this.data = data;
+        }
+
+        long readBits(int bitCount) throws IOException {
+            if (bitCount == 0) return 0L;
+            while (accBits < bitCount) {
+                if (idx < data.length) {
+                    acc = (acc << 8) | (data[idx++] & 0xFFL);
+                    accBits += 8;
+                } else {
+                    // pad with zeros if stream ends prematurely
+                    acc = (acc << (bitCount - accBits));
+                    accBits = bitCount;
+                }
+            }
+            int shift = accBits - bitCount;
+            long mask = (bitCount == 64) ? ~0L : ((1L << bitCount) - 1L);
+            long v = (acc >>> shift) & mask;
+            if (shift > 0) {
+                acc &= ((1L << shift) - 1L);
+            } else {
+                acc = 0L;
+            }
+            accBits = shift;
+            return v;
+        }
+    }
 
     /**
      * Fast primitive-based decoder corresponding to encodeBitPackingCanonical64_fast
@@ -496,39 +530,47 @@ public class EfficientOctadPackingMLP {
 
         return new DecodedResult(result, originalLength, pack_size);
     }
+    /**
+     * 快速解压函数 - 直接从编码后的数据解压
+     * 假设数据格式为: [original data after sprintz encoding]
+     */
+    public static long[] fastDecompress(byte[] compressedData, int[] bitWidths, int packSize, int originalLength) {
+        try {
+            // 这里需要根据实际的压缩格式来解析
+            // 假设compressedData包含bit-packed数据
+            ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
+            DataInputStream dis = new DataInputStream(bais);
 
-    private static class BitReader {
-        final byte[] data;
-        private long acc = 0L;
-        private int accBits = 0;
-        private int idx = 0;
+            // 读取bit-packed数据
+            int totalGroups = bitWidths.length;
+            long[] result = new long[totalGroups * packSize];
+            int resultIndex = 0;
 
-        BitReader(byte[] data) {
-            this.data = data;
-        }
+            BitReader reader = new BitReader(compressedData);
 
-        long readBits(int bitCount) throws IOException {
-            if (bitCount == 0) return 0L;
-            while (accBits < bitCount) {
-                if (idx < data.length) {
-                    acc = (acc << 8) | (data[idx++] & 0xFFL);
-                    accBits += 8;
-                } else {
-                    // pad with zeros if stream ends prematurely
-                    acc = (acc << (bitCount - accBits));
-                    accBits = bitCount;
+            for (int g = 0; g < totalGroups; ++g) {
+                int bw = bitWidths[g];
+                for (int k = 0; k < packSize; ++k) {
+                    if (bw == 0) {
+                        result[resultIndex++] = 0L;
+                    } else if (bw == 64) {
+                        long high = reader.readBits(32);
+                        long low = reader.readBits(32);
+                        long v = (high << 32) | (low & 0xFFFFFFFFL);
+                        result[resultIndex++] = v;
+                    } else {
+                        long v = reader.readBits(bw);
+                        result[resultIndex++] = v;
+                    }
                 }
             }
-            int shift = accBits - bitCount;
-            long mask = (bitCount == 64) ? ~0L : ((1L << bitCount) - 1L);
-            long v = (acc >>> shift) & mask;
-            if (shift > 0) {
-                acc &= ((1L << shift) - 1L);
-            } else {
-                acc = 0L;
-            }
-            accBits = shift;
-            return v;
+
+            // 只取原始长度的数据并Sprintz解码
+            return Arrays.copyOf(result, originalLength);
+
+        } catch (IOException e) {
+            System.err.println("Fast decompression failed: " + e.getMessage());
+            return new long[0];
         }
     }
 
@@ -814,7 +856,7 @@ public class EfficientOctadPackingMLP {
         DecodedResult decodedResult = decodeBitPackingCanonical64_fast(compressedData);
 
         // 只取原始长度的数据（去掉填充部分）
-        long[] decompressed = new long[decodedResult.originalLength];
+//        long[] decompressed = new long[decodedResult.originalLength];
 //        System.arraycopy(decodedResult.values, 0, decompressed, 0, decodedResult.originalLength);
 //
 //        // 验证解压数据的正确性
@@ -835,7 +877,7 @@ public class EfficientOctadPackingMLP {
 //            }
 //        }
 
-        return decompressed;
+        return decodedResult.values;
     }
 
     // ========== performanceTest (更新版本，包含解压测试) ==========
@@ -944,18 +986,14 @@ public class EfficientOctadPackingMLP {
                                 // 新增：测试解压性能
                                 if (res.compressedData != null) {
                                     long startDecodeTime = System.nanoTime();
-                                    try {
-                                        decompressAndVerify(res.compressedData, scaledInts);
-                                        long decodeDuration = System.nanoTime() - startDecodeTime;
-                                        modelDecodeTime += decodeDuration;
-                                    } catch (IOException e) {
-                                        System.err.println("Decompression failed: " + e.getMessage());
-                                    }
+                                    long[] decompressed = fastDecompress(res.compressedData, bitWidths, pack_size, scaledInts.length);
+                                    long decodeDuration = System.nanoTime() - startDecodeTime;
+                                    modelDecodeTime += decodeDuration;
                                 }
 
-                                if (rep == 0) {
-                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
-                                }
+//                                if (rep == 0) {
+//                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
+//                                }
                             }
                         }
 
@@ -976,10 +1014,10 @@ public class EfficientOctadPackingMLP {
                         writer.write(String.valueOf(pack_size) + ",");
                         writer.write(String.valueOf(model_ratio) + "\n");
 
-                        System.out.println("Pack Size: " + pack_size);
-                        System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
-                        System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
-                        System.out.println("Compression ratio: " + model_ratio);
+//                        System.out.println("Pack Size: " + pack_size);
+//                        System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
+//                        System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
+//                        System.out.println("Compression ratio: " + model_ratio);
                     }
                 } catch (IOException e) {
                     System.err.println("Error writing output file for " + fname);

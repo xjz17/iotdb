@@ -569,9 +569,9 @@ public class RLEPackBitWidthTest {
             writer.writeRecord(record);
             writer.close();
 
-            System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
-            System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
-            System.out.println("Compression ratio: " + model_ratio);
+//            System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
+//            System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
+//            System.out.println("Compression ratio: " + model_ratio);
         }
     }
 

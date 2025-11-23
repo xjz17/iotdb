@@ -1045,7 +1045,8 @@ public class EfficientOctadPackingMLPSprintz {
                         writer.write(entry.toString() + ",");
                         writer.write("SPRINTZ-RL,");
                         writer.write(String.valueOf(modelTime_throughput) + ",");
-                        writer.write(String.valueOf(decodeThroughput) + ",");                        writer.write(String.valueOf(numbers.size()) + ",");
+                        writer.write(String.valueOf(decodeThroughput) + ",");
+                        writer.write(String.valueOf(numbers.size()) + ",");
                         writer.write(String.valueOf(modelCost) + ",");
                         writer.write(String.valueOf(pack_size) + ",");
                         writer.write(String.valueOf(model_ratio) + "\n");
