@@ -15,7 +15,8 @@ import java.util.regex.*;
 
 public class EfficientOctadPackingMLPSprintz {
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
+    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
+            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     static final int CHUNK_SIZE = 1024;
     static final int INPUT_DIM = 5;
     static final int HIDDEN_DIM = 48;
@@ -60,7 +61,7 @@ public class EfficientOctadPackingMLPSprintz {
         byte[] compressedData;
 
         void calculateCost(int maxLog) {
-            bitWidthCostB = 5 * packCount;
+            bitWidthCostB = 6 * packCount;
             packSizeCostC = packCount * maxLog;
             totalCost = dataCostA + bitWidthCostB + packSizeCostC;
         }
@@ -357,187 +358,8 @@ public class EfficientOctadPackingMLPSprintz {
         }
     }
 
-    /**
-     * Fast primitive-based encoder (no BigInteger). Preserves MSB-first ordering per value.
-     * Header layout:
-     *   int magic (0x4250524C)
-     *   int originalLength
-     *   int pack_size
-     *   int totalGroups
-     *   totalGroups bytes: bitWidth (0..64)
-     * followed by bitstream (MSB-first per value)
-     */
-    public static byte[] encodeBitPackingCanonical64_fast(long[] paddedArray, int[] bitWidths, int pack_size, int originalLength) throws IOException {
-        if (bitWidths == null) throw new IllegalArgumentException("bitWidths null");
-        int totalGroups = bitWidths.length;
-        if (paddedArray.length < totalGroups * pack_size) throw new IllegalArgumentException("paddedArray too small");
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(baos);
 
-//        dos.writeInt(0x4250524C); // "BPRL"
-//        dos.writeInt(originalLength);
-//        dos.writeInt(pack_size);
-//        dos.writeInt(totalGroups);
-
-        // write bitWidths (1 byte each)
-        for (int bw : bitWidths) {
-            if (bw < 0 || bw > 64) throw new IOException("Unsupported bitWidth (must be 0..64): " + bw);
-            dos.writeByte(bw);
-        }
-        dos.flush();
-
-        // Bitstream build using a primitive BitWriter
-        BitWriter bwriter = new BitWriter();
-
-        int dataIndex = 0;
-        for (int g = 0; g < totalGroups; ++g) {
-            int bw = bitWidths[g];
-            for (int k = 0; k < pack_size; ++k) {
-                long rawVal = paddedArray[dataIndex++];
-//                if (bw == 0) {
-//                    // nothing to append
-//                } else if (bw == 64) {
-//                    // write 64 bits MSB-first by splitting into two 32-bit writes (safe)
-//                    bwriter.writeBits((rawVal >>> 32) & 0xFFFFFFFFL, 32);
-//                    bwriter.writeBits(rawVal & 0xFFFFFFFFL, 32);
-//                } else {
-                long mask = (bw == 64) ? ~0L : ((1L << bw) - 1L);
-                long masked = rawVal & mask;
-                bwriter.writeBits(masked, bw);
-//                }
-            }
-        }
-
-        byte[] bitBytes = bwriter.finish();
-
-        dos.write(bitBytes);
-        dos.flush();
-        return baos.toByteArray();
-    }
-
-    private static class BitWriter {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        private long acc = 0L; // holds currently buffered bits (lowest "accBits" bits are valid)
-        private int accBits = 0; // number of bits in acc
-
-        // writeBits expects bits in LSB-aligned form (i.e., "masked" value). We append MSB-first as: acc = (acc << bitCount) | bits
-        void writeBits(long bits, int bitCount) {
-            if (bitCount == 0) return;
-            if (bitCount == 64) {
-                // split into two 32-bit writes to avoid shifting by 64
-                writeBits((bits >>> 32) & 0xFFFFFFFFL, 32);
-                writeBits(bits & 0xFFFFFFFFL, 32);
-                return;
-            }
-            long mask = (bitCount == 64) ? ~0L : ((1L << bitCount) - 1L);
-            long v = bits & mask;
-            acc = (acc << bitCount) | v;
-            accBits += bitCount;
-            while (accBits >= 8) {
-                int shift = accBits - 8;
-                int outb = (int) ((acc >>> shift) & 0xFFL);
-                out.write(outb);
-                if (shift > 0) {
-                    acc &= ((1L << shift) - 1L);
-                } else {
-                    acc = 0L;
-                }
-                accBits = shift;
-            }
-        }
-
-        byte[] finish() {
-            if (accBits > 0) {
-                int outb = (int) ((acc << (8 - accBits)) & 0xFFL);
-                out.write(outb);
-                acc = 0L;
-                accBits = 0;
-            }
-            return out.toByteArray();
-        }
-    }
-
-    /**
-     * Fast primitive-based decoder corresponding to encodeBitPackingCanonical64_fast
-     */
-    public static DecodedResult decodeBitPackingCanonical64_fast(byte[] encoded) throws IOException {
-        DataInputStream dis = new DataInputStream(new ByteArrayInputStream(encoded));
-        int magic = dis.readInt();
-        if (magic != 0x4250524C) throw new IOException("Bad magic");
-        int originalLength = dis.readInt();
-        int pack_size = dis.readInt();
-        int totalGroups = dis.readInt();
-
-        int[] bitWidths = new int[totalGroups];
-        for (int i = 0; i < totalGroups; ++i) bitWidths[i] = dis.readUnsignedByte();
-
-        // read remaining bytes as bitstream
-        ByteArrayOutputStream rest = new ByteArrayOutputStream();
-        int b;
-        while ((b = dis.read()) != -1) rest.write(b);
-        byte[] bitstream = rest.toByteArray();
-
-        long[] result = new long[totalGroups * pack_size];
-        int resIdx = 0;
-
-        BitReader reader = new BitReader(bitstream);
-
-        for (int g = 0; g < totalGroups; ++g) {
-            int bw = bitWidths[g];
-            for (int k = 0; k < pack_size; ++k) {
-                if (bw == 0) {
-                    result[resIdx++] = 0L;
-                } else if (bw == 64) {
-                    long high = reader.readBits(32);
-                    long low = reader.readBits(32);
-                    long v = (high << 32) | (low & 0xFFFFFFFFL);
-                    result[resIdx++] = v;
-                } else {
-                    long v = reader.readBits(bw);
-                    // sign-safe conversion: v is unsigned value fitting in bw bits; we store it as long
-                    result[resIdx++] = v;
-                }
-            }
-        }
-
-        return new DecodedResult(result, originalLength, pack_size);
-    }
-
-    private static class BitReader {
-        final byte[] data;
-        private long acc = 0L;
-        private int accBits = 0;
-        private int idx = 0;
-
-        BitReader(byte[] data) {
-            this.data = data;
-        }
-
-        long readBits(int bitCount) throws IOException {
-            if (bitCount == 0) return 0L;
-            while (accBits < bitCount) {
-                if (idx < data.length) {
-                    acc = (acc << 8) | (data[idx++] & 0xFFL);
-                    accBits += 8;
-                } else {
-                    // pad with zeros if stream ends prematurely
-                    acc = (acc << (bitCount - accBits));
-                    accBits = bitCount;
-                }
-            }
-            int shift = accBits - bitCount;
-            long mask = (bitCount == 64) ? ~0L : ((1L << bitCount) - 1L);
-            long v = (acc >>> shift) & mask;
-            if (shift > 0) {
-                acc &= ((1L << shift) - 1L);
-            } else {
-                acc = 0L;
-            }
-            accBits = shift;
-            return v;
-        }
-    }
 
     // ========== CSV loader & scaling helpers ==========
     static List<List<Integer>> loadDataFromCSV(String filename) {
@@ -692,71 +514,246 @@ public class EfficientOctadPackingMLPSprintz {
 
         return result;
     }
+    private static class BitWriter {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        private long acc = 0L; // holds currently buffered bits (lowest "accBits" bits are valid)
+        private int accBits = 0; // number of bits in acc
 
-    public static long[] decompressData(byte[] compressedData, int originalLength, int packSize) {
-        try {
-            // 解码bit-packed数据
-            DecodedResult decodedResult = decodeBitPackingCanonical64_fast(compressedData);
+        // writeBits expects bits in LSB-aligned form (i.e., "masked" value). We append MSB-first as: acc = (acc << bitCount) | bits
+        void writeBits(long bits, int bitCount) {
+            if (bitCount == 0) return;
+            if (bitCount == 64) {
+                // split into two 32-bit writes to avoid shifting by 64
+                writeBits((bits >>> 32) & 0xFFFFFFFFL, 32);
+                writeBits(bits & 0xFFFFFFFFL, 32);
+                return;
+            }
+            long mask = (bitCount == 64) ? ~0L : ((1L << bitCount) - 1L);
+            long v = bits & mask;
+            acc = (acc << bitCount) | v;
+            accBits += bitCount;
+            while (accBits >= 8) {
+                int shift = accBits - 8;
+                int outb = (int) ((acc >>> shift) & 0xFFL);
+                out.write(outb);
+                if (shift > 0) {
+                    acc &= ((1L << shift) - 1L);
+                } else {
+                    acc = 0L;
+                }
+                accBits = shift;
+            }
+        }
 
-            // 提取解码后的数据（只取原始长度，去除填充）
-            long[] decodedValues = Arrays.copyOf(decodedResult.values, originalLength);
-
-            // Sprintz解码恢复原始数据
-            return sprintzDecode(decodedValues);
-        } catch (IOException e) {
-            System.err.println("Decompression failed: " + e.getMessage());
-            return new long[0];
+        byte[] finish() {
+            if (accBits > 0) {
+                int outb = (int) ((acc << (8 - accBits)) & 0xFFL);
+                out.write(outb);
+                acc = 0L;
+                accBits = 0;
+            }
+            return out.toByteArray();
         }
     }
+    //    private static class BitReader {
+//        final byte[] data;
+//        private long acc = 0L;
+//        private int accBits = 0;
+//        private int idx = 0;
+//
+//        BitReader(byte[] data) {
+//            this.data = data;
+//        }
+//
+//        long readBits(int bitCount) throws IOException {
+//            if (bitCount == 0) return 0L;
+//            while (accBits < bitCount) {
+//                if (idx < data.length) {
+//                    acc = (acc << 8) | (data[idx++] & 0xFFL);
+//                    accBits += 8;
+//                } else {
+//                    // pad with zeros if stream ends prematurely
+//                    acc = (acc << (bitCount - accBits));
+//                    accBits = bitCount;
+//                }
+//            }
+//            int shift = accBits - bitCount;
+//            long mask = (bitCount == 64) ? ~0L : ((1L << bitCount) - 1L);
+//            long v = (acc >>> shift) & mask;
+//            if (shift > 0) {
+//                acc &= ((1L << shift) - 1L);
+//            } else {
+//                acc = 0L;
+//            }
+//            accBits = shift;
+//            return v;
+//        }
+//    }
+    public static final class BitReader {
+        private final byte[] data;
+        private int bitPos;  // global bit position from start of data[]
 
-    /**
-     * 快速解压函数 - 直接从编码后的数据解压
-     * 假设数据格式为: [original data after sprintz encoding]
-     */
-    public static long[] fastDecompress(byte[] compressedData, int[] bitWidths, int packSize, int originalLength) {
-        try {
-            // 这里需要根据实际的压缩格式来解析
-            // 假设compressedData包含bit-packed数据
-            ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
-            DataInputStream dis = new DataInputStream(bais);
+        public BitReader(byte[] data) {
+            this(data, 0);
+        }
 
-            // 读取bit-packed数据
-            int totalGroups = bitWidths.length;
-            long[] result = new long[totalGroups * packSize];
-            int resultIndex = 0;
+        public BitReader(byte[] data, int byteOffset) {
+            this.data = data;
+            this.bitPos = byteOffset * 8;
+        }
 
-            BitReader reader = new BitReader(compressedData);
+        /**
+         * Read n bits (0 <= n <= 64), return as unsigned long.
+         */
+        public long readBits(int n) {
+            if (n == 0) return 0L;
+            if (n < 0 || n > 64) {
+                throw new IllegalArgumentException("n must be between 0 and 64");
+            }
 
-            for (int g = 0; g < totalGroups; ++g) {
-                int bw = bitWidths[g];
-                for (int k = 0; k < packSize; ++k) {
-                    if (bw == 0) {
-                        result[resultIndex++] = 0L;
-                    } else if (bw == 64) {
-                        long high = reader.readBits(32);
-                        long low = reader.readBits(32);
-                        long v = (high << 32) | (low & 0xFFFFFFFFL);
-                        result[resultIndex++] = v;
+            long result = 0L;
+            int bitsRemaining = n;
+
+            while (bitsRemaining > 0) {
+                int byteIndex = bitPos >>> 3;     // current byte
+                int bitOffset = bitPos & 7;       // offset inside byte [0..7]
+
+                // 添加边界检查
+                if (byteIndex >= data.length) {
+                    // 如果已经超出数据范围，填充0并返回
+                    result = (result << bitsRemaining);
+                    bitPos += bitsRemaining;
+                    return result;
+                }
+
+                int bitsFromCurrentByte = Math.min(8 - bitOffset, bitsRemaining);
+
+                // Load byte as unsigned
+                int curByte = data[byteIndex] & 0xFF;
+
+                // Shift to get the relevant bits
+                int shift = 8 - bitOffset - bitsFromCurrentByte;
+                int chunk = (curByte >>> shift) & ((1 << bitsFromCurrentByte) - 1);
+
+                result = (result << bitsFromCurrentByte) | chunk;
+
+                bitPos += bitsFromCurrentByte;
+                bitsRemaining -= bitsFromCurrentByte;
+            }
+
+            return result;
+        }
+
+        /**
+         * @return total bits consumed since creation / since byteOffset
+         */
+        public int consumedBits() {
+            return bitPos;
+        }
+
+        /**
+         * @return current bit position (alias)
+         */
+        public int bitPosition() {
+            return bitPos;
+        }
+
+        /**
+         * @return remaining bits available for reading
+         */
+        public int remainingBits() {
+            return (data.length * 8) - bitPos;
+        }
+    }
+    private static byte[] performBitPackingCompression64_fast(long[] dataArray, List<Pack> packs, int pack_size, int originalLength) throws IOException {
+        // 计算一些元信息
+        int totalPacks = packs.size();
+        int maxOctadsInAnyPack = 0;
+        for ( Pack p : packs) if (p.size > maxOctadsInAnyPack) maxOctadsInAnyPack = p.size;
+
+        // bits needed to encode counts in range [0..maxOctadsInAnyPack]
+        int bitsForCount = 1;
+        while ((1L << bitsForCount) <= maxOctadsInAnyPack) bitsForCount++;
+        if (bitsForCount <= 0) bitsForCount = 1;
+
+        // 准备输出缓冲（先写 header 的整数字段，meta/data 用 BitWriter 位流）
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(baos);
+
+        dos.writeByte(totalPacks);
+        dos.writeByte(bitsForCount); // 1 byte is enough to carry this small number
+        dos.flush();
+
+        // --- Meta bitstream ---
+         BitWriter metaWriter = new  BitWriter();
+
+        // For each pack: write pack.size using bitsForCount bits, then for each octad write its bitWidth using 6 bits
+        for ( Pack pack : packs) {
+            // write octad count
+            metaWriter.writeBits(pack.size, bitsForCount);
+            metaWriter.writeBits(pack.bitWidths.get(0), 6);
+//            // write each octad's bitWidth using 6 bits.
+//            // NOTE: we map bitWidth==64 -> store 63 (as sentinel). 解码端须按此约定把 63 映射回 64。
+//            for (int i = 0; i < pack.size; ++i) {
+//                int bw = pack.bitWidths.get(i);
+//                int store = bw;
+//                if (bw == 64) store = 63;
+//                if (store < 0) store = 0;
+//                if (store > 63) store = 63; // safety clamp
+//                metaWriter.writeBits(store, 5);
+//            }
+        }
+
+        byte[] metaBytes = metaWriter.finish();
+        dos.write(metaBytes);
+        dos.flush();
+
+        // --- Data bitstream ---
+         BitWriter dataWriter = new  BitWriter();
+
+        // For each pack, find packMaxBitWidth and write each group's pack_size values using packMaxBitWidth bits
+        for ( Pack pack : packs) {
+            int packMaxBW = pack.maxBitWidth;
+            // no change for packMaxBW == 64: BitWriter supports splitting 64 into two 32-bit writes
+            for (int i = 0; i < pack.size; ++i) {
+                int originalGroupIndex = pack.indices.get(0);
+                int startPos = originalGroupIndex * pack_size;
+                for (int j = 0; j < pack_size; ++j) {
+                    long val;
+//                    if (startPos + j < dataArray.length) {
+                    val = dataArray[startPos + j];
+//                    } else {
+//                        val = 0L;
+//                    }
+                    // mask value to packMaxBW bits (if packMaxBW == 64, mask preserves full 64 bits)
+                    long mask;
+                    if (packMaxBW == 0) {
+                        dataWriter.writeBits(0L, 0); // nothing to write
                     } else {
-                        long v = reader.readBits(bw);
-                        result[resultIndex++] = v;
+                        if (packMaxBW == 64) {
+                            // write full 64-bit value (BitWriter handles split)
+                            dataWriter.writeBits(val, 64);
+                        } else {
+                            mask = (1L << packMaxBW) - 1L;
+                            long masked = val & mask;
+                            dataWriter.writeBits(masked, packMaxBW);
+                        }
                     }
                 }
             }
-
-            // 只取原始长度的数据并Sprintz解码
-            long[] trimmedResult = Arrays.copyOf(result, originalLength);
-            return sprintzDecode(trimmedResult);
-
-        } catch (IOException e) {
-            System.err.println("Fast decompression failed: " + e.getMessage());
-            return new long[0];
         }
+
+        byte[] dataBytes = dataWriter.finish();
+        dos.write(dataBytes);
+        dos.flush();
+
+        return baos.toByteArray();
     }
+
     // ========== packOctads (updated to accept originalLength for compression) ==========
-    static PackingResult packOctads(List<Integer> bitWidths, RLDecisionModel model, List<DecisionPoint> decisionTrace, int pack_size, long[] dataArray, int originalLength) {
-        PackingResult result = new PackingResult();
-        Pack currentPack = new Pack();
+    static  PackingResult packOctads(List<Integer> bitWidths,  RLDecisionModel model, List< DecisionPoint> decisionTrace, int pack_size, long[] dataArray, int originalLength) {
+         PackingResult result = new  PackingResult();
+         Pack currentPack = new  Pack();
         int globalMaxLog = 0;
         int packCount = 0;
 
@@ -787,7 +784,7 @@ public class EfficientOctadPackingMLPSprintz {
                 }
 
                 if (decisionTrace != null) {
-                    decisionTrace.add(new DecisionPoint(currentPack.size, currentPack.maxBitWidth, b, packCount, globalMaxLog, shouldMerge, probability));
+                    decisionTrace.add(new  DecisionPoint(currentPack.size, currentPack.maxBitWidth, b, packCount, globalMaxLog, shouldMerge, probability));
                 }
 
                 if (shouldMerge) {
@@ -799,7 +796,7 @@ public class EfficientOctadPackingMLPSprintz {
                     result.packs.add(currentPack);
                     packCount++;
 
-                    currentPack = new Pack();
+                    currentPack = new  Pack();
                     currentPack.addOctad(i, b);
                 }
             }
@@ -818,60 +815,160 @@ public class EfficientOctadPackingMLPSprintz {
 
         // 执行实际的bitpacking压缩（如果提供了 dataArray）
         if (dataArray != null) {
-//            System.out.println(pack_size);
-            result.compressedData = performBitPackingCompression64_fast(dataArray, result.packs, pack_size, originalLength);
+            try {
+                result.compressedData = performBitPackingCompression64_fast(dataArray, result.packs, pack_size, originalLength);
+            } catch (IOException e) {
+                System.err.println("Compression failed: " + e.getMessage());
+                result.compressedData = null;
+            }
         }
 
         return result;
     }
 
-    // faster compression using primitive based encoder
-    private static byte[] performBitPackingCompression64_fast(long[] dataArray, List<Pack> packs, int pack_size, int originalLength) {
-        // 计算总的数据组数
-        int totalGroups = 0;
-        for (Pack pack : packs) {
-            totalGroups += pack.size;
-        }
-
-        // 准备 bitWidths 数组和 paddedArray (long)
-        int[] bitWidths = new int[totalGroups];
-        long[] paddedArray = new long[totalGroups * pack_size];
-
-        int groupIndex = 0;
-        int dataIndex = 0;
-
-        for (Pack pack : packs) {
-            for (int i = 0; i < pack.size; i++) {
-                int originalGroupIndex = pack.indices.get(i);
-                bitWidths[groupIndex] = pack.bitWidths.get(i);
-
-                int startPos = originalGroupIndex * pack_size;
-                for (int j = 0; j < pack_size; j++) {
-                    long val = 0L;
-//                    if (startPos + j < dataArray.length) {
-                    val = dataArray[startPos + j];
+//    public static long[] fastDecompress(byte[] compressedData, int[] bitWidths, int packSize, int originalLength) {
+//        try {
+//            // 这里需要根据实际的压缩格式来解析
+//            // 假设compressedData包含bit-packed数据
+//            ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
+//            DataInputStream dis = new DataInputStream(bais);
+//
+//            // 读取bit-packed数据
+//            int totalGroups = bitWidths.length;
+//            long[] result = new long[totalGroups * packSize];
+//            int resultIndex = 0;
+//
+//            BitReader reader = new BitReader(compressedData);
+//
+//            for (int g = 0; g < totalGroups; ++g) {
+//                int bw = bitWidths[g];
+//                for (int k = 0; k < packSize; ++k) {
+//                    if (bw == 0) {
+//                        result[resultIndex++] = 0L;
+//                    } else if (bw == 64) {
+//                        long high = reader.readBits(32);
+//                        long low = reader.readBits(32);
+//                        long v = (high << 32) | (low & 0xFFFFFFFFL);
+//                        result[resultIndex++] = v;
 //                    } else {
-//                        val = 0L;
+//                        long v = reader.readBits(bw);
+//                        result[resultIndex++] = v;
 //                    }
-//                    if (val < 0) {
-//                        // negative is unusual (scaleNumbers should produce >=0 after shifting); still, allow via masking semantics.
-//                        System.err.println("Warning: value negative; treating as unsigned 64-bit representation. val=" + val + " groupIndex=" + groupIndex + " pos=" + j);
-//                    }
-                    paddedArray[dataIndex++] = val;
-                }
-                groupIndex++;
-            }
+//                }
+//            }
+//
+//            // 只取原始长度的数据并Sprintz解码
+//            return Arrays.copyOf(result, originalLength);
+//
+//        } catch (IOException e) {
+//            System.err.println("Fast decompression failed: " + e.getMessage());
+//            return new long[0];
+//        }
+//    }
+
+    public static long[] fastDecompress(byte[] compressedData, int[] bitWidths, int packSize, int originalLength) {
+        if (compressedData == null || compressedData.length == 0) {
+            System.err.println("Compressed data is null or empty");
+            return new long[0];
         }
-//        return null;
 
         try {
-            return encodeBitPackingCanonical64_fast(paddedArray, bitWidths, pack_size, originalLength);
-        } catch (IOException e) {
-            System.err.println("Encoding failed: " + e.getMessage());
-            return null;
+            ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
+            DataInputStream dis = new DataInputStream(bais);
+
+            // === Header ===
+            int totalPacks = dis.readUnsignedByte();
+            int bitsForCount = dis.readUnsignedByte();
+
+            // === Read meta bitstream ===
+            int metaStartOffset = 2; // two bytes read
+             BitReader metaReader = new  BitReader(compressedData, metaStartOffset);
+
+            // 解析每个pack的信息
+            List<PackInfo> packInfos = new ArrayList<>();
+            int totalValuesToDecode = 0;
+
+            for (int p = 0; p < totalPacks; ++p) {
+                int octadCount = (int) metaReader.readBits(bitsForCount);
+                int packBitWidth = (int) metaReader.readBits(6);
+                if (packBitWidth == 63) packBitWidth = 64;
+
+                packInfos.add(new PackInfo(octadCount, packBitWidth));
+                totalValuesToDecode += octadCount * packSize;
+            }
+
+            // 计算数据部分的起始位置
+            int metaBitsUsed = metaReader.consumedBits();
+            int dataStartByte = metaStartOffset + (metaBitsUsed + 7) / 8;
+
+            // 检查数据起始位置是否超出压缩数据范围
+            if (dataStartByte >= compressedData.length) {
+//                System.err.println("Data start position exceeds compressed data length");
+                return new long[0];
+            }
+
+            // === Data bitstream ===
+             BitReader dataReader = new BitReader(compressedData, dataStartByte);
+            List<Long> resultList = new ArrayList<>();
+
+            // === 按pack解码数据 ===
+            for ( PackInfo packInfo : packInfos) {
+                int octadCount = packInfo.octadCount;
+                int bitWidth = packInfo.bitWidth;
+
+                // 检查剩余数据是否足够
+                if (dataReader.remainingBits() < (long) octadCount * packSize * bitWidth) {
+//                    System.err.println("Insufficient data for decoding pack. Expected: " +
+//                            (octadCount * packSize * bitWidth) + " bits, Available: " +
+//                            dataReader.remainingBits() + " bits");
+                    break;
+                }
+
+                // 每个octad包含packSize个值
+                for (int i = 0; i < octadCount; ++i) {
+                    for (int j = 0; j < packSize; ++j) {
+                        long value;
+                        if (bitWidth == 0) {
+                            value = 0L;
+                        } else if (bitWidth == 64) {
+                            // 64位特殊处理：分成两个32位读取
+                            long high = dataReader.readBits(32);
+                            long low = dataReader.readBits(32);
+                            value = (high << 32) | low;
+                        } else {
+                            value = dataReader.readBits(bitWidth);
+                        }
+                        resultList.add(value);
+                    }
+                }
+            }
+
+            // 转换为数组并截取到原始长度
+            long[] result = new long[Math.min(resultList.size(), originalLength)];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = resultList.get(i);
+            }
+
+//            System.out.println("Decompression completed: " + result.length + " values decoded");
+            return result;
+
+        } catch (Exception e) {
+            System.err.println("Fast decompression failed: " + e.getMessage());
+            e.printStackTrace();
+            return new long[0];
         }
     }
 
+    // 辅助类，存储pack信息
+    static class PackInfo {
+        int octadCount;
+        int bitWidth;
+
+        PackInfo(int octadCount, int bitWidth) {
+            this.octadCount = octadCount;
+            this.bitWidth = bitWidth;
+        }
+    }
     // ========== Training loop (trainModel) ==========
     static RLDecisionModel trainModel(int epochs, String csvFilePath) {
         System.err.println("Training RL model from CSV data...");
@@ -895,7 +992,7 @@ public class EfficientOctadPackingMLPSprintz {
                 // training does not perform actual compression, pass dataArray=null and originalLength=0
                 PackingResult result = packOctads(bitWidths, model, decisionTrace, 8, null, 0);
 
-                float reward = - (float) result.totalCost / 10000.0f;
+                float reward = (float) result.totalCost / 500000.0f;
                 totalReward += reward;
 
                 float loss = model.train(decisionTrace, reward);
@@ -1024,13 +1121,14 @@ public class EfficientOctadPackingMLPSprintz {
                                 if (res.compressedData != null) {
                                     long decodeStartTime = System.nanoTime();
                                     long[] decompressed = fastDecompress(res.compressedData, bitWidths, pack_size, scaledInts.length);
+                                    long[] decompressed_final = sprintzDecode(decompressed);
                                     long decodeDuration = System.nanoTime() - decodeStartTime;
                                     modelDecodeTime += decodeDuration;
 //                                    System.out.println(decodeDuration);
                                 }
 
                                 modelTime += duration;
-                                modelCost += res.totalCost;
+                                modelCost += (res.compressedData.length* 8L);
 
                             }
                         }
@@ -1065,7 +1163,7 @@ public class EfficientOctadPackingMLPSprintz {
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";//args.length > 1 ? args[1] : "";
         String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_sprintz_rl";// args.length > 2 ? args[2] : "./output_BPRL";
 
-        int epochs = 80;
+        int epochs = 20;
 
         if (args.length >= 1) trainCsv = args[0];
         if (args.length >= 2) dataDir = args[1];
@@ -1133,10 +1231,11 @@ public class EfficientOctadPackingMLPSprintz {
                 try (BufferedWriter writer = Files.newBufferedWriter(outPath)) {
                     writer.write("Input Direction,Encoding Algorithm,Encoding Time,Points,Compressed Size,Pack Size,Compression Ratio\n");
 
-                    int time_of_repeat = 100;
+                    int time_of_repeat = 50;
 
                     for(int pack_size_exp = 3; pack_size_exp < 9; pack_size_exp++) {
                         int pack_size = (int) Math.pow(2, pack_size_exp);
+                        System.out.println(pack_size);
                         long modelCost = 0;
                         long modelTime = 0;
                         long compressedSize = 0;
@@ -1151,8 +1250,9 @@ public class EfficientOctadPackingMLPSprintz {
                                     if (decimalPlaces.get(k) > decimalMax) decimalMax = decimalPlaces.get(k);
                                 }
 
-                                long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                                long[] scaledInt = scaleNumbers(chunkNumbers, decimalMax);
                                 long startTime = System.nanoTime();
+                                long[] scaledInts = sprintz(scaledInt);
 
                                 int remainder = scaledInts.length % pack_size;
                                 int padding = (remainder == 0) ? 0 : pack_size - remainder;
@@ -1185,21 +1285,21 @@ public class EfficientOctadPackingMLPSprintz {
                                 PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
                                 long duration = System.nanoTime() - startTime;
                                 modelTime += duration;
-                                modelCost += res.totalCost;
+                                modelCost += (res.compressedData.length*8);
 
-                                if (rep == 0) {
-                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
-                                }
+//                                if (rep == 0) {
+//                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
+//                                }
                             }
                         }
 
                         modelCost /= time_of_repeat;
                         modelTime /= time_of_repeat;
                         double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
-                        double modelTime_throughput = (double) (numbers.size() * 1000) / (double) modelTime; // points/ms
+                        double modelTime_throughput = (double) (numbers.size() * 8000) / (double) modelTime; // points/ms
 
                         writer.write(entry.toString() + ",");
-                        writer.write("BP-RL,");
+                        writer.write("SPRINTZ-RL,");
                         writer.write(String.valueOf(modelTime_throughput) + ",");
                         writer.write(String.valueOf(numbers.size()) + ",");
                         writer.write(String.valueOf(modelCost) + ",");
@@ -1218,12 +1318,187 @@ public class EfficientOctadPackingMLPSprintz {
     public void TestVarPackSize() {
         String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";// args.length > 0 ? args[0] : "";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";//args.length > 1 ? args[1] : "";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_sprintz_rl_vary_pack_size";// args.length > 2 ? args[2] : "./output_BPRL";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_sprintz_RL_vary_pack_size";// args.length > 2 ? args[2] : "./output_BPRL";
 
-        int epochs = 80;
+        int epochs = 20;
 
         RLDecisionModel model = new RLDecisionModel();
         model = trainModel(epochs, trainCsv);
         performanceTest(model, dataDir, outDir);
     }
+
+
+    static void performanceTestVariableChunkSize(RLDecisionModel model, String directory, String outputDirStr) {
+        System.out.println("\nPerformance Testing with Variable Chunk Sizes...");
+        Path outdir = Paths.get(outputDirStr);
+        try {
+            if (!Files.exists(outdir)) Files.createDirectories(outdir);
+        } catch (IOException e) {
+            System.err.println("Cannot create output dir: " + outputDirStr);
+            return;
+        }
+
+        // Define the chunk sizes to test (m*8 where m is 16, 32, 64, 128, 256, 512, 1024)
+        int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
+
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(Paths.get(directory))) {
+            for (Path entry : ds) {
+                if (!Files.isRegularFile(entry)) continue;
+                String fname = entry.getFileName().toString();
+                if (IGNORE_FILES.contains(fname)) continue;
+
+                System.out.println("Processing " + fname + " with variable chunk sizes...");
+                List<String> numbers = new ArrayList<>();
+                List<Integer> decimalPlaces = new ArrayList<>();
+
+                try (BufferedReader br = Files.newBufferedReader(entry)) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        String[] tokens = line.split(",");
+                        for (String token : tokens) {
+                            String t = trimStr(token);
+                            if (!t.isEmpty()) {
+                                numbers.add(t);
+                                int dec = 0;
+                                int pos = t.indexOf('.');
+                                if (pos != -1) dec = t.length() - pos - 1;
+                                decimalPlaces.add(dec);
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("Cannot open " + entry.toString());
+                    continue;
+                }
+
+                if (numbers.isEmpty()) continue;
+
+                Path outPath = outdir.resolve(fname.replace(".", "_chunksize_test."));
+                try (BufferedWriter writer = Files.newBufferedWriter(outPath)) {
+                    writer.write("m,Input Direction,Encoding Algorithm,Encoding Time,Points,Compressed Size,Pack Size,Compression Ratio\n");
+
+                    int time_of_repeat = 50; // Reduced for faster testing with multiple chunk sizes
+                    int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+                    int batchSize = 1024;
+                    List<long[]> batches = new ArrayList<>();
+
+                    for (int i = 0; i < numbers.size(); i += batchSize) {
+                        int end = Math.min(numbers.size(), i + batchSize);
+                        List<String> batch = numbers.subList(i, end);
+                        long[] scaledBatch = scaleNumbers(batch, decimalMax);
+                        batches.add(scaledBatch);
+                    }
+
+                    // 计算总长度并拼接所有批次的结果
+                    int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+                    long[] scaledInts_all = new long[totalLength];
+
+                    int currentIndex = 0;
+                    for (long[] batch : batches) {
+                        System.arraycopy(batch, 0, scaledInts_all, currentIndex, batch.length);
+                        currentIndex += batch.length;
+                    }
+
+                    // Test each chunk size
+                    for (int chunkSize : chunkSizes) {
+                        System.out.println("Testing chunk size: " + chunkSize);
+
+                        for (int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
+                            int pack_size = (int) Math.pow(2, pack_size_exp);
+                            long modelCost = 0;
+                            long modelTime = 0;
+                            long compressedSize = 0;
+
+                            for (int rep = 0; rep < time_of_repeat; ++rep) {
+                                for (int i = 0; i < numbers.size(); i += chunkSize) {
+//                                    int end = Math.min(numbers.size(), i + chunkSize);
+//                                    if (end - i <= 2) continue;
+//                                    List<String> chunkNumbers = numbers.subList(i, end);
+//                                    int decimalMax = 0;
+//                                    for (int k = i; k < end; ++k) {
+//                                        if (decimalPlaces.get(k) > decimalMax) decimalMax = decimalPlaces.get(k);
+//                                    }
+//
+//                                    long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+
+                                    int end = Math.min(i + chunkSize, numbers.size());
+                                    long[] scaledInt = new long[end-i];
+                                    if (end - i >= 0) System.arraycopy(scaledInts_all, i, scaledInt, 0, end - i);
+
+                                    long startTime = System.nanoTime();
+                                    long[] scaledInts = sprintz(scaledInt);
+
+                                    int remainder = scaledInts.length % pack_size;
+                                    int padding = (remainder == 0) ? 0 : pack_size - remainder;
+                                    long[] padded = new long[scaledInts.length + padding];
+                                    System.arraycopy(scaledInts, 0, padded, 0, scaledInts.length);
+                                    if (padding > 0) Arrays.fill(padded, scaledInts.length, padded.length, 0L);
+
+                                    int groups = padded.length / pack_size;
+                                    int[] bitWidths = new int[groups];
+                                    int gidx = 0;
+                                    for (int si = 0; si < padded.length; si += pack_size) {
+                                        long maxInGroup = 0;
+                                        for (int sj = si; sj < si + pack_size; ++sj) {
+                                            long v = padded[sj];
+                                            if (v > maxInGroup) maxInGroup = v;
+                                        }
+                                        int bitWidth = 0;
+                                        if (maxInGroup > 0) {
+                                            bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
+                                        } else {
+                                            bitWidth = 0;
+                                        }
+                                        bitWidths[gidx++] = bitWidth;
+                                    }
+
+                                    // pass original length (un-padded) so decoder can trim
+                                    List<Integer> bitWidthsList = new ArrayList<>(groups);
+                                    for (int x = 0; x < groups; ++x) bitWidthsList.add(bitWidths[x]);
+
+                                    PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
+                                    long duration = System.nanoTime() - startTime;
+                                    modelTime += duration;
+                                    modelCost += (res.compressedData.length* 8L);
+
+                                }
+                            }
+
+                            modelCost /= time_of_repeat;
+                            modelTime /= time_of_repeat;
+                            double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
+                            double modelTime_throughput = (double) (numbers.size() * 8000) / (double) modelTime; // points/ms
+
+                            writer.write(String.valueOf(chunkSize/8) + ",");
+                            writer.write(entry.toString() + ",");
+                            writer.write("sprintz-RL,");
+                            writer.write(String.valueOf(modelTime_throughput) + ",");
+                            writer.write(String.valueOf(numbers.size()) + ",");
+                            writer.write(String.valueOf(modelCost) + ",");
+                            writer.write(String.valueOf(pack_size) + ",");
+                            writer.write(String.valueOf(model_ratio) + "\n");
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("Error writing output file for " + fname);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error iterating directory: " + directory);
+        }
+    }
+    @Test
+    public void TestVariableChunkSize() {
+        String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
+        String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_sprint_RL_vary_m";
+
+        int epochs = 20;
+
+        RLDecisionModel model = new RLDecisionModel();
+        model = trainModel(epochs, trainCsv);
+        performanceTestVariableChunkSize(model, dataDir, outDir);
+    }
+
 }

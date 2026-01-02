@@ -16,7 +16,8 @@ import java.util.regex.*;
 public class EfficientOctadPackingMLP {
 
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
+    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
+            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     static final int CHUNK_SIZE = 1024;
     static final int INPUT_DIM = 5;
     static final int HIDDEN_DIM = 48;
@@ -1082,14 +1083,14 @@ public static final class BitReader {
                         double modelTime_throughput = (double) (numbers.size() * 8000L) / (double) modelTime; // points/s
                         double modelDecodeTime_throughput = (double) (numbers.size() * 8000L) / (double) modelDecodeTime; // points/s
 
-                        writer.write(entry.toString() + ",");
+                        writer.write(entry + ",");
                         writer.write("BP-RL,");
-                        writer.write(String.valueOf(modelTime_throughput) + ",");
-                        writer.write(String.valueOf(modelDecodeTime_throughput) + ","); // 解压吞吐率
-                        writer.write(String.valueOf(numbers.size()) + ",");
-                        writer.write(String.valueOf(modelCost) + ",");
-                        writer.write(String.valueOf(pack_size) + ",");
-                        writer.write(String.valueOf(model_ratio) + "\n");
+                        writer.write(modelTime_throughput + ",");
+                        writer.write(modelDecodeTime_throughput + ","); // 解压吞吐率
+                        writer.write(numbers.size() + ",");
+                        writer.write(modelCost + ",");
+                        writer.write(pack_size + ",");
+                        writer.write(model_ratio + "\n");
 
 //                        System.out.println("Pack Size: " + pack_size);
 //                        System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
@@ -1194,7 +1195,6 @@ public static final class BitReader {
                     int time_of_repeat = 50; // Reduced for faster testing with multiple chunk sizes
                     int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
 
-// 分批处理，每1024个元素一批
                     int batchSize = 1024;
                     List<long[]> batches = new ArrayList<>();
 
@@ -1285,7 +1285,7 @@ public static final class BitReader {
                             modelCost /= time_of_repeat;
                             modelTime /= time_of_repeat;
                             double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
-                            double modelTime_throughput = (double) (numbers.size() * 1000) / (double) modelTime; // points/ms
+                            double modelTime_throughput = (double) (numbers.size() * 8000) / (double) modelTime; // points/ms
 
                             writer.write(String.valueOf(chunkSize/8) + ",");
                             writer.write(entry.toString() + ",");

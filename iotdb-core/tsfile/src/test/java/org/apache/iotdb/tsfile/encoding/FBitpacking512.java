@@ -18,8 +18,9 @@ import java.util.Objects;
 
 public class FBitpacking512 {
 
-        static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
-        private static final int CHUNK_SIZE = 1024;
+        static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
+                "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
+        private static final int CHUNK_SIZE = 512;
 
         public static int getBitWith(int num) {
             if (num == 0)
@@ -295,8 +296,8 @@ public class FBitpacking512 {
         public static void main(String[] args) throws IOException {
             // 示例数据（实际应替换为真实时间序列）
             System.out.println("\nPerformance Testing...");
-            String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-            String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BP";
+            String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-pack-size/ElfTestData_camel";
+            String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-pack-size/output_BP";
             File outputDir = new File(outputDirstr);
 
             if (!outputDir.exists()) outputDir.mkdir();
@@ -340,7 +341,7 @@ public class FBitpacking512 {
                         }
                     }
                 }
-                int time_of_repeat = 500;
+                int time_of_repeat = 50;
 
 
                 long modelCost = 0;

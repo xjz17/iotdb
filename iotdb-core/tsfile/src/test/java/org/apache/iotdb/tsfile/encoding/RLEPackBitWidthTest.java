@@ -19,7 +19,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RLEPackBitWidthTest {
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
+    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
+            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     private static final int CHUNK_SIZE = 1024;
 
     public static int getBitWith(int num) {
@@ -380,12 +381,13 @@ public class RLEPackBitWidthTest {
      * 编码单个RLE游程
      */
     private static void encodeRLERun(List<Byte> result, int runLength, int value) {
-//        result.add((byte) (runLength >> 24));
-//        result.add((byte) (runLength >> 16));
-//        result.add((byte) (runLength >> 8));
+        result.add((byte) (runLength >> 24));
+        result.add((byte) (runLength >> 16));
+        result.add((byte) (runLength >> 8));
         result.add((byte) runLength);
-//        result.add((byte) (value >> 16));
-//        result.add((byte) (value >> 8));
+        result.add((byte) (runLength >> 24));
+        result.add((byte) (value >> 16));
+        result.add((byte) (value >> 8));
         result.add((byte) value);
     }
 
@@ -627,6 +629,7 @@ public class RLEPackBitWidthTest {
 
             for(int pack_size_exp = 3; pack_size_exp < 10; pack_size_exp++){
                 int pack_size = (int) Math.pow(2,pack_size_exp);
+                System.out.println(pack_size);
                 int modelCost = 0;
                 long modelTime = 0;
                 for(int j=0;j<time_of_repeat;j++){
@@ -755,7 +758,7 @@ public class RLEPackBitWidthTest {
             int time_of_repeat = 50; // 减少重复次数以加快测试速度
             int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
 
-// 分批处理，每1024个元素一批
+            // 分批处理，每1024个元素一批
             int batchSize = 1024;
             List<int[]> batches = new ArrayList<>();
 

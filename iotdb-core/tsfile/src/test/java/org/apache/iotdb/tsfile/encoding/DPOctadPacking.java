@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 
 public class DPOctadPacking {
     static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
-            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv","Disk-usage.csv");
+            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     private static final int CHUNK_SIZE = 1024;
 
     static String trimStr(String s) {
@@ -112,89 +112,6 @@ public class DPOctadPacking {
     }
 
 
-
-    public static int computeMinPackingCost(int[] bitWidths, int pack_size) {
-        int N = bitWidths.length;
-        if (N == 0) {
-            return 0;
-        }
-
-        // Precompute the maximum bit width for all intervals [l, r] (0-based)
-        int[][] maxB = new int[N][N];
-        for (int l = 0; l < N; l++) {
-            maxB[l][l] = bitWidths[l];
-            for (int r = l + 1; r < N; r++) {
-                maxB[l][r] = Math.max(maxB[l][r - 1], bitWidths[r]);
-            }
-        }
-
-        int minTotalCost = maxB[0][N-1]*pack_size*bitWidths.length;
-
-        // Enumerate all possible C values (ceil(log2(max_pack_size + 1)))
-        int maxPossibleC = 64 - Long.numberOfLeadingZeros(N); // ceil(log2(N + 1))
-
-        for (int C = 1; C <= maxPossibleC; C++) {
-            int low_C = (C == 1) ? 1 : (1 << (C - 1));
-            int high_C = Math.min((1 << C) - 1, N);
-
-            // DP table: dp[i][a] - min cost for first i octads, a=1 if at least one pack >= low_C
-            int[][] dp = new int[N + 1][2];
-            int[][] prevState = new int[N + 1][2]; // for backtracking
-            int[][] packSize = new int[N + 1][2]; // for backtracking
-
-            // Initialize DP table
-            for (int i = 0; i <= N; i++) {
-                dp[i][0] = Integer.MAX_VALUE / 2;
-                dp[i][1] = Integer.MAX_VALUE / 2;
-            }
-            dp[0][0] = 0;
-
-            for (int i = 1; i <= N; i++) {
-                for (int k = Math.max(1, i - high_C + 1); k <= i; k++) {
-                    int packLength = i - k + 1;
-                    int currentMaxB = maxB[k - 1][i - 1]; // convert to 0-based indexing
-
-                    // Calculate pack cost: 8 * packLength * currentMaxB + 6 + C
-                    int packCost = pack_size * packLength * currentMaxB + 6 + C;
-
-                    // Update DP states based on pack size
-                    if (packLength < low_C) {
-                        // Cannot transition to state 1 with small packs
-                        if (dp[k - 1][0] + packCost < dp[i][0]) {
-                            dp[i][0] = dp[k - 1][0] + packCost;
-                            prevState[i][0] = k - 1;
-                            packSize[i][0] = packLength;
-                        }
-                        if (dp[k - 1][1] + packCost < dp[i][1]) {
-                            dp[i][1] = dp[k - 1][1] + packCost;
-                            prevState[i][1] = k - 1;
-                            packSize[i][1] = packLength;
-                        }
-                    } else {
-                        // Large pack can transition both states to state 1
-                        if (dp[k - 1][0] + packCost < dp[i][1]) {
-                            dp[i][1] = dp[k - 1][0] + packCost;
-                            prevState[i][1] = k - 1;
-                            packSize[i][1] = packLength;
-                        }
-                        if (dp[k - 1][1] + packCost < dp[i][1]) {
-                            dp[i][1] = dp[k - 1][1] + packCost;
-                            prevState[i][1] = k - 1;
-                            packSize[i][1] = packLength;
-                        }
-                    }
-                }
-            }
-
-            // Update minimum total cost for this C value
-            if (dp[N][1] < minTotalCost) {
-                minTotalCost = dp[N][1];
-            }
-        }
-
-        return minTotalCost;
-    }
-
     // 动态规划结果类
     static class PackingPlan {
         int optimalC;
@@ -231,7 +148,7 @@ public class DPOctadPacking {
         List<Integer> bestGroupSizes = new ArrayList<>();
         List<Integer> bestGroupBitWidths = new ArrayList<>();
 
-        int maxPossibleC = 32 - Integer.numberOfLeadingZeros(N);
+        int maxPossibleC = 64 - Long.numberOfLeadingZeros(N);
 
         for (int C = 1; C <= maxPossibleC; C++) {
             int low_C = (C == 1) ? 1 : (1 << (C - 1));
@@ -322,7 +239,7 @@ public class DPOctadPacking {
 
         // 元数据头大小: C(5bits) + 分组数量(32bits)
         totalSize += 6; // C占用5bits
-        totalSize += 32; // 分组数量占用32bits
+        totalSize += 8; // 分组数量占用32bits
 
         // 每个分组的元数据: packsize(plan.optimalC bits) + 位宽(5bits)
         int groupMetadataBits = plan.groupSizes.size() * (plan.optimalC + 6);
@@ -338,82 +255,6 @@ public class DPOctadPacking {
 
         // 转换为字节数（向上取整）
         return (totalSize + 7) / 8;
-    }
-
-    // 写入元数据头信息
-    private static int writeMetadataHeader(byte[] compressedData, int currentPos,
-                                           PackingPlan plan, int pack_size) {
-        int bitPos = 0;
-        int bytePos = currentPos;
-
-        // 写入C (6 bits)
-        writeBits(compressedData, bytePos, bitPos, plan.optimalC, 6);
-        bitPos += 6;
-        if (bitPos >= 8) {
-            bytePos += bitPos / 8;
-            bitPos = bitPos % 8;
-        }
-
-        // 写入分组数量 (32 bits)
-        writeBits(compressedData, bytePos, bitPos, plan.groupSizes.size(), 32);
-        bytePos += 4; // 32 bits = 4 bytes
-
-        return bytePos;
-    }
-
-    // 压缩数据块
-    private static int compressDataBlocks(byte[] compressedData, int currentPos,
-                                          long[] paddedArray, PackingPlan plan, int pack_size) {
-        int bitPos = 0;
-        int bytePos = currentPos;
-        int dataIndex = 0;
-
-        for (int groupIdx = 0; groupIdx < plan.groupSizes.size(); groupIdx++) {
-            int groupBlocks = plan.groupSizes.get(groupIdx);
-            int bitWidth = plan.groupBitWidths.get(groupIdx);
-
-            // 写入当前分组的packsize (optimalC bits)
-            writeBits(compressedData, bytePos, bitPos, groupBlocks, plan.optimalC);
-            bitPos += plan.optimalC;
-            if (bitPos >= 8) {
-                bytePos += bitPos / 8;
-                bitPos = bitPos % 8;
-            }
-
-            // 写入当前分组的位宽 (6 bits)
-            writeBits(compressedData, bytePos, bitPos, bitWidth, 6);
-            bitPos += 6;
-            if (bitPos >= 8) {
-                bytePos += bitPos / 8;
-                bitPos = bitPos % 8;
-            }
-
-            // 压缩当前分组的数据
-            int groupDataCount = groupBlocks * pack_size;
-            ArrayList<Integer> dataToPack = new ArrayList<>();
-            for (int i = 0; i < groupDataCount; i++) {
-                dataToPack.add((int) paddedArray[dataIndex++]); // 注意：这里假设数据在int范围内
-            }
-
-            // 使用bitpacking压缩
-            bytePos = bitPacking(dataToPack, 0, bitWidth, bytePos, compressedData, bitPos);
-            bitPos = 0; // bitPacking会处理位对齐
-        }
-
-        return bytePos;
-    }
-
-    // 写入指定位数的辅助函数
-    private static void writeBits(byte[] data, int bytePos, int bitPos, int value, int numBits) {
-        for (int i = numBits - 1; i >= 0; i--) {
-            int bit = (value >> i) & 1;
-            data[bytePos] |= (bit << (7 - bitPos));
-            bitPos++;
-            if (bitPos == 8) {
-                bytePos++;
-                bitPos = 0;
-            }
-        }
     }
 
     // 修改后的bitPacking方法，支持指定的起始位位置
@@ -443,22 +284,6 @@ public class DPOctadPacking {
         }
 
         return currentBytePos;
-    }
-
-
-    // 读取指定位数的辅助函数
-    private static int readBits(byte[] data, int bytePos, int bitPos, int numBits) {
-        int result = 0;
-        for (int i = 0; i < numBits; i++) {
-            int bit = (data[bytePos] >> (7 - bitPos)) & 1;
-            result = (result << 1) | bit;
-            bitPos++;
-            if (bitPos == 8) {
-                bytePos++;
-                bitPos = 0;
-            }
-        }
-        return result;
     }
 
     // 辅助：位写入器
@@ -528,9 +353,9 @@ public class DPOctadPacking {
         byte[] compressedData = new byte[totalSize + 8]; // 预留一点空间以防计算差异（安全余量）
         BitWriter writer = new BitWriter(compressedData, 0);
 
-        // 写 C (6 bits) 和 groupCount(32 bits)
+        // 写 C (6 bits) 和 groupCount(8 bits)
         writer.writeBits(optimalPlan.optimalC, 6);
-        writer.writeBits(optimalPlan.groupSizes.size(), 32);
+        writer.writeBits(optimalPlan.groupSizes.size(), 8);
 
         int dataIndex = 0;
         for (int gi = 0; gi < optimalPlan.groupSizes.size(); ++gi) {
@@ -568,10 +393,10 @@ public class DPOctadPacking {
     public static long[] decompressWithOptimalPacking(byte[] compressedData, int originalLength, int pack_size) {
         BitReader reader = new BitReader(compressedData, 0, 0);
         int C = (int) reader.readBits(6);
-        int groupCount = (int) reader.readBits(32);
+        int groupCount = (int) reader.readBits(8);
 
         // sanity checks
-        if (C <= 0 || C > 32) throw new IllegalArgumentException("Invalid C read from header: " + C);
+        if (C <= 0 || C > 64) throw new IllegalArgumentException("Invalid C read from header: " + C);
         if (groupCount < 0 || groupCount > (1 << 20)) throw new IllegalArgumentException("Suspicious groupCount: " + groupCount);
 
         long[] result = new long[originalLength];
@@ -919,7 +744,6 @@ public class DPOctadPacking {
 
             int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
 
-// 分批处理，每1024个元素一批
             int batchSize = 1024;
             List<long[]> batches = new ArrayList<>();
 

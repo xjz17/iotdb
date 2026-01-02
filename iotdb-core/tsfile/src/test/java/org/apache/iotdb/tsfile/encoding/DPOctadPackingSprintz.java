@@ -21,9 +21,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 //import org.openjdk.jol.info.ClassLayout;
 //import org.openjdk.jol.info.GraphLayout;
-
+import java.math.BigInteger;
 public class DPOctadPackingSprintz {
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv","POI-lat.csv",
+    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv","POI-lat.csv","Basel-wind.csv",
             "POI-lon.csv","Air-sensor.csv","Basel-temp.csv");
 
     private static final int CHUNK_SIZE = 1024;
@@ -136,88 +136,6 @@ public class DPOctadPackingSprintz {
         return result;
     }
 
-    public static int computeMinPackingCost(int[] bitWidths, int pack_size) {
-        int N = bitWidths.length;
-        if (N == 0) {
-            return 0;
-        }
-
-        // Precompute the maximum bit width for all intervals [l, r] (0-based)
-        int[][] maxB = new int[N][N];
-        for (int l = 0; l < N; l++) {
-            maxB[l][l] = bitWidths[l];
-            for (int r = l + 1; r < N; r++) {
-                maxB[l][r] = Math.max(maxB[l][r - 1], bitWidths[r]);
-            }
-        }
-
-        int minTotalCost = maxB[0][N-1]*pack_size*bitWidths.length;
-
-        // Enumerate all possible C values (ceil(log2(max_pack_size + 1)))
-        int maxPossibleC = 32 - Integer.numberOfLeadingZeros(N); // ceil(log2(N + 1))
-
-        for (int C = 1; C <= maxPossibleC; C++) {
-            int low_C = (C == 1) ? 1 : (1 << (C - 1));
-            int high_C = Math.min((1 << C) - 1, N);
-
-            // DP table: dp[i][a] - min cost for first i octads, a=1 if at least one pack >= low_C
-            int[][] dp = new int[N + 1][2];
-            int[][] prevState = new int[N + 1][2]; // for backtracking
-            int[][] packSize = new int[N + 1][2]; // for backtracking
-
-            // Initialize DP table
-            for (int i = 0; i <= N; i++) {
-                dp[i][0] = Integer.MAX_VALUE / 2;
-                dp[i][1] = Integer.MAX_VALUE / 2;
-            }
-            dp[0][0] = 0;
-
-            for (int i = 1; i <= N; i++) {
-                for (int k = Math.max(1, i - high_C + 1); k <= i; k++) {
-                    int packLength = i - k + 1;
-                    int currentMaxB = maxB[k - 1][i - 1]; // convert to 0-based indexing
-
-                    // Calculate pack cost: 8 * packLength * currentMaxB + 6 + C
-                    int packCost = pack_size * packLength * currentMaxB + 6 + C;
-
-                    // Update DP states based on pack size
-                    if (packLength < low_C) {
-                        // Cannot transition to state 1 with small packs
-                        if (dp[k - 1][0] + packCost < dp[i][0]) {
-                            dp[i][0] = dp[k - 1][0] + packCost;
-                            prevState[i][0] = k - 1;
-                            packSize[i][0] = packLength;
-                        }
-                        if (dp[k - 1][1] + packCost < dp[i][1]) {
-                            dp[i][1] = dp[k - 1][1] + packCost;
-                            prevState[i][1] = k - 1;
-                            packSize[i][1] = packLength;
-                        }
-                    } else {
-                        // Large pack can transition both states to state 1
-                        if (dp[k - 1][0] + packCost < dp[i][1]) {
-                            dp[i][1] = dp[k - 1][0] + packCost;
-                            prevState[i][1] = k - 1;
-                            packSize[i][1] = packLength;
-                        }
-                        if (dp[k - 1][1] + packCost < dp[i][1]) {
-                            dp[i][1] = dp[k - 1][1] + packCost;
-                            prevState[i][1] = k - 1;
-                            packSize[i][1] = packLength;
-                        }
-                    }
-                }
-            }
-
-            // Update minimum total cost for this C value
-            if (dp[N][1] < minTotalCost) {
-                minTotalCost = dp[N][1];
-            }
-        }
-
-        return minTotalCost;
-    }
-
     // 动态规划结果类
     static class PackingPlan {
         int optimalC;
@@ -234,10 +152,10 @@ public class DPOctadPackingSprintz {
     }
 
     // 计算最优分组方案的完整实现
-    public static DPOctadPacking.PackingPlan computeOptimalPackingPlan(int[] bitWidths, int pack_size) {
+    public static PackingPlan computeOptimalPackingPlan(int[] bitWidths, int pack_size) {
         int N = bitWidths.length;
         if (N == 0) {
-            return new DPOctadPacking.PackingPlan(0, new ArrayList<>(), new ArrayList<>(), 0);
+            return new PackingPlan(0, new ArrayList<>(), new ArrayList<>(), 0);
         }
 
         // 预计算所有区间的最大位宽
@@ -254,7 +172,7 @@ public class DPOctadPackingSprintz {
         List<Integer> bestGroupSizes = new ArrayList<>();
         List<Integer> bestGroupBitWidths = new ArrayList<>();
 
-        int maxPossibleC = 32 - Integer.numberOfLeadingZeros(N);
+        int maxPossibleC = 64 - Long.numberOfLeadingZeros(N);
 
         for (int C = 1; C <= maxPossibleC; C++) {
             int low_C = (C == 1) ? 1 : (1 << (C - 1));
@@ -336,16 +254,16 @@ public class DPOctadPackingSprintz {
             }
         }
 
-        return new DPOctadPacking.PackingPlan(bestC, bestGroupSizes, bestGroupBitWidths, minTotalCost);
+        return new PackingPlan(bestC, bestGroupSizes, bestGroupBitWidths, minTotalCost);
     }
 
     // 计算压缩后数据总大小
-    private static int calculateTotalCompressedSize(DPOctadPacking.PackingPlan plan, int pack_size) {
+    private static int calculateTotalCompressedSize(PackingPlan plan, int pack_size) {
         int totalSize = 0;
 
         // 元数据头大小: C(5bits) + 分组数量(32bits)
         totalSize += 6; // C占用5bits
-        totalSize += 32; // 分组数量占用32bits
+        totalSize += 8; // 分组数量占用32bits
 
         // 每个分组的元数据: packsize(plan.optimalC bits) + 位宽(5bits)
         int groupMetadataBits = plan.groupSizes.size() * (plan.optimalC + 6);
@@ -363,81 +281,6 @@ public class DPOctadPackingSprintz {
         return (totalSize + 7) / 8;
     }
 
-    // 写入元数据头信息
-    private static int writeMetadataHeader(byte[] compressedData, int currentPos,
-                                           DPOctadPacking.PackingPlan plan, int pack_size) {
-        int bitPos = 0;
-        int bytePos = currentPos;
-
-        // 写入C (6 bits)
-        writeBits(compressedData, bytePos, bitPos, plan.optimalC, 6);
-        bitPos += 6;
-        if (bitPos >= 8) {
-            bytePos += bitPos / 8;
-            bitPos = bitPos % 8;
-        }
-
-        // 写入分组数量 (32 bits)
-        writeBits(compressedData, bytePos, bitPos, plan.groupSizes.size(), 32);
-        bytePos += 4; // 32 bits = 4 bytes
-
-        return bytePos;
-    }
-
-    // 压缩数据块
-    private static int compressDataBlocks(byte[] compressedData, int currentPos,
-                                          long[] paddedArray, DPOctadPacking.PackingPlan plan, int pack_size) {
-        int bitPos = 0;
-        int bytePos = currentPos;
-        int dataIndex = 0;
-
-        for (int groupIdx = 0; groupIdx < plan.groupSizes.size(); groupIdx++) {
-            int groupBlocks = plan.groupSizes.get(groupIdx);
-            int bitWidth = plan.groupBitWidths.get(groupIdx);
-
-            // 写入当前分组的packsize (optimalC bits)
-            writeBits(compressedData, bytePos, bitPos, groupBlocks, plan.optimalC);
-            bitPos += plan.optimalC;
-            if (bitPos >= 8) {
-                bytePos += bitPos / 8;
-                bitPos = bitPos % 8;
-            }
-
-            // 写入当前分组的位宽 (6 bits)
-            writeBits(compressedData, bytePos, bitPos, bitWidth, 6);
-            bitPos += 6;
-            if (bitPos >= 8) {
-                bytePos += bitPos / 8;
-                bitPos = bitPos % 8;
-            }
-
-            // 压缩当前分组的数据
-            int groupDataCount = groupBlocks * pack_size;
-            ArrayList<Integer> dataToPack = new ArrayList<>();
-            for (int i = 0; i < groupDataCount; i++) {
-                dataToPack.add((int) paddedArray[dataIndex++]); // 注意：这里假设数据在int范围内
-            }
-
-            // 使用bitpacking压缩
-            bytePos = bitPacking(dataToPack, 0, bitWidth, bytePos, compressedData, bitPos);
-            bitPos = 0; // bitPacking会处理位对齐
-        }
-
-        return bytePos;
-    }
-
-    // 写入指定位数的辅助函数
-    private static void writeBits(byte[] data, int bytePos, int bitPos, int value, int numBits) {
-        for (int i = numBits - 1; i >= 0; i--) {
-            int bit = (value >> i) & 1;
-            data[bytePos] |= (bit << (7 - bitPos));
-            bitPos++;
-            if (bitPos == 8) {
-                bytePos++;
-                bitPos = 0;
-            }
-        }
-    }
 
     // 修改后的bitPacking方法，支持指定的起始位位置
     public static int bitPacking(ArrayList<Integer> numbers, int start, int bit_width,
@@ -497,8 +340,7 @@ public class DPOctadPackingSprintz {
         }
     }
 
-    // 辅助：位读取器
-    private static class BitReader {
+    static class BitReader {
         final byte[] data;
         int bytePos = 0;
         int bitPos = 0;
@@ -530,14 +372,14 @@ public class DPOctadPackingSprintz {
 
     // ---- 用新的 BitWriter/BitReader 来实现压缩/解压 ----
     public static byte[] compressWithOptimalPacking(long[] paddedArray, int[] bitWidths, int pack_size, int[] encodePos) {
-        DPOctadPacking.PackingPlan optimalPlan = computeOptimalPackingPlan(bitWidths, pack_size);
+        PackingPlan optimalPlan = computeOptimalPackingPlan(bitWidths, pack_size);
         int totalSize = calculateTotalCompressedSize(optimalPlan, pack_size); // 以字节计
         byte[] compressedData = new byte[totalSize + 8]; // 预留一点空间以防计算差异（安全余量）
-        DPOctadPacking.BitWriter writer = new DPOctadPacking.BitWriter(compressedData, 0);
+        BitWriter writer = new BitWriter(compressedData, 0);
 
-        // 写 C (6 bits) 和 groupCount(32 bits)
+        // 写 C (6 bits) 和 groupCount(8 bits)
         writer.writeBits(optimalPlan.optimalC, 6);
-        writer.writeBits(optimalPlan.groupSizes.size(), 32);
+        writer.writeBits(optimalPlan.groupSizes.size(), 8);
 
         int dataIndex = 0;
         for (int gi = 0; gi < optimalPlan.groupSizes.size(); ++gi) {
@@ -571,14 +413,15 @@ public class DPOctadPackingSprintz {
             return out;
         }
     }
+
     // 解压缩方法
     public static long[] decompressWithOptimalPacking(byte[] compressedData, int originalLength, int pack_size) {
-        DPOctadPacking.BitReader reader = new DPOctadPacking.BitReader(compressedData, 0, 0);
+        BitReader reader = new BitReader(compressedData, 0, 0);
         int C = (int) reader.readBits(6);
-        int groupCount = (int) reader.readBits(32);
+        int groupCount = (int) reader.readBits(8);
 
         // sanity checks
-        if (C <= 0 || C > 32) throw new IllegalArgumentException("Invalid C read from header: " + C);
+        if (C <= 0 || C > 64) throw new IllegalArgumentException("Invalid C read from header: " + C);
         if (groupCount < 0 || groupCount > (1 << 20)) throw new IllegalArgumentException("Suspicious groupCount: " + groupCount);
 
         long[] result = new long[originalLength];
@@ -707,7 +550,7 @@ public class DPOctadPackingSprintz {
                     }
                 }
             }
-            int time_of_repeat = 50;
+            int time_of_repeat = 30;
 //            System.out.println(numbers.size());
 
 
@@ -756,7 +599,6 @@ public class DPOctadPackingSprintz {
                         // 3. 存储结果
                         bitWidths[scaledInts_i / 8] = bitWidth;
                     }
-//                    int cur_cost = computeMinPackingCost(bitWidths);
                     int[] encodePos = new int[1];
                     byte[] res = compressWithOptimalPacking( paddedArray,  bitWidths, 8,encodePos);
                     int cur_cost = encodePos[0]*8;
@@ -855,10 +697,10 @@ public class DPOctadPackingSprintz {
                     }
                 }
             }
-            int time_of_repeat = 10;
+            int time_of_repeat = 50;
             for(int pack_size_exp = 3; pack_size_exp < 10; pack_size_exp++) {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
-
+                System.out.println(pack_size);
                 int modelCost = 0;
                 long modelTime = 0;
                 for (int j = 0; j < time_of_repeat; j++) {
@@ -873,9 +715,10 @@ public class DPOctadPackingSprintz {
                                 .stream().max(Integer::compare).orElse(0);
 
 
-                        long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                        long[] scaledInt = scaleNumbers(chunkNumbers, decimalMax);
 
                         long startTime = System.nanoTime();
+                        long[] scaledInts = sprintz(scaledInt);
                         int remainder = scaledInts.length % pack_size;
                         int paddingLength = (remainder == 0) ? 0 : pack_size - remainder;
 
@@ -903,7 +746,6 @@ public class DPOctadPackingSprintz {
                         int[] encodePos = new int[1];
                         byte[] res = compressWithOptimalPacking( paddedArray,  bitWidths, pack_size,encodePos);
                         int cur_cost = encodePos[0]*8;
-//                        int cur_cost = computeMinPackingCost(bitWidths,pack_size);
 
 //                    PackingResult result = packOctads(bitWidths, model, null); // 禁用决策跟踪
                         long duration = System.nanoTime() - startTime;
@@ -924,7 +766,7 @@ public class DPOctadPackingSprintz {
                 double modelTime_throughput = (double) (numbers.size() * 8000) / (double) (modelTime);
                 String[] record = {
                         file.toString(),
-                        "BP-DP",
+                        "SPRINTZ-DP",
                         String.valueOf(modelTime_throughput),
                         String.valueOf(numbers.size()),
                         String.valueOf(modelCost),
@@ -939,5 +781,161 @@ public class DPOctadPackingSprintz {
 
     }
 
+    // 新增方法：测试不同chunk size的表现
+    @Test
+    public void TestVariableChunkSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Chunk Sizes...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_sprintz_DP_vary_m";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        // 定义要测试的chunk sizes (m*8 where m is 16, 32, 64, 128, 256, 512, 1024)
+        int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "m",
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Pack Size",
+                    "Compression Ratio"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 50; // 减少重复次数以加快测试速度
+//            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+//            long[] scaledInts_all = scaleNumbers(numbers, decimalMax);
+
+            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+            int batchSize = 1024;
+            List<long[]> batches = new ArrayList<>();
+
+            for (int i = 0; i < numbers.size(); i += batchSize) {
+                int end = Math.min(numbers.size(), i + batchSize);
+                List<String> batch = numbers.subList(i, end);
+                long[] scaledBatch = scaleNumbers(batch, decimalMax);
+                batches.add(scaledBatch);
+            }
+
+            // 计算总长度并拼接所有批次的结果
+            int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+            long[] scaledInts_all = new long[totalLength];
+
+            int currentIndex = 0;
+            for (long[] batch : batches) {
+                System.arraycopy(batch, 0, scaledInts_all, currentIndex, batch.length);
+                currentIndex += batch.length;
+            }
+            // 测试每个chunk size
+            for (int chunkSize : chunkSizes) {
+                System.out.println("Testing chunk size: " + chunkSize);
+
+                for(int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
+                    int pack_size = (int) Math.pow(2, pack_size_exp);
+                    int modelCost = 0;
+                    long modelTime = 0;
+
+                    for (int j = 0; j < time_of_repeat; j++) {
+                        int totalCost = 0;
+                        for (int i = 0; i < numbers.size(); i += chunkSize) {
+
+//                            List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunkSize, numbers.size()));
+//                            if (chunkNumbers.size() == 1 || chunkNumbers.size() == 2)
+//                                continue;
+//
+//                            int decimalMax = decimalPlaces.subList(i, Math.min(i + chunkSize, numbers.size()))
+//                                    .stream().max(Integer::compare).orElse(0);
+//
+//                            long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                            int end = Math.min(i + chunkSize, numbers.size());
+                            long[] scaledInt = new long[end-i];
+                            if (end - i >= 0) System.arraycopy(scaledInts_all, i, scaledInt, 0, end - i);
+
+
+                            long startTime = System.nanoTime();
+
+                            long[] scaledInts = sprintz(scaledInt);
+                            int remainder = scaledInts.length % pack_size;
+                            int paddingLength = (remainder == 0) ? 0 : pack_size - remainder;
+
+                            // 创建新数组，长度补齐为pack_size的倍数
+                            long[] paddedArray = new long[scaledInts.length + paddingLength];
+                            System.arraycopy(scaledInts, 0, paddedArray, 0, scaledInts.length);
+                            int actual_length = paddedArray.length;
+                            int[] bitWidths = new int[actual_length / pack_size];
+
+                            for (int scaledInts_i = 0; scaledInts_i < actual_length; scaledInts_i += pack_size) {
+                                long maxInGroup = 0;
+                                for (int scaledInts_j = scaledInts_i; scaledInts_j < scaledInts_i + pack_size; scaledInts_j++) {
+                                    if (paddedArray[scaledInts_j] > maxInGroup) {
+                                        maxInGroup = paddedArray[scaledInts_j];
+                                    }
+                                }
+
+                                int bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
+                                bitWidths[scaledInts_i / pack_size] = bitWidth;
+                            }
+
+                            int[] encodePos = new int[1];
+                            byte[] res = compressWithOptimalPacking(paddedArray, bitWidths, pack_size, encodePos);
+                            int cur_cost = encodePos[0] * 8;
+                            long duration = System.nanoTime() - startTime;
+                            modelTime += (duration);
+                            modelCost += cur_cost;
+                        }
+                    }
+
+                    modelCost /= time_of_repeat;
+                    modelTime = (modelTime) / time_of_repeat;
+                    double model_ratio = (double) modelCost / (double) (numbers.size() * 64);
+                    double modelTime_throughput = (double) (numbers.size() * 8000) / (double) (modelTime);
+
+                    String[] record = {
+                            String.valueOf(chunkSize/8),
+                            file.toString(),
+                            "Sprintz-DP",
+                            String.valueOf(modelTime_throughput),
+                            String.valueOf(numbers.size()),
+                            String.valueOf(modelCost),
+                            String.valueOf(pack_size),
+                            String.valueOf(model_ratio)
+                    };
+                    writer.writeRecord(record);
+                }
+            }
+            writer.close();
+        }
+    }
 
 }
