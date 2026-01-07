@@ -1,26 +1,22 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Stream;
-
-import org.junit.Test;
-
-import com.csvreader.CsvReader;
-import com.csvreader.CsvWriter;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 
-public class SubcolumnTest {
+public class SubcolumnWithoutRLETest {
 
     public static int bitWidth(int value) {
+        if(value==0) return 1;
         return 32 - Integer.numberOfLeadingZeros(value);
     }
 
@@ -338,9 +334,9 @@ public class SubcolumnTest {
     public static int SubcolumnEncoder(int[] list, int encode_pos, byte[] encoded_result, int[] beta, int block_size) {
         int list_length = list.length;
         int maxValue = 0;
-        for (int i = 0; i < list_length; i++) {
-            if (list[i] > maxValue) {
-                maxValue = list[i];
+        for (int k : list) {
+            if (k > maxValue) {
+                maxValue = k;
             }
         }
 
@@ -354,7 +350,6 @@ public class SubcolumnTest {
         }
 
         // int[] bitWidthList = new int[m];
-
         // int[][] subcolumnList = new int[m][list_length];
 
         int l;
@@ -390,75 +385,133 @@ public class SubcolumnTest {
 
         int[] encodingType = new int[l];
 
-        // encoded_result 预留大小为 (l + 7) / 8 的大小，存储每个分列的类型
+        // encoded_result 预留大小为 (l + 7) * 2 / 8 的大小，存储每个分列的类型
         int preTypePos = encode_pos;
-        encode_pos += (l + 7) / 8;
+        encode_pos += (l + 3) / 4;
 
         for (int i = l - 1; i >= 0; i--) {
             // 对于每个分列，计算使用 bit packing 还是 rle
             int bpCost = bitWidthList[i] * list_length;
-            int rleCost = 0;
+            // int rleCost = 0;
 
             int previous = subcolumnList[i][0];
             int index = 0;
 
+
+//            uniqueValues.add(previous);
+
             for (int j = 1; j < list_length; j++) {
                 int currentNumber = subcolumnList[i][j];
+
+//                if(currentNumber == 6){
+//                    System.out.println("currentNumber == 6 && i==0");
+//                    System.out.println(uniqueValues);
+//                }
                 if (currentNumber != previous) {
                     index++;
                     previous = currentNumber;
                 }
 
-                if (bw * index + bitWidthList[i] * index >= bpCost) {
-                    break;
-                }
+                // if (bw * index + bitWidthList[i] * index >= bpCost) {
+                //     break;
+                // }
             }
+            Set<Integer> uniqueValues = new HashSet<>();
+            for (int j = 0; j < list_length; j++) {
+                int currentNumber = subcolumnList[i][j];
+                uniqueValues.add(currentNumber);
+            }
+            int cardinality = uniqueValues.size();
 
             index++;
 
-            rleCost = bw * index + bitWidthList[i] * index;
+            // rleCost = bw * index + bitWidthList[i] * index;
 
-            if (bpCost <= rleCost) {
+            if(cardinality < Math.pow(2,bitWidthList[i]-1)){
+                // test dictionary encoding
+                int dict_bit_width = bitWidth(cardinality);
+                int dicCost =dict_bit_width *list_length + cardinality*(bitWidthList[i] +dict_bit_width);
+                if(dicCost < bpCost){
+                    // if dictionary encoding
+//                    int dict_bit_width = bitWidth(cardinality) ;
+                    encodingType[i] = 2;
+
+//                    System.out.println(uniqueValues);
+                    List<Integer> sortedUnique = new ArrayList<>(uniqueValues);
+                    Collections.sort(sortedUnique);
+                    Map<Integer, Integer> valueToCode = new HashMap<>();
+                    int[] dict_key_list = new int[cardinality];
+                    int[] dict_value_list = new int[cardinality];
+                    for (int j = 0; j < cardinality; j++) {
+                        valueToCode.put(sortedUnique.get(j), j);
+                        dict_key_list[j] = sortedUnique.get(j);
+                        dict_value_list[j] = j;
+                    }
+//                    System.out.println(valueToCode);
+//                    System.out.println(list_length);
+//                    System.out.println(beta[0]);
+//                    System.out.println(Arrays.toString(subcolumnList[i]));
+                    for (int j = 0; j < list_length; j++) {
+                        int currentNumber = subcolumnList[i][j];
+                        int encodedValue = valueToCode.get(currentNumber);
+                        subcolumnList[i][j] = encodedValue;
+                    }
+
+                    encoded_result[encode_pos] = (byte) (cardinality >> 8);
+                    encode_pos += 1;
+                    encoded_result[encode_pos] = (byte) (cardinality & 0xFF);
+                    encode_pos += 1;
+
+                    encode_pos = bitPacking(dict_key_list, bitWidthList[i], encode_pos, encoded_result, cardinality);
+                    encode_pos = bitPacking(dict_value_list, dict_bit_width, encode_pos, encoded_result, cardinality);
+
+                    encode_pos = bitPacking(subcolumnList[i], dict_bit_width, encode_pos, encoded_result, list_length);
+                    continue;
+                }
+            }
+
+            // if (bpCost <= rleCost) {
                 encodingType[i] = 0;
 
                 encode_pos = bitPacking(subcolumnList[i], bitWidthList[i], encode_pos, encoded_result, list_length);
 
-            } else {
-                encodingType[i] = 1;
+            // } else {
+            //     encodingType[i] = 1;
 
-                encoded_result[encode_pos] = (byte) (index >> 8);
-                encode_pos += 1;
-                encoded_result[encode_pos] = (byte) (index & 0xFF);
-                encode_pos += 1;
+            //     encoded_result[encode_pos] = (byte) (index >> 8);
+            //     encode_pos += 1;
+            //     encoded_result[encode_pos] = (byte) (index & 0xFF);
+            //     encode_pos += 1;
 
-                index = 0;
-                int[] run_length = new int[list_length];
-                int[] rle_values = new int[list_length];
-                previous = subcolumnList[i][0];
+            //     index = 0;
+            //     int[] run_length = new int[list_length];
+            //     int[] rle_values = new int[list_length];
+            //     previous = subcolumnList[i][0];
 
-                for (int j = 1; j < list_length; j++) {
-                    int currentNumber = subcolumnList[i][j];
-                    if (currentNumber != previous) {
-                        run_length[index] = j;
-                        rle_values[index] = previous;
-                        index++;
-                        previous = currentNumber;
-                    }
-                }
+            //     for (int j = 1; j < list_length; j++) {
+            //         int currentNumber = subcolumnList[i][j];
+            //         if (currentNumber != previous) {
+            //             run_length[index] = j;
+            //             rle_values[index] = previous;
+            //             index++;
+            //             previous = currentNumber;
+            //         }
+            //     }
 
-                run_length[index] = list_length;
-                rle_values[index] = previous;
-                index++;
+            //     run_length[index] = list_length;
+            //     rle_values[index] = previous;
+            //     index++;
 
-                encode_pos = bitPacking(run_length, bw, encode_pos, encoded_result, index);
+            //     encode_pos = bitPacking(run_length, bw, encode_pos, encoded_result, index);
 
-                encode_pos = bitPacking(rle_values, bitWidthList[i], encode_pos, encoded_result, index);
+            //     encode_pos = bitPacking(rle_values, bitWidthList[i], encode_pos, encoded_result, index);
 
-            }
+            // }
+
 
         }
 
-        preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
+        preTypePos = bitPacking(encodingType, 2, preTypePos, encoded_result, l);
 
         return encode_pos;
     }
@@ -489,7 +542,7 @@ public class SubcolumnTest {
 
         int[] encodingType = new int[l];
 
-        encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = decodeBitPacking(encoded_result, encode_pos, 2, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -497,7 +550,7 @@ public class SubcolumnTest {
             if (type == 0) {
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
                         subcolumnList[i]);
-            } else {
+            } else if(type == 1) {
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
 
                 encode_pos += 2;
@@ -517,6 +570,26 @@ public class SubcolumnTest {
                         currentIndex++;
                     }
                 }
+            }else {
+                int cardinality = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
+                encode_pos += 2;
+                int dict_bit_width = bitWidth(cardinality);
+                int[] dict_key_list = new int[cardinality];
+                int[] dict_value_list = new int[cardinality];
+                encode_pos = decodeBitPacking(encoded_result,  encode_pos, bitWidthList[i], cardinality, dict_key_list);
+                encode_pos = decodeBitPacking(encoded_result,  encode_pos, dict_bit_width, cardinality, dict_value_list);
+                encode_pos =decodeBitPacking(encoded_result,  encode_pos, dict_bit_width, list_length, subcolumnList[i]);
+                Map<Integer, Integer> valueToCode = new HashMap<>();
+                for (int j = 0; j < cardinality; j++) {
+                    valueToCode.put(dict_value_list[j], dict_key_list[j]);
+                }
+
+                for (int j = 0; j < list_length; j++) {
+                    int currentNumber = subcolumnList[i][j];
+                    int encodedValue = valueToCode.get(currentNumber);
+                    subcolumnList[i][j] = encodedValue;
+                }
+
             }
         }
 
@@ -572,7 +645,7 @@ public class SubcolumnTest {
         int2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 4;
 
-        if (block_index == 0) {
+//        if (block_index == 0) {
             int maxValue = 0;
             for (int j = 0; j < remainder; j++) {
                 if (data_delta[j] > maxValue) {
@@ -582,7 +655,7 @@ public class SubcolumnTest {
             int m = bitWidth(maxValue);
 
             beta[0] = Subcolumn(data_delta, remainder, m, block_size);
-        }
+//        }
 
         encode_pos = SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
@@ -710,20 +783,19 @@ public class SubcolumnTest {
 
     @Test
     public void test0() throws IOException {
+        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         String parent_dir = "D:/github/xjz17/subcolumn/";
         // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
-        // String input_parent_dir = parent_dir + "dataset/CMS9";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/"; //""D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        // String outputPath = output_parent_dir + "subcolumn.csv";
-        String outputPath = output_parent_dir + "subcolumn_00.csv";
+        String outputPath = output_parent_dir + "subcolumn_without_rle.csv";
 
         // int block_size = 512;
-        int block_size = 256;
+        int block_size = 512;
 
         // int repeatTime = 100;
         int repeatTime = 500;
@@ -751,6 +823,9 @@ public class SubcolumnTest {
         for (File file : csvFiles) {
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
+//            if(! datasetName.equals("Stocks-UK")){
+//                continue;
+//            }
 
             InputStream inputStream = Files.newInputStream(file.toPath());
 
@@ -826,7 +901,7 @@ public class SubcolumnTest {
 
             String[] record = {
                     datasetName,
-                    "Sub-columns",
+                    "Sub-columns (Without RLE)",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

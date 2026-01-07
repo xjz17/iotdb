@@ -52,7 +52,7 @@ public class SubcolumnQueryMain {
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
+        String output_parent_dir = "D:/encoding-subcolumn/result/subcolumn_query/";
         // String output_parent_dir = parent_dir + "result/";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
@@ -73,6 +73,24 @@ public class SubcolumnQueryMain {
         queryRange.put("POI-lat", 0);
         queryRange.put("Gov10", 100000);
 
+        HashMap<String, Integer> queryLessRange = new HashMap();
+
+        queryLessRange.put("Bird-migration", 2600000);
+        queryLessRange.put("Bitcoin-price", 170000000);
+        queryLessRange.put("City-temp", 700);
+        queryLessRange.put("Dewpoint-temp", 9600);
+        queryLessRange.put("IR-bio-temp", -200);
+        queryLessRange.put("PM10-dust", 2000);
+        queryLessRange.put("Stocks-DE", 90000);
+        queryLessRange.put("Stocks-UK", 30000);
+        queryLessRange.put("Stocks-USA", 6000);
+        queryLessRange.put("Wind-Speed", 60);
+        queryLessRange.put("Wine-Tasting", 10);
+        queryLessRange.put("Arade4", 12000000);
+        queryLessRange.put("EPM-Education", 300);
+        queryLessRange.put("POI-lat", 1);
+        queryLessRange.put("Gov10", 120000);
+
         int repeatTime = 100;
 
         repeatTime = 500;
@@ -87,8 +105,9 @@ public class SubcolumnQueryMain {
 
         // String outputPath = output_parent_dir + "subcolumn_query_greater_new.csv";
         // String outputPath = output_parent_dir + "subcolumn_query_greater.csv";
-        // String outputPath = output_parent_dir + "subcolumn_query_less_new.csv";
-        String outputPath = output_parent_dir + "subcolumn_query_less.csv";
+        String outputPath = output_parent_dir + "subcolumn_query_greater_less.csv";
+        // String outputPath = output_parent_dir + "subcolumn_query_less.csv";
+        // String outputPath = output_parent_dir + "subcolumn_query_equal.csv";
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -167,10 +186,10 @@ public class SubcolumnQueryMain {
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 // SubcolumnQueryCountTest.Query(encoded_result, queryRange.get(datasetName));
-                // SubcolumnQueryGreaterNewTest.Query(encoded_result, queryRange.get(datasetName));
+                SubcolumnQueryGreaterLessTest.Query(encoded_result, queryRange.get(datasetName), queryLessRange.get(datasetName));
                 // SubcolumnQueryGreaterTest.Query(encoded_result, queryRange.get(datasetName));
-                // SubcolumnQueryLessNewTest.Query(encoded_result, queryRange.get(datasetName));
-                SubcolumnQueryLessTest.Query(encoded_result, queryRange.get(datasetName));
+                // SubcolumnQueryEqualTest.Query(encoded_result, queryRange.get(datasetName));
+                // SubcolumnQueryLessTest.Query(encoded_result, queryRange.get(datasetName));
             }
 
             e = System.nanoTime();
