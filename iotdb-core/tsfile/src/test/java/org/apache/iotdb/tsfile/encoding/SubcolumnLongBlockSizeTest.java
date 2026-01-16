@@ -56,16 +56,40 @@ public class SubcolumnLongBlockSizeTest {
         // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
-        
-        String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_block/";
-        // String output_parent_dir = parent_dir + "result/compression_vs_block/";
+
+        // String output_parent_dir =
+        // "D:/encoding-subcolumn/result/compression_vs_block/";
+        String output_parent_dir = parent_dir + "result/compression_vs_block/";
+
+        File outputDir = new File(output_parent_dir);
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        }
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        // int repeatTime = 100;
-        int repeatTime = 500;
+        int repeatTime = 100;
+        repeatTime = 200;
 
         // repeatTime = 1;
+
+        // 定义数据集名称列表
+        List<String> datasetList = new ArrayList<>();
+        datasetList.add("Arade4");
+        datasetList.add("Bird-migration");
+        datasetList.add("Bitcoin-price");
+        datasetList.add("City-temp");
+        datasetList.add("Dewpoint-temp");
+        datasetList.add("EPM-Education");
+        datasetList.add("Gov10");
+        // datasetList.add("POI-lat");
+        datasetList.add("IR-bio-temp");
+        datasetList.add("PM10-dust");
+        datasetList.add("Stocks-DE");
+        datasetList.add("Stocks-UK");
+        datasetList.add("Stocks-USA");
+        datasetList.add("Wind-Speed");
+        datasetList.add("Wine-Tasting");
 
         for (int block_size : block_size_list) {
 
@@ -85,12 +109,17 @@ public class SubcolumnLongBlockSizeTest {
             };
             writer.writeRecord(head);
 
-            File directory = new File(input_parent_dir);
-            // File[] csvFiles = directory.listFiles();
-            File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+            // 使用数据集名称列表循环
+            for (String datasetName : datasetList) {
+                String filePath = input_parent_dir + datasetName + ".csv";
+                File file = new File(filePath);
 
-            for (File file : csvFiles) {
-                String datasetName = extractFileName(file.toString());
+                // 检查文件是否存在
+                if (!file.exists()) {
+                    System.out.println("File not found: " + filePath);
+                    continue;
+                }
+
                 System.out.println(datasetName);
 
                 InputStream inputStream = Files.newInputStream(file.toPath());
@@ -115,7 +144,7 @@ public class SubcolumnLongBlockSizeTest {
                 if (max_decimal > 17) {
                     max_decimal = 17;
                 }
-                
+
                 long[] data2_arr = new long[data1.size()];
                 long max_mul = (long) Math.pow(10, max_decimal);
                 for (int i = 0; i < data1.size(); i++) {
@@ -123,7 +152,7 @@ public class SubcolumnLongBlockSizeTest {
                 }
 
                 System.out.println(max_decimal);
-                byte[] encoded_result = new byte[data2_arr.length * 8];
+                byte[] encoded_result = new byte[data2_arr.length * 13];
 
                 long encodeTime = 0;
                 long decodeTime = 0;
@@ -181,5 +210,4 @@ public class SubcolumnLongBlockSizeTest {
             writer.close();
         }
     }
-
 }

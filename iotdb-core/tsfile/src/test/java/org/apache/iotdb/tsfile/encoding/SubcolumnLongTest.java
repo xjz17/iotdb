@@ -27,6 +27,7 @@ public class SubcolumnLongTest {
     public static int bitWidth(long value) {
         return 64 - Long.numberOfLeadingZeros(value);
     }
+
     public static void long2intBytes(long integer, int encode_pos, byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
         cur_byte[encode_pos + 1] = (byte) (integer >> 16);
@@ -402,15 +403,15 @@ public class SubcolumnLongTest {
         // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
         // int[] beta_list = { 1, 2, 3, 4 };
 
-        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13 };
+        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };
         // int[] beta_list = { 2, 3, 4, 7, 11 };
 
         int bw = bitWidth(block_size);
 
         int[] bitWidthListList = new int[m];
 
-        for (int beta=1 ;beta < 5 ;beta ++ ) {
-//        for (int beta : beta_list) {
+        for (int beta = 1; beta < 5; beta++) {
+            // for (int beta : beta_list) {
             if (beta > m) {
                 break;
             }
@@ -726,7 +727,7 @@ public class SubcolumnLongTest {
         long2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 8;
 
-       if (block_index == 0) {
+        if (block_index == 0) {
             long maxValue = 0;
             for (int j = 0; j < remainder; j++) {
                 if (data_delta[j] > maxValue) {
@@ -737,9 +738,8 @@ public class SubcolumnLongTest {
 
             beta[0] = Subcolumn(data_delta, remainder, m, block_size);
 
-
             // System.out.println("beta: " + beta[0]);
-       }
+        }
 
         encode_pos = SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
@@ -940,7 +940,7 @@ public class SubcolumnLongTest {
 
             // test
             // for (int i = 0; i < data2_arr.length; i++) {
-            //     System.out.print(data2_arr[i] + " ");
+            // System.out.print(data2_arr[i] + " ");
             // }
             // System.out.println();
 

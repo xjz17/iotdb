@@ -225,8 +225,8 @@ public class VBPIndexLongTest {
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        // String output_parent_dir = "D:/encoding-subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "vbp_test.csv";
 
@@ -348,7 +348,7 @@ public class VBPIndexLongTest {
 
             String[] record = {
                     datasetName,
-                    "Sub-columns",
+                    "VBP",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

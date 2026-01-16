@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 
-public class SubcolumnAddDictionaryTest {
+public class SubcolumnAddDictNoPruneTest {
 
     public static int bitWidth(int value) {
         if(value==0) return 1;
@@ -260,12 +260,6 @@ public class SubcolumnAddDictionaryTest {
             de_cost_single[i] = 1;
 
             for (int j = 0; j < x_length; j++) {
-
-                // if (count * (1 + (int) Math.ceil(Math.log(x_length))) >= x_length) {
-                //     rle_cost_single[i] = x_length + 1;
-                //     break;
-                // }
-
                 int subcolumn_ij = (x[j] >> i) & 1;
                 if (subcolumn_ij == 1) {
                     bpe_cost_single[i] = x_length;
@@ -303,83 +297,35 @@ public class SubcolumnAddDictionaryTest {
 
             // System.out.println("l: " + l);
 
-            // int[][] subcolumnList = new int[l][x_length];
+            int[][] subcolumnList = new int[l][x_length];
 
-            int cost = 0;
-
-            // for (int i = 0; i < l; i++) {
-            //     int maxValuePart = 0;
-            //     for (int j = 0; j < x_length; j++) {
-            //         subcolumnList[i][j] = (x[j] >> (i * beta)) & ((1 << beta) - 1);
-            //         if (subcolumnList[i][j] > maxValuePart) {
-            //             maxValuePart = subcolumnList[i][j];
-            //         }
-            //     }
-            //     bitWidthListList[i] = bitWidth(maxValuePart);
-            // }
+            int cost = cost0;
 
             for (int i = 0; i < l; i++) {
-                // int bpCost = bitWidthListList[i] * x_length;
-
-                // int bpCost = bpe_cost_single[i * beta] * beta;
-                int beta_start = (Math.min(m - 1, (i + 1) * beta - 1));
-                while (beta_start - 1 >= i * beta && bpe_cost_single[beta_start - 1] == 0) {
-                    beta_start--;
+                int maxValuePart = 0;
+                for (int j = 0; j < x_length; j++) {
+                    subcolumnList[i][j] = (x[j] >> (i * beta)) & ((1 << beta) - 1);
+                    if (subcolumnList[i][j] > maxValuePart) {
+                        maxValuePart = subcolumnList[i][j];
+                    }
                 }
+                bitWidthListList[i] = bitWidth(maxValuePart);
+            }
 
-                int bpCost = bpe_cost_single[beta_start] * (beta_start - i * beta + 1);
-
+            for (int i = 0; i < l; i++) {
+                int bpCost = bitWidthListList[i] * x_length;
                 int rleCost = 0;
 
-                // int lowestBitIndex = 0;
-                // int currentLowestBit = subcolumnList[i][0] & 1;
-
-                // for (int j = 1; j < x_length; j++) {
-                //     int lowestBit = subcolumnList[i][j] & 1;  // 获取当前元素的最低位
-                //     if (lowestBit != currentLowestBit) {
-                //         lowestBitIndex++;
-                //         currentLowestBit = lowestBit;
-                //     }
-                // }
-
-                // if (bw * lowestBitIndex + bitWidthListList[i] * lowestBitIndex >= bpCost) {
-                //     cost += bpCost;
-                //     continue;
-                // }
+                // int count = 1;
+                int currentNumber = subcolumnList[i][0];
 
                 int index = 0;
 
-                boolean bpBest = false;
-
-                // int count = 1;
-                // int currentNumber = subcolumnList[i][0];
-                int currentNumber = (x[0] >> (i * beta)) & ((1 << beta) - 1);
-
                 for (int j = 1; j < x_length; j++) {
-                    int currentNumber_j = (x[j] >> (i * beta)) & ((1 << beta) - 1);
-                    if (currentNumber_j != currentNumber) {
+                    if (subcolumnList[i][j] != currentNumber) {
                         index++;
-                        currentNumber = currentNumber_j;
+                        currentNumber = subcolumnList[i][j];
                     }
-                    if (bw * index + bitWidth(x_length) * index >= bpCost) {
-                        bpBest = true;
-                        break;
-                    }
-
-                    // if (subcolumnList[i][j] != currentNumber) {
-                    //     index++;
-                    //     currentNumber = subcolumnList[i][j];
-                    // }
-
-                    // if (bw * index + bitWidthListList[i] * index >= bpCost) {
-                    //     bpBest = true;
-                    //     break;
-                    // }
-                }
-
-                if (bpBest) {
-                    cost += bpCost;
-                    continue;
                 }
 
                 index++;
@@ -660,7 +606,6 @@ public class SubcolumnAddDictionaryTest {
 
                 encode_pos = decodeBitPacking(encoded_result,  encode_pos, bitWidthList[i], cardinality, dict_key_list);
                 // encode_pos = decodeBitPacking(encoded_result,  encode_pos, dict_bit_width, cardinality, dict_value_list);
-
                 encode_pos =decodeBitPacking(encoded_result,  encode_pos, dict_bit_width, list_length, subcolumnList[i]);
                 Map<Integer, Integer> valueToCode = new HashMap<>();
                 for (int j = 0; j < cardinality; j++) {
