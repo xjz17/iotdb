@@ -69,7 +69,7 @@ public class SubcolumnAddDictBlockSizeTest {
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         int repeatTime = 100;
-        repeatTime = 200;
+        // repeatTime = 500;
 
         // repeatTime = 1;
 
@@ -163,7 +163,7 @@ public class SubcolumnAddDictBlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnAddDictionaryTest.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnAddDictPruneTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -183,7 +183,7 @@ public class SubcolumnAddDictBlockSizeTest {
                 int[] data2_arr_decoded = new int[data2_arr.length];
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    data2_arr_decoded = SubcolumnAddDictionaryTest.Decoder(encoded_result);
+                    data2_arr_decoded = SubcolumnAddDictPruneTest.Decoder(encoded_result);
                 }
 
                 e = System.nanoTime();
@@ -226,7 +226,7 @@ public class SubcolumnAddDictBlockSizeTest {
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         int repeatTime = 100;
-        repeatTime = 200;
+        // repeatTime = 500;
 
         // repeatTime = 1;
 

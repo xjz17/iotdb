@@ -268,7 +268,7 @@ public class SubcolumnAddDictNoPruneTest {
                 if (subcolumn_ij != current_value) {
                     count++;
                     current_value = subcolumn_ij;
-                    de_cost_single[i] = x_length + 2 * (1 + 1);
+                    de_cost_single[i] = x_length + 2 * 1;
                 }
 
             }
@@ -281,7 +281,12 @@ public class SubcolumnAddDictNoPruneTest {
         // int[] beta_list = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
         // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
         // int[] beta_list = { 1, 2, 3, 4 };
-        int[] beta_list = { 2, 3, 4 };
+        // int[] beta_list = { 2, 3, 4 };
+
+        int[] beta_list = new int[m - 1];
+        for (int i = 0; i < m - 1; i++) {
+            beta_list[i] = i + 2;
+        }
 
         int bw = bitWidth(block_size);
 
@@ -316,6 +321,8 @@ public class SubcolumnAddDictNoPruneTest {
                 int bpCost = bitWidthListList[i] * x_length;
                 int rleCost = 0;
 
+                
+
                 // int count = 1;
                 int currentNumber = subcolumnList[i][0];
 
@@ -326,6 +333,7 @@ public class SubcolumnAddDictNoPruneTest {
                         index++;
                         currentNumber = subcolumnList[i][j];
                     }
+                    // uniqueValues.add(currentNumber);
                 }
 
                 index++;
@@ -334,13 +342,26 @@ public class SubcolumnAddDictNoPruneTest {
 
                 rleCost = bw * index + bitWidth(x_length) * index;
 
+                // 
+                int deCost = 0;
+
+                Set<Integer> uniqueValues = new HashSet<>();
+
+                for (int j = 0; j < x_length; j++) {
+                    uniqueValues.add(subcolumnList[i][j]);
+                }
+
+                deCost = x_length * bitWidth(uniqueValues.size()) + uniqueValues.size() * beta;
+
                 // System.out.println("bpCost: " + bpCost + " rleCost: " + rleCost);
 
-                if (bpCost <= rleCost) {
-                    cost += bpCost;
-                } else {
-                    cost += rleCost;
-                }
+                // if (bpCost <= rleCost) {
+                //     cost += bpCost;
+                // } else {
+                //     cost += rleCost;
+                // }
+
+                cost += Math.min(bpCost, Math.min(rleCost, deCost));
             }
 
             // System.out.println("cost: " + cost);

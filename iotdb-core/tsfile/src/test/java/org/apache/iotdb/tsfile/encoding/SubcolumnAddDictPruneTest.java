@@ -16,11 +16,10 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 
-public class SubcolumnAddDictionaryTest {
+public class SubcolumnAddDictPruneTest {
 
     public static int bitWidth(int value) {
-        if (value == 0)
-            return 1;
+        if(value==0) return 1;
         return 32 - Integer.numberOfLeadingZeros(value);
     }
 
@@ -263,8 +262,8 @@ public class SubcolumnAddDictionaryTest {
             for (int j = 0; j < x_length; j++) {
 
                 // if (count * (1 + (int) Math.ceil(Math.log(x_length))) >= x_length) {
-                // rle_cost_single[i] = x_length + 1;
-                // break;
+                //     rle_cost_single[i] = x_length + 1;
+                //     break;
                 // }
 
                 int subcolumn_ij = (x[j] >> i) & 1;
@@ -275,12 +274,12 @@ public class SubcolumnAddDictionaryTest {
                 if (subcolumn_ij != current_value) {
                     count++;
                     current_value = subcolumn_ij;
-                    de_cost_single[i] = x_length + 2 * (1 + 1);
+                    de_cost_single[i] = x_length * bitWidth(2) + 2 * 1;
                 }
 
             }
 
-            rle_cost_single[i] = count * (1 + (int) Math.ceil(Math.log(x_length)));
+            rle_cost_single[i] = count * (1 + bitWidth(x_length));
 
             cost0 += Math.min(bpe_cost_single[i], Math.min(rle_cost_single[i], de_cost_single[i]));
         }
@@ -288,11 +287,16 @@ public class SubcolumnAddDictionaryTest {
         // int[] beta_list = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
         // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
         // int[] beta_list = { 1, 2, 3, 4 };
-        int[] beta_list = { 2, 3, 4 };
+        // int[] beta_list = { 2, 3, 4 };
+
+        int[] beta_list = new int[m - 1];
+        for (int i = 0; i < m - 1; i++) {
+            beta_list[i] = i + 2;
+        }
 
         int bw = bitWidth(block_size);
 
-        int[] bitWidthListList = new int[m];
+        // int[] bitWidthListList = new int[m];
 
         for (int beta : beta_list) {
             if (beta > m) {
@@ -306,20 +310,22 @@ public class SubcolumnAddDictionaryTest {
 
             // int[][] subcolumnList = new int[l][x_length];
 
-            int cost = 0;
+            int cost = cost0;
 
             // for (int i = 0; i < l; i++) {
-            // int maxValuePart = 0;
-            // for (int j = 0; j < x_length; j++) {
-            // subcolumnList[i][j] = (x[j] >> (i * beta)) & ((1 << beta) - 1);
-            // if (subcolumnList[i][j] > maxValuePart) {
-            // maxValuePart = subcolumnList[i][j];
-            // }
-            // }
-            // bitWidthListList[i] = bitWidth(maxValuePart);
+            //     int maxValuePart = 0;
+            //     for (int j = 0; j < x_length; j++) {
+            //         subcolumnList[i][j] = (x[j] >> (i * beta)) & ((1 << beta) - 1);
+            //         if (subcolumnList[i][j] > maxValuePart) {
+            //             maxValuePart = subcolumnList[i][j];
+            //         }
+            //     }
+            //     bitWidthListList[i] = bitWidth(maxValuePart);
             // }
 
             for (int i = 0; i < l; i++) {
+                int currentCost = 0;
+
                 // int bpCost = bitWidthListList[i] * x_length;
 
                 // int bpCost = bpe_cost_single[i * beta] * beta;
@@ -330,72 +336,138 @@ public class SubcolumnAddDictionaryTest {
 
                 int bpCost = bpe_cost_single[beta_start] * (beta_start - i * beta + 1);
 
-                int rleCost = 0;
+                currentCost = bpCost;
+
+                int rleCostMax = 0;
+                for (int j = i * beta; j < (i + 1) * beta && j < m; j++) {
+                    if (rle_cost_single[j] > rleCostMax) {
+                        rleCostMax = rle_cost_single[j];
+                    }
+                }
+
+                // if (rleCostMax < currentCost) {
+                if (rle_cost_single[i * beta] < currentCost) {
+                    int rleCost = 0;
+
+                    boolean currentBetter = false;
+
+                    int index = 0;
+
+                    int currentNumber = (x[0] >> (i * beta)) & ((1 << beta) - 1);
+
+                    for (int j = 1; j < x_length; j++) {
+                        int currentNumber_j = (x[j] >> (i * beta)) & ((1 << beta) - 1);
+                        if (currentNumber_j != currentNumber) {
+                            index++;
+                            currentNumber = currentNumber_j;
+                            if (bw * index + bitWidth(x_length) * index >= currentCost) {
+                                currentBetter = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!currentBetter) {
+                        index++;
+
+                        rleCost = bw * index + bitWidth(x_length) * index;
+                        if (currentCost > rleCost) {
+                            currentCost = rleCost;
+                        }
+                    }
+                }
+
+                int deCostMax = 0;
+                for (int j = i * beta; j < (i + 1) * beta && j < m; j++) {
+                    if (de_cost_single[j] > deCostMax) {
+                        deCostMax = de_cost_single[j];
+                    }
+                }
+
+                // if (deCostMax < currentCost) {
+                if (de_cost_single[i * beta] < currentCost) {
+                    Set<Integer> uniqueValues = new HashSet<>();
+                    for (int j = 0; j < x_length; j++) {
+                        int currentNumber = (x[j] >> (i * beta)) & ((1 << beta) - 1);
+                        uniqueValues.add(currentNumber);
+                    }
+                    int cardinality = uniqueValues.size();
+                    int dict_bit_width = bitWidth(cardinality);
+                    int dicCost = dict_bit_width * x_length + cardinality * beta;
+                    if (dicCost < currentCost) {
+                        currentCost = dicCost;
+                    }
+
+                }
+
+                cost += currentCost;
+
+                // int rleCost = 0;
 
                 // int lowestBitIndex = 0;
                 // int currentLowestBit = subcolumnList[i][0] & 1;
 
                 // for (int j = 1; j < x_length; j++) {
-                // int lowestBit = subcolumnList[i][j] & 1; // 获取当前元素的最低位
-                // if (lowestBit != currentLowestBit) {
-                // lowestBitIndex++;
-                // currentLowestBit = lowestBit;
-                // }
+                //     int lowestBit = subcolumnList[i][j] & 1;  // 获取当前元素的最低位
+                //     if (lowestBit != currentLowestBit) {
+                //         lowestBitIndex++;
+                //         currentLowestBit = lowestBit;
+                //     }
                 // }
 
                 // if (bw * lowestBitIndex + bitWidthListList[i] * lowestBitIndex >= bpCost) {
-                // cost += bpCost;
-                // continue;
+                //     cost += bpCost;
+                //     continue;
                 // }
 
-                int index = 0;
+                // int index = 0;
 
-                boolean bpBest = false;
+                // boolean bpBest = false;
 
                 // int count = 1;
                 // int currentNumber = subcolumnList[i][0];
-                int currentNumber = (x[0] >> (i * beta)) & ((1 << beta) - 1);
+                // int currentNumber = (x[0] >> (i * beta)) & ((1 << beta) - 1);
 
-                for (int j = 1; j < x_length; j++) {
-                    int currentNumber_j = (x[j] >> (i * beta)) & ((1 << beta) - 1);
-                    if (currentNumber_j != currentNumber) {
-                        index++;
-                        currentNumber = currentNumber_j;
-                    }
-                    if (bw * index + bitWidth(x_length) * index >= bpCost) {
-                        bpBest = true;
-                        break;
-                    }
+                // for (int j = 1; j < x_length; j++) {
+                //     int currentNumber_j = (x[j] >> (i * beta)) & ((1 << beta) - 1);
+                //     if (currentNumber_j != currentNumber) {
+                //         index++;
+                //         currentNumber = currentNumber_j;
+                //     }
+                //     if (bw * index + bitWidth(x_length) * index >= bpCost) {
+                //         bpBest = true;
+                //         break;
+                //     }
 
-                    // if (subcolumnList[i][j] != currentNumber) {
-                    // index++;
-                    // currentNumber = subcolumnList[i][j];
-                    // }
+                //     // if (subcolumnList[i][j] != currentNumber) {
+                //     //     index++;
+                //     //     currentNumber = subcolumnList[i][j];
+                //     // }
 
-                    // if (bw * index + bitWidthListList[i] * index >= bpCost) {
-                    // bpBest = true;
-                    // break;
-                    // }
-                }
+                //     // if (bw * index + bitWidthListList[i] * index >= bpCost) {
+                //     //     bpBest = true;
+                //     //     break;
+                //     // }
+                // }
 
-                if (bpBest) {
-                    cost += bpCost;
-                    continue;
-                }
+                // if (bpBest) {
+                //     cost += bpCost;
+                //     continue;
+                // }
 
-                index++;
+                // index++;
 
                 // System.out.println("index: " + index);
 
-                rleCost = bw * index + bitWidth(x_length) * index;
+                // rleCost = bw * index + bitWidth(x_length) * index;
 
                 // System.out.println("bpCost: " + bpCost + " rleCost: " + rleCost);
 
-                if (bpCost <= rleCost) {
-                    cost += bpCost;
-                } else {
-                    cost += rleCost;
-                }
+                // if (bpCost <= rleCost) {
+                //     cost += bpCost;
+                // } else {
+                //     cost += rleCost;
+                // }
             }
 
             // System.out.println("cost: " + cost);
@@ -475,15 +547,16 @@ public class SubcolumnAddDictionaryTest {
             int previous = subcolumnList[i][0];
             int index = 0;
 
-            // uniqueValues.add(previous);
+
+//            uniqueValues.add(previous);
 
             for (int j = 1; j < list_length; j++) {
                 int currentNumber = subcolumnList[i][j];
 
-                // if(currentNumber == 6){
-                // System.out.println("currentNumber == 6 && i==0");
-                // System.out.println(uniqueValues);
-                // }
+//                if(currentNumber == 6){
+//                    System.out.println("currentNumber == 6 && i==0");
+//                    System.out.println(uniqueValues);
+//                }
                 if (currentNumber != previous) {
                     index++;
                     previous = currentNumber;
@@ -504,16 +577,16 @@ public class SubcolumnAddDictionaryTest {
 
             rleCost = bw * index + bitWidthList[i] * index;
 
-            if (cardinality < Math.pow(2, bitWidthList[i] - 1)) {
+            if(cardinality < Math.pow(2,bitWidthList[i]-1)){
                 // test dictionary encoding
                 int dict_bit_width = bitWidth(cardinality);
-                int dicCost = dict_bit_width * list_length + cardinality * (bitWidthList[i] + dict_bit_width);
-                if (dicCost < rleCost && dicCost < bpCost) {
+                int dicCost =dict_bit_width *list_length + cardinality*(bitWidthList[i] +dict_bit_width);
+                if(dicCost < rleCost && dicCost< bpCost){
                     // if dictionary encoding
-                    // int dict_bit_width = bitWidth(cardinality) ;
+//                    int dict_bit_width = bitWidth(cardinality) ;
                     encodingType[i] = 2;
 
-                    // System.out.println(uniqueValues);
+//                    System.out.println(uniqueValues);
                     List<Integer> sortedUnique = new ArrayList<>(uniqueValues);
                     Collections.sort(sortedUnique);
                     Map<Integer, Integer> valueToCode = new HashMap<>();
@@ -524,10 +597,10 @@ public class SubcolumnAddDictionaryTest {
                         dict_key_list[j] = sortedUnique.get(j);
                         // dict_value_list[j] = j;
                     }
-                    // System.out.println(valueToCode);
-                    // System.out.println(list_length);
-                    // System.out.println(beta[0]);
-                    // System.out.println(Arrays.toString(subcolumnList[i]));
+//                    System.out.println(valueToCode);
+//                    System.out.println(list_length);
+//                    System.out.println(beta[0]);
+//                    System.out.println(Arrays.toString(subcolumnList[i]));
                     for (int j = 0; j < list_length; j++) {
                         int currentNumber = subcolumnList[i][j];
                         int encodedValue = valueToCode.get(currentNumber);
@@ -540,8 +613,7 @@ public class SubcolumnAddDictionaryTest {
                     encode_pos += 1;
 
                     encode_pos = bitPacking(dict_key_list, bitWidthList[i], encode_pos, encoded_result, cardinality);
-                    // encode_pos = bitPacking(dict_value_list, dict_bit_width, encode_pos,
-                    // encoded_result, cardinality);
+                    // encode_pos = bitPacking(dict_value_list, dict_bit_width, encode_pos, encoded_result, cardinality);
 
                     encode_pos = bitPacking(subcolumnList[i], dict_bit_width, encode_pos, encoded_result, list_length);
                     continue;
@@ -586,6 +658,7 @@ public class SubcolumnAddDictionaryTest {
 
             }
 
+
         }
 
         preTypePos = bitPacking(encodingType, 2, preTypePos, encoded_result, l);
@@ -627,7 +700,7 @@ public class SubcolumnAddDictionaryTest {
             if (type == 0) {
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
                         subcolumnList[i]);
-            } else if (type == 1) {
+            } else if(type == 1) {
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
 
                 encode_pos += 2;
@@ -647,7 +720,7 @@ public class SubcolumnAddDictionaryTest {
                         currentIndex++;
                     }
                 }
-            } else {
+            }else {
                 int cardinality = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
                 encode_pos += 2;
                 int dict_bit_width = bitWidth(cardinality);
@@ -658,12 +731,10 @@ public class SubcolumnAddDictionaryTest {
                     dict_value_list[j] = j;
                 }
 
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], cardinality, dict_key_list);
-                // encode_pos = decodeBitPacking(encoded_result, encode_pos, dict_bit_width,
-                // cardinality, dict_value_list);
+                encode_pos = decodeBitPacking(encoded_result,  encode_pos, bitWidthList[i], cardinality, dict_key_list);
+                // encode_pos = decodeBitPacking(encoded_result,  encode_pos, dict_bit_width, cardinality, dict_value_list);
 
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, dict_bit_width, list_length,
-                        subcolumnList[i]);
+                encode_pos =decodeBitPacking(encoded_result,  encode_pos, dict_bit_width, list_length, subcolumnList[i]);
                 Map<Integer, Integer> valueToCode = new HashMap<>();
                 for (int j = 0; j < cardinality; j++) {
                     valueToCode.put(dict_value_list[j], dict_key_list[j]);
@@ -726,11 +797,11 @@ public class SubcolumnAddDictionaryTest {
 
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
                 remainder, min_delta);
-
+                
         int2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 4;
 
-        if (block_index == 0) {
+    //    if (block_index % 4 == 0) {
             int maxValue = 0;
             for (int j = 0; j < remainder; j++) {
                 if (data_delta[j] > maxValue) {
@@ -740,7 +811,7 @@ public class SubcolumnAddDictionaryTest {
             int m = bitWidth(maxValue);
 
             beta[0] = Subcolumn(data_delta, remainder, m, block_size);
-        }
+    //    }
 
         encode_pos = SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
@@ -868,12 +939,12 @@ public class SubcolumnAddDictionaryTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; // "D:/github/xjz17/subcolumn/";
+        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; //"D:/github/xjz17/subcolumn/";
         // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/"; // ""D:/encoding-subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/"; //""D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "subcolumn_dictionary.csv";
@@ -907,9 +978,9 @@ public class SubcolumnAddDictionaryTest {
         for (File file : csvFiles) {
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
-            // if(! datasetName.equals("Stocks-UK")){
-            // continue;
-            // }
+//            if(! datasetName.equals("Stocks-UK")){
+//                continue;
+//            }
 
             InputStream inputStream = Files.newInputStream(file.toPath());
 
