@@ -82,7 +82,7 @@ public class SubcolumnLongBlockSizeTest {
         datasetList.add("Dewpoint-temp");
         datasetList.add("EPM-Education");
         datasetList.add("Gov10");
-        // datasetList.add("POI-lat");
+        datasetList.add("POI-lat");
         datasetList.add("IR-bio-temp");
         datasetList.add("PM10-dust");
         datasetList.add("Stocks-DE");

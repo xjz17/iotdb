@@ -82,7 +82,7 @@ public class SubcolumnAddDictBlockSizeTest {
         datasetList.add("Dewpoint-temp");
         datasetList.add("EPM-Education");
         datasetList.add("Gov10");
-        // datasetList.add("POI-lat");
+        datasetList.add("POI-lat");
         datasetList.add("IR-bio-temp");
         datasetList.add("PM10-dust");
         datasetList.add("Stocks-DE");
@@ -189,6 +189,10 @@ public class SubcolumnAddDictBlockSizeTest {
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
 
+                // for (int i = 0; i < data2_arr_decoded.length; i++) {
+                //     assertEquals(data2_arr[i], data2_arr_decoded[i]);
+                // }
+
                 String[] record = {
                         datasetName,
                         "Sub-columns",
@@ -239,7 +243,7 @@ public class SubcolumnAddDictBlockSizeTest {
         datasetList.add("Dewpoint-temp");
         datasetList.add("EPM-Education");
         datasetList.add("Gov10");
-        // datasetList.add("POI-lat");
+        datasetList.add("POI-lat");
         datasetList.add("IR-bio-temp");
         datasetList.add("PM10-dust");
         datasetList.add("Stocks-DE");
@@ -345,6 +349,10 @@ public class SubcolumnAddDictBlockSizeTest {
 
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
+
+                // for (int i = 0; i < data2_arr_decoded.length; i++) {
+                //     assertEquals(data2_arr[i], data2_arr_decoded[i]);
+                // }
 
                 String[] record = {
                         datasetName,
