@@ -16,20 +16,16 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
 
 public class SubcolumnAddDictBlockSizeTest {
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -52,15 +48,11 @@ public class SubcolumnAddDictBlockSizeTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        // String output_parent_dir =
-        // "D:/encoding-subcolumn/result/compression_vs_block_prune/";
         String output_parent_dir = parent_dir + "result/compression_vs_block_prune/";
-        // String output_parent_dir = parent_dir + "result/";
 
         File outputDir = new File(output_parent_dir);
         if (!outputDir.exists()) {
@@ -69,13 +61,7 @@ public class SubcolumnAddDictBlockSizeTest {
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        // int[] block_size_list = { 1024 };
-
         int repeatTime = 500;
-        // repeatTime = 100;
-
-        // repeatTime = 1;
-        // repeatTime = 200;
 
         List<String> datasetList = new ArrayList<>();
         datasetList.add("Arade4");
@@ -98,11 +84,6 @@ public class SubcolumnAddDictBlockSizeTest {
 
             String outputPath = output_parent_dir + "subcolumn_block_" + block_size + ".csv";
 
-            // String outputPath = output_parent_dir + "subcolumn_block_full_" + block_size + ".csv";
-            // String outputPath = output_parent_dir + "subcolumn_block_without_de_pruning_" + block_size + ".csv";
-            // String outputPath = output_parent_dir + "subcolumn_block_without_rle_pruning_" + block_size + ".csv";
-            // String outputPath = output_parent_dir + "subcolumn_block_without_bpe_pruning_" + block_size + ".csv";
-
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
 
@@ -117,12 +98,10 @@ public class SubcolumnAddDictBlockSizeTest {
             };
             writer.writeRecord(head);
 
-            // 使用数据集名称列表循环
             for (String datasetName : datasetList) {
                 String filePath = input_parent_dir + datasetName + ".csv";
                 File file = new File(filePath);
 
-                // 检查文件是否存在
                 if (!file.exists()) {
                     System.out.println("File not found: " + filePath);
                     continue;
@@ -197,10 +176,6 @@ public class SubcolumnAddDictBlockSizeTest {
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
 
-                // for (int i = 0; i < data2_arr_decoded.length; i++) {
-                //     assertEquals(data2_arr[i], data2_arr_decoded[i]);
-                // }
-
                 String[] record = {
                         datasetName,
                         "Sub-columns",
@@ -221,15 +196,11 @@ public class SubcolumnAddDictBlockSizeTest {
 
     @Test
     public void test1() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        // String output_parent_dir =
-        // "D:/encoding-subcolumn/result/compression_vs_block_noprune/";
-        // String output_parent_dir = parent_dir + "result/compression_vs_block_noprune/";
-        String output_parent_dir = parent_dir + "result/compression_vs_block_noprune2/";
+        String output_parent_dir = parent_dir + "result/compression_vs_block_noprune/";
 
         File outputDir = new File(output_parent_dir);
         if (!outputDir.exists()) {
@@ -238,13 +209,7 @@ public class SubcolumnAddDictBlockSizeTest {
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        // int[] block_size_list = { 1024 };
-
         int repeatTime = 500;
-        // repeatTime = 100;
-
-        // repeatTime = 1;
-        repeatTime = 50;
 
         List<String> datasetList = new ArrayList<>();
         datasetList.add("Arade4");
@@ -359,10 +324,6 @@ public class SubcolumnAddDictBlockSizeTest {
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
 
-                // for (int i = 0; i < data2_arr_decoded.length; i++) {
-                //     assertEquals(data2_arr[i], data2_arr_decoded[i]);
-                // }
-
                 String[] record = {
                         datasetName,
                         "Sub-columns",
@@ -383,13 +344,10 @@ public class SubcolumnAddDictBlockSizeTest {
 
     @Test
     public void test2() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        // String output_parent_dir =
-        // "D:/encoding-subcolumn/result/compression_vs_block_noprune/";
         String output_parent_dir = parent_dir + "result/compression_vs_block_prune2/";
 
         File outputDir = new File(output_parent_dir);
@@ -399,13 +357,8 @@ public class SubcolumnAddDictBlockSizeTest {
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        // int[] block_size_list = { 1024 };
-
         int repeatTime = 500;
-        // repeatTime = 100;
-
-        // repeatTime = 1;
-        repeatTime = 50;
+        repeatTime = 100;
 
         List<String> datasetList = new ArrayList<>();
         datasetList.add("Arade4");
@@ -520,10 +473,6 @@ public class SubcolumnAddDictBlockSizeTest {
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
 
-                // for (int i = 0; i < data2_arr_decoded.length; i++) {
-                //     assertEquals(data2_arr[i], data2_arr_decoded[i]);
-                // }
-
                 String[] record = {
                         datasetName,
                         "Sub-columns",
@@ -541,6 +490,5 @@ public class SubcolumnAddDictBlockSizeTest {
             writer.close();
         }
     }
-
 
 }

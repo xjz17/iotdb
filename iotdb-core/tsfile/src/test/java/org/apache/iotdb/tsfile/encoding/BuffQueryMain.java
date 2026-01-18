@@ -17,15 +17,12 @@ import com.csvreader.CsvWriter;
 public class BuffQueryMain {
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -48,12 +45,11 @@ public class BuffQueryMain {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/buff_query/";
-        // String output_parent_dir = parent_dir + "result/buff_query/";
+        String output_parent_dir = parent_dir + "result/buff_query/";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
 
@@ -94,7 +90,6 @@ public class BuffQueryMain {
         int repeatTime = 100;
 
         repeatTime = 500;
-        // repeatTime = 1;
 
         int block_size = 512;
 
@@ -124,7 +119,6 @@ public class BuffQueryMain {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -203,7 +197,7 @@ public class BuffQueryMain {
 
             String[] record = {
                     datasetName,
-                    "Sub-column",
+                    "BUFF",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),
@@ -220,11 +214,10 @@ public class BuffQueryMain {
 
     @Test
     public void testParts() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        // String output_parent_dir = "D:/encoding-subcolumn/result/buff_query/";
         String output_parent_dir = parent_dir + "result/buff_query/";
 
         HashMap<String, Integer> queryRange = new HashMap<>();
@@ -247,8 +240,6 @@ public class BuffQueryMain {
 
         int repeatTime = 500;
 
-        // repeatTime = 1;
-
         int block_size = 512;
 
         int beta = 8;
@@ -270,7 +261,6 @@ public class BuffQueryMain {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -299,18 +289,15 @@ public class BuffQueryMain {
             int totalSize = data1.size();
             int halfSize = totalSize / 2;
 
-            // 创建两个数据列
             int[] col1_data = new int[halfSize];
             int[] col2_data = new int[halfSize];
 
             int max_mul = (int) Math.pow(10, max_decimal);
 
-            // 填充第一列
             for (int i = 0; i < halfSize; i++) {
                 col1_data[i] = (int) (data1.get(i) * max_mul);
             }
 
-            // 填充第二列
             for (int i = 0; i < halfSize; i++) {
                 col2_data[i] = (int) (data1.get(i + halfSize) * max_mul);
             }
@@ -328,7 +315,6 @@ public class BuffQueryMain {
             int length1 = 0;
             int length2 = 0;
 
-            // 编码第一列
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 length1 = SubcolumnBPBetaTest.Encoder(col1_data, block_size, encoded_result1, beta);
@@ -337,7 +323,6 @@ public class BuffQueryMain {
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
 
-            // 编码第二列
             s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 length2 = SubcolumnBPBetaTest.Encoder(col2_data, block_size, encoded_result2, beta);

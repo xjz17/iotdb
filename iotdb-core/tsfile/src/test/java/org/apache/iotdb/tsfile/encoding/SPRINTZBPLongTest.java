@@ -41,7 +41,7 @@ public class SPRINTZBPLongTest {
 
     public static int findMedian(int[] arr) {
         if (arr == null || arr.length == 0) {
-            throw new IllegalArgumentException("数组不能为空");
+            throw new IllegalArgumentException("Array is null or empty");
         }
         int n = arr.length;
         return quickSelect(arr, 0, n - 1, n / 2);
@@ -177,16 +177,12 @@ public class SPRINTZBPLongTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (32 - leftBit));
                 leftSize -= leftBit;
@@ -195,20 +191,15 @@ public class SPRINTZBPLongTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -225,16 +216,12 @@ public class SPRINTZBPLongTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Long
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 64 bits as a part of result
             long buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 64;
 
-            // encode the left bits of current Long to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (64 - leftBit));
                 leftSize -= leftBit;
@@ -243,20 +230,15 @@ public class SPRINTZBPLongTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 8; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((7 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -272,23 +254,16 @@ public class SPRINTZBPLongTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, ArrayList<Integer> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((int) (buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -301,23 +276,16 @@ public class SPRINTZBPLongTest {
     public static void unpack8ValuesLong(byte[] encoded, int offset, int width, ArrayList<Long> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -368,14 +336,12 @@ public class SPRINTZBPLongTest {
         ArrayList<Long> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8ValuesLong(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
         }
         return result_list;
     }
-
-    // -----------------------------------------------------------------
 
     public static long[] getAbsDeltaTsBlock(
             long[] ts_block,
@@ -421,18 +387,16 @@ public class SPRINTZBPLongTest {
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
-        long cur_remaining = 0; // encoded int
-        int cur_number_bits = 0; // the bit width used of encoded int
+        long cur_remaining = 0;
+        int cur_number_bits = 0;
         for (int i = n_k_b * 8; i < n_k; i++) {
             long cur_value = ts_block_delta.get(i);
-            int cur_bit_width = bit_width; // remaining bit width of current value
+            int cur_bit_width = bit_width;
 
             if (cur_number_bits + bit_width >= 64) {
                 cur_remaining <<= (64 - cur_number_bits);
                 cur_bit_width = bit_width - 64 + cur_number_bits;
                 cur_remaining += ((cur_value >> cur_bit_width));
-                // long2intBytes(cur_remaining, encode_pos, encoded_result);
-                // encode_pos += 4;
                 long2Bytes(cur_remaining, encode_pos, encoded_result);
                 encode_pos += 8;
 
@@ -442,7 +406,6 @@ public class SPRINTZBPLongTest {
 
             cur_remaining <<= cur_bit_width;
             cur_number_bits += cur_bit_width;
-            // cur_remaining += (((cur_value << (32 - cur_bit_width)) & 0xFFFFFFFFL) >> (32 - cur_bit_width));
             cur_remaining += (((cur_value << (64 - cur_bit_width)) & 0xFFFFFFFFFFFFFFFFL) >> (64 - cur_bit_width));
         }
         cur_remaining <<= (64 - cur_number_bits);
@@ -468,13 +431,11 @@ public class SPRINTZBPLongTest {
         ArrayList<Long> int_remaining = new ArrayList<>();
         int int_remaining_size = remaining * bit_width / 32 + 1;
         for (int j = 0; j < int_remaining_size; j++) {
-            // int_remaining.add(bytesLong2Integer(encoded, decode_pos));
-            // decode_pos += 4;
             int_remaining.add(bytes2Long(encoded, decode_pos, 8));
             decode_pos += 8;
         }
 
-        int cur_remaining_bits = 64; // remaining bit width of current value
+        int cur_remaining_bits = 64;
         long cur_number = int_remaining.get(0);
         int cur_number_i = 1;
         for (int i = n_k_b * 8; i < length; i++) {
@@ -510,11 +471,6 @@ public class SPRINTZBPLongTest {
 
         block_size = remaining - 1;
         long max_delta_value = min_delta[2];
-
-        // int2Bytes(min_delta[0], encode_pos, cur_byte);
-        // encode_pos += 4;
-        // int2Bytes(min_delta[1], encode_pos, cur_byte);
-        // encode_pos += 4;
 
         long2Bytes(min_delta[0], encode_pos, cur_byte);
         encode_pos += 8;
@@ -556,8 +512,6 @@ public class SPRINTZBPLongTest {
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
             for (int i = remaining_length; i > 0; i--) {
-                // int2Bytes(data[data.length - i], encode_pos, encoded_result);
-                // encode_pos += 4;
                 long2Bytes(data[data.length - i], encode_pos, encoded_result);
                 encode_pos += 8;
             }
@@ -568,23 +522,6 @@ public class SPRINTZBPLongTest {
             int remaining = length_all - start;
 
             encode_pos = BOSBlockEncoder(data, block_num, block_size, remaining, encode_pos, encoded_result);
-
-            // int[] ts_block = new int[length_all-start];
-            // if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0,
-            // length_all - start);
-            //
-            // int supple_length;
-            // if (remaining_length % 8 == 0) {
-            // supple_length = 1;
-            // } else if (remaining_length % 8 == 1) {
-            // supple_length = 0;
-            // } else {
-            // supple_length = 9 - remaining_length % 8;
-            // }
-            //
-            //
-            // encode_pos = BOSBlockEncoder(ts_block, supple_length,
-            // encode_pos,encoded_result);
         }
 
         return encode_pos;
@@ -598,16 +535,12 @@ public class SPRINTZBPLongTest {
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
 
         int bit_width_final = 0;
-        // int value0 = bytes2Integer(encoded, decode_pos, 4);
-        // decode_pos += 4;
         long value0 = bytes2Long(encoded, decode_pos, 8);
         decode_pos += 8;
 
         value_list[value_pos_arr[0]] = value0;
         value_pos_arr[0]++;
 
-        // int min_delta = bytes2Integer(encoded, decode_pos, 4);
-        // decode_pos += 4;
         long min_delta = bytes2Long(encoded, decode_pos, 8);
         decode_pos += 8;
 
@@ -645,18 +578,13 @@ public class SPRINTZBPLongTest {
         block_size--;
 
         int[] value_pos_arr = new int[1];
-        // System.out.println(length_all);
-        // System.out.println(encoded.length);
         for (int k = 0; k < block_num; k++) {
-            // System.out.println(k);
             decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size, value_pos_arr);
 
         }
 
         if (remain_length <= 3) {
             for (int i = 0; i < remain_length; i++) {
-                // int value_end = bytes2Integer(encoded, decode_pos, 4);
-                // decode_pos += 4;
                 long value_end = bytes2Long(encoded, decode_pos, 8);
                 decode_pos += 8;
                 value_list[value_pos_arr[0]] = value_end;
@@ -669,15 +597,12 @@ public class SPRINTZBPLongTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -700,22 +625,17 @@ public class SPRINTZBPLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "sprintz_long0.csv";
 
         int block_size = 1024;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -729,23 +649,17 @@ public class SPRINTZBPLongTest {
                 "Compressed Size",
                 "Compression Ratio"
         };
-        writer.writeRecord(head); // write header to output file
+        writer.writeRecord(head);
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
-            // f = tempList[1];
-            // System.out.println(f);
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
             InputStream inputStream = Files.newInputStream(file.toPath());
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
             ArrayList<Double> data1 = new ArrayList<>();
-            // ArrayList<Integer> data2 = new ArrayList<>();
-
-            // loader.readHeaders();
 
             int max_decimal = 0;
             while (loader.readRecord()) {
@@ -757,10 +671,7 @@ public class SPRINTZBPLongTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                // String value = loader.getValues()[index];
                 data1.add(Double.valueOf(f_str));
-                // data2.add(Integer.valueOf(loader.getValues()[1]));
-                // data.add(Integer.valueOf(value));
             }
 
             inputStream.close();

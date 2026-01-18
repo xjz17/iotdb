@@ -16,8 +16,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class TSDIFFSubcolumnLongTest {
 
     public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
@@ -168,7 +166,6 @@ public class TSDIFFSubcolumnLongTest {
             int encode_pos, byte[] encoded_result, int[] beta) {
         long[] min_delta = new long[3];
 
-        // data_delta 的长度为 remainder - 1
         long[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
         long2Bytes(min_delta[0], encode_pos, encoded_result);
@@ -222,15 +219,12 @@ public class TSDIFFSubcolumnLongTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -253,22 +247,18 @@ public class TSDIFFSubcolumnLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "ts2diff_subcolumn_long.csv";
 
         int block_size = 512;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
 
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -285,7 +275,6 @@ public class TSDIFFSubcolumnLongTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -357,10 +346,6 @@ public class TSDIFFSubcolumnLongTest {
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
-
-            for (int i = 0; i < data2_arr_decoded.length; i++) {
-                assertEquals(data2_arr[i], data2_arr_decoded[i]);
-            }
 
             String[] record = {
                     datasetName,

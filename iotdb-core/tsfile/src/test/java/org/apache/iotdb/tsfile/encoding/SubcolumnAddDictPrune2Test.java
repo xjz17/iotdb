@@ -14,8 +14,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
-
 public class SubcolumnAddDictPrune2Test {
 
     public static int bitWidth(int value) {
@@ -951,8 +949,9 @@ public class SubcolumnAddDictPrune2Test {
         int2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 4;
 
-        if (block_index % 16 == 0) {
+        // if (block_index % 16 == 0) {
         // if (block_index % 32 == 0) {
+        if (block_index == 0) {
             int maxValue = 0;
             for (int j = 0; j < remainder; j++) {
                 if (data_delta[j] > maxValue) {

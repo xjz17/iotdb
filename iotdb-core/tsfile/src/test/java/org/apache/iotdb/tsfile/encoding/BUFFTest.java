@@ -66,16 +66,12 @@ public class BUFFTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values[valueIdx] << (32 - leftBit));
                 leftSize -= leftBit;
@@ -84,20 +80,16 @@ public class BUFFTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values[valueIdx] << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
+
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values[valueIdx] >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -113,25 +105,17 @@ public class BUFFTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, int[] result_list, int result_offset) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
-                // result_list.add((int) (buffer >>> (totalBits - width)));
                 result_list[result_offset + valueIdx] = (int) (buffer >>> (totalBits - width));
                 valueIdx++;
                 totalBits -= width;
@@ -162,12 +146,10 @@ public class BUFFTest {
 
     public static int decodeBitPacking(
             byte[] encoded, int decode_pos, int bit_width, int num_values, int[] result_list) {
-        // ArrayList<Integer> result_list = new ArrayList<>();
-        // int[] result_list = new int[num_values];
         int block_num = num_values / 8;
         int remainder = num_values % 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8Values(encoded, decode_pos, bit_width, result_list, i * 8);
             decode_pos += bit_width;
         }
@@ -193,11 +175,6 @@ public class BUFFTest {
 
         int min_integer_part = Integer.MAX_VALUE;
         int max_integer_part = Integer.MIN_VALUE;
-
-        // for (int i = 0; i < remainder; i++) {
-        // System.out.print(data[block_index * block_size + i] + " ");
-        // }
-        // System.out.println();
 
         for (int i = 0; i < remainder; i++) {
             float value = data[block_index * block_size + i];
@@ -253,9 +230,6 @@ public class BUFFTest {
         encoded_result[encode_pos + 3] = (byte) min_integer_part;
         encode_pos += 4;
 
-        // System.out.println("min_integer_part: " + min_integer_part);
-        // System.out.println("max_integer_part: " + max_integer_part);
-
         int bw = bitWidth(max_integer_part - min_integer_part);
 
         encoded_result[encode_pos] = (byte) bw;
@@ -264,17 +238,6 @@ public class BUFFTest {
         for (int i = 0; i < remainder; i++) {
             integer_parts[i] -= min_integer_part;
         }
-
-        // int[] combined = new int[remainder];
-        // for (int i = 0; i < remainder; i++) {
-        // combined[i] = (sign_bits[i] << (bw + bits_needed[max_decimal])) |
-        // (integer_parts[i] << bits_needed[max_decimal]) | decimal_parts[i];
-        // }
-
-        // int totalBitWidth = 1 + bw + bits_needed[max_decimal];
-
-        // encode_pos = bitPacking(combined, totalBitWidth, encode_pos, encoded_result,
-        // remainder);
 
         int totalBitWidth = 1 + bw + bits_needed[max_decimal];
 
@@ -311,23 +274,9 @@ public class BUFFTest {
                 ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
-        // System.out.println("min_integer_part: " + min_integer_part);
 
         int bw = encoded_result[encode_pos];
         encode_pos += 1;
-
-        // int[] combined = new int[remainder];
-
-        // encode_pos = decodeBitPacking(encoded_result, encode_pos, 1 + bw +
-        // bits_needed[max_decimal], remainder, combined);
-
-        // for (int i = 0; i < remainder; i++) {
-        // int value = combined[i];
-        // sign_bits[i] = (value >> (bw + bits_needed[max_decimal])) & 1;
-        // integer_parts[i] = (value >> bits_needed[max_decimal]) & ((1 << bw) - 1);
-        // integer_parts[i] += min_integer_part;
-        // decimal_parts[i] = value & ((1 << bits_needed[max_decimal]) - 1);
-        // }
 
         int totalBitWidth = 1 + bw + bits_needed[max_decimal];
 
@@ -361,11 +310,6 @@ public class BUFFTest {
             value = sign_bits[i] == 1 ? -value : value;
             data[block_index * block_size + i] = value;
         }
-
-        // for (int i = 0; i < remainder; i++) {
-        // System.out.print(data[block_index * block_size + i] + " ");
-        // }
-        // System.out.println();
 
         return encode_pos;
     }
@@ -401,21 +345,6 @@ public class BUFFTest {
             encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, max_decimal, encode_pos, encoded_result);
         }
 
-        // if (remainder <= 3) {
-        // for (int i = 0; i < remainder; i++) {
-        // int value = data[num_blocks * block_size + i];
-        // encoded_result[encode_pos] = (byte) (value >> 24);
-        // encoded_result[encode_pos + 1] = (byte) (value >> 16);
-        // encoded_result[encode_pos + 2] = (byte) (value >> 8);
-        // encoded_result[encode_pos + 3] = (byte) value;
-        // encode_pos += 4;
-        // }
-        // } else {
-        // encode_pos = BlockEncoder(data, num_blocks, block_size, remainder,
-        // max_decimal, encode_pos,
-        // encoded_result);
-        // }
-
         return encode_pos;
     }
 
@@ -448,33 +377,16 @@ public class BUFFTest {
             encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder, max_decimal, encode_pos, data);
         }
 
-        // if (remainder <= 3) {
-        // for (int i = 0; i < remainder; i++) {
-        // data[num_blocks * block_size + i] = ((encoded_result[encode_pos] & 0xFF) <<
-        // 24) |
-        // ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-        // ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos +
-        // 3] & 0xFF);
-        // encode_pos += 4;
-        // }
-        // } else {
-        // encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
-        // encode_pos, data);
-        // }
-
         return data;
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -497,22 +409,17 @@ public class BUFFTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "buff.csv";
 
         int block_size = 1024;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -529,7 +436,6 @@ public class BUFFTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -553,12 +459,9 @@ public class BUFFTest {
                 data1.add(Float.valueOf(f_str));
             }
             inputStream.close();
-            // int[] data2_arr = new int[data1.size()];
             float[] data2_arr = new float[data1.size()];
 
-            // int max_mul = (int) Math.pow(10, max_decimal);
             for (int i = 0; i < data1.size(); i++) {
-                // data2_arr[i] = (int) (data1.get(i) * max_mul);
                 data2_arr[i] = data1.get(i);
             }
 

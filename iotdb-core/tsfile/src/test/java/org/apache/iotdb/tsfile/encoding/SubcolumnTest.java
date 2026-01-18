@@ -16,8 +16,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class SubcolumnTest {
 
     public static int bitWidth(int value) {
@@ -247,9 +245,6 @@ public class SubcolumnTest {
 
         int cMin = Integer.MAX_VALUE;
 
-        // int[] beta_list = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
-        // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
-        // int[] beta_list = { 1, 2, 3, 4 };
         int[] beta_list = { 2, 3, 4 };
 
         int bw = bitWidth(block_size);
@@ -353,14 +348,7 @@ public class SubcolumnTest {
             return encode_pos;
         }
 
-        // int[] bitWidthList = new int[m];
-
-        // int[][] subcolumnList = new int[m][list_length];
-
         int l;
-
-        // int betaBest = beta[0];
-        // byte betaBest = (byte) beta[0];
 
         l = (m + beta[0] - 1) / beta[0];
 
@@ -390,12 +378,10 @@ public class SubcolumnTest {
 
         int[] encodingType = new int[l];
 
-        // encoded_result 预留大小为 (l + 7) / 8 的大小，存储每个分列的类型
         int preTypePos = encode_pos;
         encode_pos += (l + 7) / 8;
 
         for (int i = l - 1; i >= 0; i--) {
-            // 对于每个分列，计算使用 bit packing 还是 rle
             int bpCost = bitWidthList[i] * list_length;
             int rleCost = 0;
 
@@ -679,15 +665,12 @@ public class SubcolumnTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -710,25 +693,17 @@ public class SubcolumnTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
-        // String input_parent_dir = parent_dir + "dataset/CMS9";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
-        // String outputPath = output_parent_dir + "subcolumn.csv";
-        String outputPath = output_parent_dir + "subcolumn_00.csv";
+        String outputPath = output_parent_dir + "subcolumn.csv";
 
-        // int block_size = 512;
-        int block_size = 256;
+        int block_size = 512;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -745,7 +720,6 @@ public class SubcolumnTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -819,10 +793,6 @@ public class SubcolumnTest {
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
-
-            for (int i = 0; i < data2_arr_decoded.length; i++) {
-                // assertEquals(data2_arr[i], data2_arr_decoded[i]);
-            }
 
             String[] record = {
                     datasetName,

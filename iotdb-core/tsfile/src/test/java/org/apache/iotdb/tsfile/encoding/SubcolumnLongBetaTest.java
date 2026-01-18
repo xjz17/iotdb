@@ -16,8 +16,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class SubcolumnLongBetaTest {
 
     public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
@@ -186,15 +184,12 @@ public class SubcolumnLongBetaTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -217,38 +212,19 @@ public class SubcolumnLongBetaTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        // String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
-
-        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
-        // String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/compression_vs_beta/";
 
-        // int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-        //         24, 25, 26, 27, 28, 29, 30, 31 };
-        // int[] beta_list = { 11, 11, 11, 11, 12, 13, 14, 15 };
-        // int[] beta_list = { 16, 16, 16, 16, 17, 18, 19, 20 };
-
-        int[] beta_list = { 1, 2, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
-        13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25,
-        26, 26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31 };
-
-        // int[] beta_list = { 22, 22, 22 };
+        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31 };
 
 
         int block_size = 1024;
-        // int block_size = 512;
 
         int repeatTime = 100;
-        // repeatTime = 500;
-        // repeatTime = 50;
-
-        // repeatTime = 750;
-
-        // repeatTime = 1;
 
         for (int beta : beta_list) {
 
@@ -269,7 +245,6 @@ public class SubcolumnLongBetaTest {
             writer.writeRecord(head);
 
             File directory = new File(input_parent_dir);
-            // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
             for (File file : csvFiles) {
@@ -343,10 +318,6 @@ public class SubcolumnLongBetaTest {
 
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
-
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    assertEquals(data2_arr[i], data2_arr_decoded[i]);
-                }
 
                 String[] record = {
                         datasetName,

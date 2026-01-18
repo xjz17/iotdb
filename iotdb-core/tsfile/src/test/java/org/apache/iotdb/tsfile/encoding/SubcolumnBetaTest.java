@@ -16,8 +16,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class SubcolumnBetaTest {
 
     public static int[] getAbsDeltaTsBlock(
@@ -173,15 +171,12 @@ public class SubcolumnBetaTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -204,23 +199,23 @@ public class SubcolumnBetaTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
         
-        String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
-        // String output_parent_dir = parent_dir + "result/compression_vs_beta/";
+        String output_parent_dir = parent_dir + "result/compression_vs_beta/";
 
+        File outputDir = new File(output_parent_dir);
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        }
+    
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                 24, 25, 26, 27, 28, 29, 30, 31 };
 
-        // int block_size = 1024;
         int block_size = 512;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         for (int beta : beta_list) {
 
@@ -241,7 +236,6 @@ public class SubcolumnBetaTest {
             writer.writeRecord(head);
 
             File directory = new File(input_parent_dir);
-            // File[] csvFiles = directory.listFiles();
             File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
             for (File file : csvFiles) {
@@ -310,10 +304,6 @@ public class SubcolumnBetaTest {
 
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime);
-
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    // assertEquals(data2_arr[i], data2_arr_decoded[i]);
-                }
 
                 String[] record = {
                         datasetName,

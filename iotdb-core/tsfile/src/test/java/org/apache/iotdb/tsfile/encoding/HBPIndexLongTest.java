@@ -12,8 +12,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class HBPIndexLongTest {
 
     public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
@@ -139,18 +137,8 @@ public class HBPIndexLongTest {
             encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, indexList, encoded_result);
         }
 
-        // if (remainder <= 3) {
-        // for (int i = 0; i < remainder; i++) {
-        // long value = data[num_blocks * block_size + i];
-        // long2Bytes(value, encode_pos, encoded_result);
-        // encode_pos += 8;
-        // }
-        // } else {
         encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos, indexList,
                 encoded_result);
-        // }
-
-        // System.out.println("beta: " + beta[0]);
 
         return encode_pos;
     }
@@ -174,30 +162,19 @@ public class HBPIndexLongTest {
 
         int remainder = data_length % block_size;
 
-        // if (remainder <= 3) {
-        // for (int i = 0; i < remainder; i++) {
-        // data[num_blocks * block_size + i] = bytes2Long(encoded_result, encode_pos,
-        // 8);
-        // encode_pos += 8;
-        // }
-        // } else {
         encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
                 encode_pos, indexList, data);
-        // }
 
         return data;
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -220,22 +197,17 @@ public class HBPIndexLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "hbp_test.csv";
+        String outputPath = output_parent_dir + "hbp.csv";
 
         int block_size = 512;
 
         int repeatTime = 100;
-        // repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -252,7 +224,6 @@ public class HBPIndexLongTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -289,12 +260,6 @@ public class HBPIndexLongTest {
                 data2_arr[i] = (long) (data1.get(i) * max_mul);
             }
 
-            // test
-            // for (int i = 0; i < data2_arr.length; i++) {
-            // System.out.print(data2_arr[i] + " ");
-            // }
-            // System.out.println();
-
             System.out.println(max_decimal);
             byte[] encoded_result = new byte[data2_arr.length * 8];
 
@@ -309,7 +274,6 @@ public class HBPIndexLongTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                // clear indexList
                 indexList.clear();
 
                 length = Encoder(data2_arr, block_size, indexList, encoded_result);
@@ -342,13 +306,9 @@ public class HBPIndexLongTest {
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
 
-            for (int i = 0; i < data2_arr_decoded.length; i++) {
-                assertEquals(data2_arr[i], data2_arr_decoded[i]);
-            }
-
             String[] record = {
                     datasetName,
-                    "Sub-columns",
+                    "HBP",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

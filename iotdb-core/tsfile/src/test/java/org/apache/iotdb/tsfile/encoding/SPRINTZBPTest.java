@@ -34,7 +34,7 @@ public class SPRINTZBPTest {
 
     public static int findMedian(int[] arr) {
         if (arr == null || arr.length == 0) {
-            throw new IllegalArgumentException("数组不能为空");
+            throw new IllegalArgumentException("Array is null or empty");
         }
         int n = arr.length;
         return quickSelect(arr, 0, n - 1, n / 2);
@@ -134,16 +134,12 @@ public class SPRINTZBPTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (32 - leftBit));
                 leftSize -= leftBit;
@@ -152,20 +148,15 @@ public class SPRINTZBPTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -181,23 +172,16 @@ public class SPRINTZBPTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, ArrayList<Integer> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((int) (buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -224,14 +208,12 @@ public class SPRINTZBPTest {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8Values(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
         }
         return result_list;
     }
-
-    // -----------------------------------------------------------------
 
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
@@ -277,11 +259,11 @@ public class SPRINTZBPTest {
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
-        long cur_remaining = 0; // encoded int
-        int cur_number_bits = 0; // the bit width used of encoded int
+        long cur_remaining = 0;
+        int cur_number_bits = 0;
         for (int i = n_k_b * 8; i < n_k; i++) {
             long cur_value = ts_block_delta.get(i);
-            int cur_bit_width = bit_width; // remaining bit width of current value
+            int cur_bit_width = bit_width;
 
             if (cur_number_bits + bit_width >= 32) {
                 cur_remaining <<= (32 - cur_number_bits);
@@ -324,7 +306,7 @@ public class SPRINTZBPTest {
             decode_pos += 4;
         }
 
-        int cur_remaining_bits = 32; // remaining bit width of current value
+        int cur_remaining_bits = 32;
         long cur_number = int_remaining.get(0);
         int cur_number_i = 1;
         for (int i = n_k_b * 8; i < length; i++) {
@@ -440,8 +422,8 @@ public class SPRINTZBPTest {
         encode_pos += 4;
 
         int bit_width_final = getBitWith(final_x_u_minus - final_x_l_plus);
-        int left_bit_width = getBitWith(final_k_start_value);// final_left_max
-        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);// final_right_min
+        int left_bit_width = getBitWith(final_k_start_value);
+        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);
 
         if (k1 == 0 && k2 == 0) {
             bit_width_final = getBitWith(max_delta_value);
@@ -464,7 +446,7 @@ public class SPRINTZBPTest {
             encode_pos += 1;
             intByte2Bytes(right_bit_width, encode_pos, cur_byte);
             encode_pos += 1;
-            if (final_alpha == 0) { // 0
+            if (final_alpha == 0) {
 
                 for (int i : bitmap_outlier) {
 
@@ -519,29 +501,22 @@ public class SPRINTZBPTest {
             int encode_pos,
             byte[] cur_byte,
             int[] bit_index_list) {
-        // 找到要插入的位的索引
-        int bit_index = bit_index_list[0];// cur_byte[encode_pos + 1];
+        int bit_index = bit_index_list[0];
 
-        // 计算数值的起始位位置
         int remaining_bits = bit_width;
 
         while (remaining_bits > 0) {
-            // 计算在当前字节中可以使用的位数
             int available_bits = bit_index;
             int bits_to_write = Math.min(available_bits, remaining_bits);
 
-            // 更新 bit_index
             bit_index = available_bits - bits_to_write;
 
-            // 计算要写入的位的掩码和数值
             int mask = (1 << bits_to_write) - 1;
             int bits = (num >> (remaining_bits - bits_to_write)) & mask;
 
-            // 写入到当前位置
-            cur_byte[encode_pos] &= (byte) ~(mask << bit_index); // 清除对应位置的位
+            cur_byte[encode_pos] &= (byte) ~(mask << bit_index);
             cur_byte[encode_pos] |= (byte) (bits << bit_index);
 
-            // 更新位宽和数值
             remaining_bits -= bits_to_write;
             if (bit_index == 0) {
                 bit_index = 8;
@@ -743,7 +718,7 @@ public class SPRINTZBPTest {
 
     public static int DecodeBits(byte[] cur_byte, int bit_width, int[] decode_pos_list) {
         int decode_pos = decode_pos_list[0];
-        int bit_index = decode_pos_list[1]; // cur_byte[decode_pos + 1];
+        int bit_index = decode_pos_list[1];
         int remaining_bits = bit_width;
         int num = 0;
 
@@ -751,14 +726,11 @@ public class SPRINTZBPTest {
             int available_bits = bit_index;
             int bits_to_read = Math.min(available_bits, remaining_bits);
 
-            // 计算要读取的位的掩码
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
 
-            // 将读取的位合并到结果中
             num = (num << bits_to_read) | bits;
 
-            // 更新位宽和 bit_index
             remaining_bits -= bits_to_read;
             bit_index = available_bits - bits_to_read;
 
@@ -857,15 +829,12 @@ public class SPRINTZBPTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -888,22 +857,17 @@ public class SPRINTZBPTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "sprintz.csv";
 
         int block_size = 1024;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -917,9 +881,8 @@ public class SPRINTZBPTest {
                 "Compressed Size",
                 "Compression Ratio"
         };
-        writer.writeRecord(head); // write header to output file
+        writer.writeRecord(head);
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -931,9 +894,6 @@ public class SPRINTZBPTest {
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
             ArrayList<Float> data1 = new ArrayList<>();
-            // ArrayList<Integer> data2 = new ArrayList<>();
-
-            // loader.readHeaders();
 
             int max_decimal = 0;
             while (loader.readRecord()) {
@@ -945,10 +905,7 @@ public class SPRINTZBPTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                // String value = loader.getValues()[index];
                 data1.add(Float.valueOf(f_str));
-                // data2.add(Integer.valueOf(loader.getValues()[1]));
-                // data.add(Integer.valueOf(value));
             }
 
             inputStream.close();

@@ -16,8 +16,6 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-import static org.junit.Assert.assertEquals;
-
 public class ALPTest {
 
     public static int bitWidth(int value) {
@@ -131,16 +129,12 @@ public class ALPTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values[valueIdx] << (32 - leftBit));
                 leftSize -= leftBit;
@@ -149,20 +143,16 @@ public class ALPTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values[valueIdx] << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
+
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values[valueIdx] >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -179,16 +169,12 @@ public class ALPTest {
             long[] values, int offset, int width, int encode_pos, byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Long
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 64 bits as a part of result
             long buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 64;
 
-            // encode the left bits of current Long to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values[valueIdx] << (64 - leftBit));
                 leftSize -= leftBit;
@@ -197,19 +183,15 @@ public class ALPTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Long to the 'buffer'
                 buffer |= (values[valueIdx] << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Long
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Long into remaining space of the buffer
                 buffer |= (values[valueIdx] >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 8; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((8 - j - 1) * 8)) & 0xFF);
                 encode_pos++;
@@ -224,25 +206,17 @@ public class ALPTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, int[] result_list, int result_offset) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
-                // result_list.add((int) (buffer >>> (totalBits - width)));
                 result_list[result_offset + valueIdx] = (int) (buffer >>> (totalBits - width));
                 valueIdx++;
                 totalBits -= width;
@@ -259,19 +233,13 @@ public class ALPTest {
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
-                // result_list.add((int) (buffer >>> (totalBits - width)));
                 result_list[result_offset + valueIdx] = buffer >>> (totalBits - width);
                 valueIdx++;
                 totalBits -= width;
@@ -414,8 +382,6 @@ public class ALPTest {
 
         e = 17;
         f = 17 - max_decimal;
-
-        // double[] testValues = new double[100];
 
         double[] testValues = new double[remainder];
         for (int i = 0; i < testValues.length; i++) {
@@ -578,15 +544,12 @@ public class ALPTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -609,23 +572,17 @@ public class ALPTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "alp_long.csv";
 
         int block_size = 1024;
-        // int block_size = 512;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -642,7 +599,6 @@ public class ALPTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
@@ -713,10 +669,6 @@ public class ALPTest {
 
             e = System.nanoTime();
             decodeTime += ((e - s) / repeatTime);
-
-            // for (int i = 0; i < data2_arr_decoded.length; i++) {
-            //     assertEquals(data1_arr[i], data2_arr_decoded[i], 0.00001);
-            // }
 
             String[] record = {
                     datasetName,

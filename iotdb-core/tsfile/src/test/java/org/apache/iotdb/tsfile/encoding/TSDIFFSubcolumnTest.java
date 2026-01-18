@@ -149,7 +149,6 @@ public class TSDIFFSubcolumnTest {
             int encode_pos, byte[] encoded_result, int[] beta) {
         int[] min_delta = new int[3];
 
-        // data_delta 的长度为 remainder - 1
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
         encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
@@ -211,15 +210,12 @@ public class TSDIFFSubcolumnTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -242,22 +238,18 @@ public class TSDIFFSubcolumnTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "ts2diff_subcolumn.csv";
 
         int block_size = 512;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
 
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -274,7 +266,6 @@ public class TSDIFFSubcolumnTest {
         writer.writeRecord(head);
 
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {

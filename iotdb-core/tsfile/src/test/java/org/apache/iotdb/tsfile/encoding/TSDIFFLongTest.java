@@ -123,16 +123,12 @@ public class TSDIFFLongTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (32 - leftBit));
                 leftSize -= leftBit;
@@ -141,20 +137,15 @@ public class TSDIFFLongTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -164,23 +155,18 @@ public class TSDIFFLongTest {
                 }
             }
         }
-        // return encode_pos;
     }
 
     public static void pack8ValuesLong(ArrayList<Long> values, int offset, int width, int encode_pos,
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Long
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 64 bits as a part of result
             long buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 64;
 
-            // encode the left bits of current Long to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (64 - leftBit));
                 leftSize -= leftBit;
@@ -189,20 +175,15 @@ public class TSDIFFLongTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 8; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((7 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -218,23 +199,16 @@ public class TSDIFFLongTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, ArrayList<Integer> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((int) (buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -247,23 +221,16 @@ public class TSDIFFLongTest {
     public static void unpack8ValuesLong(byte[] encoded, int offset, int width, ArrayList<Long> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -302,7 +269,7 @@ public class TSDIFFLongTest {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8Values(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
 
@@ -315,7 +282,7 @@ public class TSDIFFLongTest {
         ArrayList<Long> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8ValuesLong(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
         }
@@ -375,11 +342,11 @@ public class TSDIFFLongTest {
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
-        long cur_remaining = 0; // encoded int
-        int cur_number_bits = 0; // the bit width used of encoded int
+        long cur_remaining = 0;
+        int cur_number_bits = 0;
         for (int i = n_k_b * 8; i < n_k; i++) {
             long cur_value = ts_block_delta.get(i);
-            int cur_bit_width = bit_width; // remaining bit width of current value
+            int cur_bit_width = bit_width;
 
             if (cur_number_bits + bit_width >= 64) {
                 cur_remaining <<= (64 - cur_number_bits);
@@ -428,7 +395,7 @@ public class TSDIFFLongTest {
             decode_pos += 8;
         }
 
-        int cur_remaining_bits = 64; // remaining bit width of current value
+        int cur_remaining_bits = 64;
         long cur_number = int_remaining.get(0);
         int cur_number_i = 1;
         for (int i = n_k_b * 8; i < length; i++) {
@@ -462,10 +429,6 @@ public class TSDIFFLongTest {
         long[] min_delta = new long[3];
         long[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
 
-        // int2Bytes(min_delta[0], encode_pos, cur_byte);
-        // encode_pos += 4;
-        // int2Bytes(min_delta[1], encode_pos, cur_byte);
-        // encode_pos += 4;
 
         long2Bytes(min_delta[0], encode_pos, cur_byte);
         encode_pos += 8;
@@ -586,15 +549,12 @@ public class TSDIFFLongTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -617,22 +577,17 @@ public class TSDIFFLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "ts2diff_long.csv";
 
         int block_size = 1024;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -646,7 +601,7 @@ public class TSDIFFLongTest {
                 "Compressed Size",
                 "Compression Ratio"
         };
-        writer.writeRecord(head); // write header to output file
+        writer.writeRecord(head);
         File directory = new File(input_parent_dir);
         // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
@@ -660,9 +615,6 @@ public class TSDIFFLongTest {
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
             ArrayList<Double> data1 = new ArrayList<>();
-            // ArrayList<Integer> data2 = new ArrayList<>();
-
-            // loader.readHeaders();
 
             int max_decimal = 0;
             while (loader.readRecord()) {
@@ -674,10 +626,7 @@ public class TSDIFFLongTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                // String value = loader.getValues()[index];
                 data1.add(Double.valueOf(f_str));
-                // data2.add(Integer.valueOf(loader.getValues()[1]));
-                // data.add(Integer.valueOf(value));
             }
 
             inputStream.close();

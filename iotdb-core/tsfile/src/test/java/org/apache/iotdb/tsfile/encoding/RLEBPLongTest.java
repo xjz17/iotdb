@@ -108,16 +108,12 @@ public class RLEBPLongTest {
             byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
             int buffer = 0;
-            // remaining size of bits in the 'buffer'
             int leftSize = 32;
 
-            // encode the left bits of current Integer to 'buffer'
             if (leftBit > 0) {
                 buffer |= (values.get(valueIdx) << (32 - leftBit));
                 leftSize -= leftBit;
@@ -126,20 +122,15 @@ public class RLEBPLongTest {
             }
 
             while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
                 buffer |= (values.get(valueIdx) << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
             }
-            // If the remaining space of the buffer can not save the bits for one Integer,
             if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
                 buffer |= (values.get(valueIdx) >>> (width - leftSize));
                 leftBit = width - leftSize;
             }
 
-            // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
                 encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
                 encode_pos++;
@@ -155,23 +146,16 @@ public class RLEBPLongTest {
     public static void unpack8Values(byte[] encoded, int offset, int width, ArrayList<Integer> result_list) {
         int byteIdx = offset;
         long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
         int totalBits = 0;
         int valueIdx = 0;
 
         while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
                 buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
 
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
             while (totalBits >= width && valueIdx < 8) {
                 result_list.add((int) (buffer >>> (totalBits - width)));
                 valueIdx++;
@@ -198,7 +182,7 @@ public class RLEBPLongTest {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
+        for (int i = 0; i < block_num; i++) {
             unpack8Values(encoded, decode_pos, bit_width, result_list);
             decode_pos += bit_width;
         }
@@ -272,29 +256,22 @@ public class RLEBPLongTest {
             int encode_pos,
             byte[] cur_byte,
             int[] bit_index_list) {
-        // 找到要插入的位的索引
-        int bit_index = bit_index_list[0];// cur_byte[encode_pos + 1];
+        int bit_index = bit_index_list[0];
 
-        // 计算数值的起始位位置
         int remaining_bits = bit_width;
 
         while (remaining_bits > 0) {
-            // 计算在当前字节中可以使用的位数
             int available_bits = bit_index;
             int bits_to_write = Math.min(available_bits, remaining_bits);
 
-            // 更新 bit_index
             bit_index = available_bits - bits_to_write;
 
-            // 计算要写入的位的掩码和数值
             int mask = (1 << bits_to_write) - 1;
             int bits = (num >> (remaining_bits - bits_to_write)) & mask;
 
-            // 写入到当前位置
-            cur_byte[encode_pos] &= (byte) ~(mask << bit_index); // 清除对应位置的位
+            cur_byte[encode_pos] &= (byte) ~(mask << bit_index);
             cur_byte[encode_pos] |= (byte) (bits << bit_index);
 
-            // 更新位宽和数值
             remaining_bits -= bits_to_write;
             if (bit_index == 0) {
                 bit_index = 8;
@@ -302,7 +279,6 @@ public class RLEBPLongTest {
             }
         }
         bit_index_list[0] = bit_index;
-        // cur_byte[encode_pos + 1] = (byte) bit_index;
         return encode_pos;
     }
 
@@ -311,29 +287,22 @@ public class RLEBPLongTest {
             int encode_pos,
             byte[] cur_byte,
             int[] bit_index_list) {
-        // 找到要插入的位的索引
-        int bit_index = bit_index_list[0];// cur_byte[encode_pos + 1];
+        int bit_index = bit_index_list[0];
 
-        // 计算数值的起始位位置
         int remaining_bits = bit_width;
 
         while (remaining_bits > 0) {
-            // 计算在当前字节中可以使用的位数
             int available_bits = bit_index;
             int bits_to_write = Math.min(available_bits, remaining_bits);
 
-            // 更新 bit_index
             bit_index = available_bits - bits_to_write;
 
-            // 计算要写入的位的掩码和数值
             int mask = (1 << bits_to_write) - 1;
             int bits = (int) (num >> (remaining_bits - bits_to_write)) & mask;
 
-            // 写入到当前位置
-            cur_byte[encode_pos] &= (byte) ~(mask << bit_index); // 清除对应位置的位
+            cur_byte[encode_pos] &= (byte) ~(mask << bit_index);
             cur_byte[encode_pos] |= (byte) (bits << bit_index);
 
-            // 更新位宽和数值
             remaining_bits -= bits_to_write;
             if (bit_index == 0) {
                 bit_index = 8;
@@ -341,7 +310,6 @@ public class RLEBPLongTest {
             }
         }
         bit_index_list[0] = bit_index;
-        // cur_byte[encode_pos + 1] = (byte) bit_index;
         return encode_pos;
     }
 
@@ -356,9 +324,6 @@ public class RLEBPLongTest {
                 repeat_count);
 
         long max_delta_value = min_delta[2];
-
-        // int2Bytes(min_delta[0], encode_pos, cur_byte);
-        // encode_pos += 4;
 
         long2Bytes(min_delta[1], encode_pos, cur_byte);
         encode_pos += 8;
@@ -387,7 +352,6 @@ public class RLEBPLongTest {
         bit_index_list[0] = 8;
         for (long cur_value : ts_block_delta) {
             encode_pos = EncodeBits(cur_value, bit_width_final, encode_pos, cur_byte, bit_index_list);
-            // final_normal.add(cur_value);
         }
         if (bit_index_list[0] != 8) {
             encode_pos++;
@@ -412,14 +376,11 @@ public class RLEBPLongTest {
         for (int i = 0; i < block_num; i++) {
 
             encode_pos = BOSBlockEncoderImprove(data, i, block_size, block_size, encode_pos, encoded_result);
-            // System.out.println(encode_pos);
         }
 
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
             for (int i = remaining_length; i > 0; i--) {
-                // int2Bytes(data[data.length - i], encode_pos, encoded_result);
-                // encode_pos += 4;
                 long2Bytes(data[data.length - i], encode_pos, encoded_result);
                 encode_pos += 8;
             }
@@ -431,13 +392,6 @@ public class RLEBPLongTest {
 
             encode_pos = BOSBlockEncoderImprove(data, block_num, block_size, remaining, encode_pos, encoded_result);
 
-            // int[] ts_block = new int[length_all-start];
-            // if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0,
-            // length_all - start);
-            //
-            //
-            // encode_pos = BOSBlockEncoder(ts_block, encode_pos,encoded_result);
-
         }
 
         return encode_pos;
@@ -445,7 +399,7 @@ public class RLEBPLongTest {
 
     public static int DecodeBits(byte[] cur_byte, int bit_width, int[] decode_pos_list) {
         int decode_pos = decode_pos_list[0];
-        int bit_index = decode_pos_list[1]; // cur_byte[decode_pos + 1];
+        int bit_index = decode_pos_list[1];
         int remaining_bits = bit_width;
         int num = 0;
 
@@ -453,14 +407,11 @@ public class RLEBPLongTest {
             int available_bits = bit_index;
             int bits_to_read = Math.min(available_bits, remaining_bits);
 
-            // 计算要读取的位的掩码
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
 
-            // 将读取的位合并到结果中
             num = (num << bits_to_read) | bits;
 
-            // 更新位宽和 bit_index
             remaining_bits -= bits_to_read;
             bit_index = available_bits - bits_to_read;
 
@@ -477,7 +428,7 @@ public class RLEBPLongTest {
 
     public static long DecodeBitsLong(byte[] cur_byte, int bit_width, int[] decode_pos_list) {
         int decode_pos = decode_pos_list[0];
-        int bit_index = decode_pos_list[1]; // cur_byte[decode_pos + 1];
+        int bit_index = decode_pos_list[1];
         int remaining_bits = bit_width;
         long num = 0;
 
@@ -485,14 +436,11 @@ public class RLEBPLongTest {
             int available_bits = bit_index;
             int bits_to_read = Math.min(available_bits, remaining_bits);
 
-            // 计算要读取的位的掩码
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
 
-            // 将读取的位合并到结果中
             num = (num << bits_to_read) | bits;
 
-            // 更新位宽和 bit_index
             remaining_bits -= bits_to_read;
             bit_index = available_bits - bits_to_read;
 
@@ -509,9 +457,6 @@ public class RLEBPLongTest {
 
     public static int BOSBlockDecoderImprove(byte[] encoded, int decode_pos, long[] value_list, int init_block_size,
             int block_size, int[] value_pos_arr) {
-
-        // int min_delta = bytes2Integer(encoded, decode_pos, 4);
-        // decode_pos += 4;
 
         long min_delta = bytes2Long(encoded, decode_pos, 8);
         decode_pos += 8;
@@ -535,10 +480,7 @@ public class RLEBPLongTest {
                 decode_list[1] = 8;
                 decode_list[0]++;
             }
-            // repeat_count = decodeOutlier2Bytes(encoded, decode_pos,
-            // getBitWith(init_block_size-1), count_size, repeat_count_result);
             decode_pos = decode_list[0];
-            // decode_list[1]= 8;
         }
 
         int cur_block_size = block_size;
@@ -557,7 +499,6 @@ public class RLEBPLongTest {
         decode_list[1] = 8;
         for (int i = 0; i < cur_block_size; i++) {
             pre_v = min_delta + DecodeBitsLong(encoded, bit_width_final, decode_list);
-            // value_list[value_pos_arr[0]++] = pre_v;
             if (repeat_i < count_size && cur_i == repeat_count.get(repeat_i)) {
                 cur_i += (repeat_count.get(repeat_i + 1));
 
@@ -594,14 +535,9 @@ public class RLEBPLongTest {
         int[] value_pos_arr = new int[1];
 
         for (int k = 0; k < block_num; k++) {
-            // System.out.println(k);
-            decode_pos = BOSBlockDecoderImprove(encoded, decode_pos, value_list, block_size, block_size, value_pos_arr);
-            // System.out.println(decode_pos);
-        }
+            decode_pos = BOSBlockDecoderImprove(encoded, decode_pos, value_list, block_size, block_size, value_pos_arr);        }
         if (remain_length <= 3) {
             for (int i = 0; i < remain_length; i++) {
-                // int value_end = bytes2Integer(encoded, decode_pos, 4);
-                // decode_pos += 4;
                 long value_end = bytes2Long(encoded, decode_pos, 8);
                 decode_pos += 8;
                 value_list[value_pos_arr[0]] = value_end;
@@ -613,15 +549,12 @@ public class RLEBPLongTest {
     }
 
     public static int getDecimalPrecision(String str) {
-        // 查找小数点的位置
         int decimalIndex = str.indexOf(".");
 
-        // 如果没有小数点，精度为0
         if (decimalIndex == -1) {
             return 0;
         }
 
-        // 获取小数点后的部分并返回其长度
         return str.substring(decimalIndex + 1).length();
     }
 
@@ -644,22 +577,17 @@ public class RLEBPLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/";
-        // String output_parent_dir = parent_dir + "result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "rle_long.csv";
 
         int block_size = 1024;
 
-        // int repeatTime = 100;
         int repeatTime = 500;
-
-        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -673,22 +601,18 @@ public class RLEBPLongTest {
                 "Compressed Size",
                 "Compression Ratio"
         };
-        writer.writeRecord(head); // write header to output file
+        writer.writeRecord(head);
         File directory = new File(input_parent_dir);
-        // File[] csvFiles = directory.listFiles();
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
 
         for (File file : csvFiles) {
-            // System.out.println(f);
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
             InputStream inputStream = Files.newInputStream(file.toPath());
 
             CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
             ArrayList<Double> data1 = new ArrayList<>();
-            // ArrayList<Integer> data2 = new ArrayList<>();
 
-            // loader.readHeaders();
             int max_decimal = 0;
             while (loader.readRecord()) {
                 String f_str = loader.getValues()[0];
@@ -699,10 +623,7 @@ public class RLEBPLongTest {
                 if (cur_decimal > max_decimal) {
                     max_decimal = cur_decimal;
                 }
-                // String value = loader.getValues()[index];
                 data1.add(Double.valueOf(f_str));
-                // data2.add(Integer.valueOf(loader.getValues()[1]));
-                // data.add(Integer.valueOf(value));
             }
 
             inputStream.close();
