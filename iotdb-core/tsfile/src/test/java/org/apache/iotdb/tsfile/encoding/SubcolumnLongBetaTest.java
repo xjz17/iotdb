@@ -219,25 +219,34 @@ public class SubcolumnLongBetaTest {
     public void test0() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/";
 
-        // String input_parent_dir = parent_dir + "dataset/";
-        String input_parent_dir = "D:/encoding-subcolumn/testdata/";
+        String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
+        // String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_beta/";
 
         // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
         // String input_parent_dir = parent_dir + "dataset/";
-        // String output_parent_dir = parent_dir + "result/compression_vs_beta/";
+        String output_parent_dir = parent_dir + "result/compression_vs_beta/";
 
-        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                24, 25, 26, 27, 28, 29, 30, 31 };
+        // int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+        //         24, 25, 26, 27, 28, 29, 30, 31 };
+        // int[] beta_list = { 11, 11, 11, 11, 12, 13, 14, 15 };
+        // int[] beta_list = { 16, 16, 16, 16, 17, 18, 19, 20 };
 
-        // int[] beta_list = { 24, 25 };
+        int[] beta_list = { 1, 2, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
+        13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25,
+        26, 26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31 };
 
-        // int block_size = 1024;
-        int block_size = 512;
+        // int[] beta_list = { 22, 22, 22 };
 
-        // int repeatTime = 100;
-        int repeatTime = 500;
+
+        int block_size = 1024;
+        // int block_size = 512;
+
+        int repeatTime = 100;
+        // repeatTime = 500;
+        // repeatTime = 50;
+
+        // repeatTime = 750;
 
         // repeatTime = 1;
 
