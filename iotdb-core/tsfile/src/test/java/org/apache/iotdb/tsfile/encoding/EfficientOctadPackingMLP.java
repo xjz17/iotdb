@@ -432,25 +432,59 @@ public class EfficientOctadPackingMLP {
         }
     }
 
+    // 修复后的bitPacking方法，支持任意数量的数据（不只是8的倍数），逐bit拼接
     public static int bitPacking(ArrayList<Integer> numbers, int start, int bit_width, int encode_pos,
                                  byte[] encoded_result) {
-        int block_num = (numbers.size() - start) / 8;
-        for (int i = 0; i < block_num; i++) {
-            pack8Values(numbers, start + i * 8, bit_width, encode_pos, encoded_result);
-            encode_pos += bit_width;
+        int totalCount = numbers.size() - start;
+        int currentBytePos = encode_pos;
+        int currentBitPos = 0; // 当前字节中的位位置 (0-7)
+
+        // 处理所有数据，不只是8的倍数
+        for (int i = 0; i < totalCount; i++) {
+            int value = numbers.get(start + i);
+
+            // 按位写入
+            for (int bit = bit_width - 1; bit >= 0; bit--) {
+                int currentBit = (value >> bit) & 1;
+                encoded_result[currentBytePos] |= (currentBit << (7 - currentBitPos));
+                currentBitPos++;
+
+                if (currentBitPos == 8) {
+                    currentBytePos++;
+                    currentBitPos = 0;
+                }
+            }
         }
-        return encode_pos;
+
+        return currentBytePos;
     }
 
+    // 修复后的decodeBitPacking方法，支持逐bit读取任意数量的数据
     public static ArrayList<Integer> decodeBitPacking(
             byte[] encoded, int decode_pos, int bit_width, int block_size) {
         ArrayList<Integer> result_list = new ArrayList<>();
-        int block_num = (block_size - 1) / 8;
+        int currentBytePos = decode_pos;
+        int currentBitPos = 0; // 当前字节中的位位置 (0-7)
 
-        for (int i = 0; i < block_num; i++) { // bitpacking
-            unpack8Values(encoded, decode_pos, bit_width, result_list);
-            decode_pos += bit_width;
+        // 读取 block_size 个值
+        for (int i = 0; i < block_size; i++) {
+            int value = 0;
+
+            // 按位读取
+            for (int bit = 0; bit < bit_width; bit++) {
+                int currentBit = (encoded[currentBytePos] >> (7 - currentBitPos)) & 1;
+                value = (value << 1) | currentBit;
+                currentBitPos++;
+
+                if (currentBitPos == 8) {
+                    currentBytePos++;
+                    currentBitPos = 0;
+                }
+            }
+
+            result_list.add(value);
         }
+
         return result_list;
     }
 
@@ -708,10 +742,10 @@ public static final class BitReader {
                 currentPack.addOctad(i, b);
             } else {
                 float[] feat = new float[INPUT_DIM];
-                feat[0] = currentPack.size / 100.0f;
+                feat[0] = currentPack.size / 1024.0f;
                 feat[1] = currentPack.maxBitWidth / 64.0f;
                 feat[2] = b / 64.0f;
-                feat[3] = packCount / 100.0f;
+                feat[3] = packCount / 1024.0f;
                 feat[4] = globalMaxLog / 10.0f;
 
                 float probability = model.forwardProb(feat);
@@ -930,7 +964,7 @@ public static final class BitReader {
             for (List<Integer> bitWidths : sequences) {
                 decisionTrace.clear();
                 // training does not perform actual compression, pass dataArray=null and originalLength=0
-                PackingResult result = packOctads(bitWidths, model, decisionTrace, 8, null, 0);
+                PackingResult result = packOctads(bitWidths, model, decisionTrace, 1, null, 0);
 
                 float reward = (float) result.totalCost / 500000.0f;
                 totalReward += reward;
@@ -1009,9 +1043,9 @@ public static final class BitReader {
 
                     for(int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
                         int pack_size = (int) Math.pow(2, pack_size_exp);
-                        long modelCost = 0;
-                        long modelTime = 0;
-                        long modelDecodeTime = 0; // 新增：解压时间统计
+                        BigDecimal modelCost = BigDecimal.ZERO;
+                        BigDecimal modelTime = BigDecimal.ZERO;
+                        BigDecimal modelDecodeTime = BigDecimal.ZERO; // 新增：解压时间统计
                         long compressedSize = 0;
 
                         for (int rep = 0; rep < time_of_repeat; ++rep) {
@@ -1057,15 +1091,15 @@ public static final class BitReader {
 
                                 PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
                                 long duration = System.nanoTime() - startTime;
-                                modelTime += duration;
-                                modelCost += (res.compressedData.length*8);
+                                modelTime = modelTime.add(BigDecimal.valueOf(duration));
+                                modelCost = modelCost.add(BigDecimal.valueOf(res.compressedData.length * 8L));
 
                                 // 新增：测试解压性能
                                 if (res.compressedData != null) {
                                     long startDecodeTime = System.nanoTime();
                                     long[] decompressed = fastDecompress(res.compressedData, bitWidths, pack_size, scaledInts.length);
                                     long decodeDuration = System.nanoTime() - startDecodeTime;
-                                    modelDecodeTime += decodeDuration;
+                                    modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
                                 }
 
 //                                if (rep == 0) {
@@ -1074,22 +1108,24 @@ public static final class BitReader {
                             }
                         }
 
-                        modelCost /= time_of_repeat;
-                        modelTime /= time_of_repeat;
-                        modelDecodeTime /= time_of_repeat; // 平均解压时间
+                        BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                        modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                        modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                        modelDecodeTime = modelDecodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP); // 平均解压时间
 
-                        double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
-                        double modelTime_throughput = (double) (numbers.size() * 8000L) / (double) modelTime; // points/s
-                        double modelDecodeTime_throughput = (double) (numbers.size() * 8000L) / (double) modelDecodeTime; // points/s
+                        BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                        BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP); // compressed / original bytes
+                        BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000L)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP); // points/s
+                        BigDecimal modelDecodeTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000L)).divide(modelDecodeTime, 10, BigDecimal.ROUND_HALF_UP); // points/s
 
                         writer.write(entry.toString() + ",");
                         writer.write("BP-RL,");
-                        writer.write(String.valueOf(modelTime_throughput) + ",");
-                        writer.write(String.valueOf(modelDecodeTime_throughput) + ","); // 解压吞吐率
+                        writer.write(modelTime_throughput.toPlainString() + ",");
+                        writer.write(modelDecodeTime_throughput.toPlainString() + ","); // 解压吞吐率
                         writer.write(String.valueOf(numbers.size()) + ",");
-                        writer.write(String.valueOf(modelCost) + ",");
+                        writer.write(modelCost.toPlainString() + ",");
                         writer.write(String.valueOf(pack_size) + ",");
-                        writer.write(String.valueOf(model_ratio) + "\n");
+                        writer.write(model_ratio.toPlainString() + "\n");
 
 //                        System.out.println("Pack Size: " + pack_size);
 //                        System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
@@ -1129,6 +1165,158 @@ public static final class BitReader {
             System.err.println("No data directory provided for performanceTest. Exiting.");
         }
     }
+    
+        // ========== performanceTest (更新版本，包含解压测试) ==========
+    static void performanceTestVarPackSize(RLDecisionModel model, String directory, String outputDirStr) {
+            System.out.println("\nPerformance Testing...");
+            Path outdir = Paths.get(outputDirStr);
+            try {
+                if (!Files.exists(outdir)) Files.createDirectories(outdir);
+            } catch (IOException e) {
+                System.err.println("Cannot create output dir: " + outputDirStr);
+                return;
+            }
+    
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(Paths.get(directory))) {
+                for (Path entry : ds) {
+                    if (!Files.isRegularFile(entry)) continue;
+                    String fname = entry.getFileName().toString();
+                    if (IGNORE_FILES.contains(fname)) continue;
+    
+                    System.out.println("Processing " + fname + "...");
+                    List<String> numbers = new ArrayList<>();
+                    List<Integer> decimalPlaces = new ArrayList<>();
+    
+                    try (BufferedReader br = Files.newBufferedReader(entry)) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            String[] tokens = line.split(",");
+                            for (String token : tokens) {
+                                String t = trimStr(token);
+                                if (!t.isEmpty()) {
+                                    numbers.add(t);
+                                    int dec = 0;
+                                    int pos = t.indexOf('.');
+                                    if (pos != -1) dec = t.length() - pos - 1;
+                                    decimalPlaces.add(dec);
+                                }
+                            }
+                        }
+                    } catch (IOException e) {
+                        System.err.println("Cannot open " + entry.toString());
+                        continue;
+                    }
+    
+                    if (numbers.isEmpty()) continue;
+    
+                    Path outPath = outdir.resolve(fname);
+                    try (BufferedWriter writer = Files.newBufferedWriter(outPath)) {
+                        // 更新表头，增加解压吞吐率列
+                        writer.write("Input Direction,Encoding Algorithm,Encoding Time,Decoding Time,Points,Compressed Size,Pack Size,Compression Ratio\n");
+    
+                        int time_of_repeat = 50;
+    
+                        for(int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+                            int pack_size = (int) Math.pow(2, pack_size_exp);
+                            BigDecimal modelCost = BigDecimal.ZERO;
+                            BigDecimal modelTime = BigDecimal.ZERO;
+                            BigDecimal modelDecodeTime = BigDecimal.ZERO; // 新增：解压时间统计
+                            long compressedSize = 0;
+    
+                            for (int rep = 0; rep < time_of_repeat; ++rep) {
+                                for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                                    int end = Math.min(numbers.size(), i + CHUNK_SIZE);
+                                    if (end - i <= 2) continue;
+                                    List<String> chunkNumbers = numbers.subList(i, end);
+                                    int decimalMax = 0;
+                                    for (int k = i; k < end; ++k) {
+                                        if (decimalPlaces.get(k) > decimalMax) decimalMax = decimalPlaces.get(k);
+                                    }
+    
+                                    long[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
+                                    long startTime = System.nanoTime();
+    
+                                    int remainder = scaledInts.length % pack_size;
+                                    int padding = (remainder == 0) ? 0 : pack_size - remainder;
+                                    long[] padded = new long[scaledInts.length + padding];
+                                    System.arraycopy(scaledInts, 0, padded, 0, scaledInts.length);
+                                    if (padding > 0) Arrays.fill(padded, scaledInts.length, padded.length, 0L);
+    
+                                    int groups = padded.length / pack_size;
+                                    int[] bitWidths = new int[groups];
+                                    int gidx = 0;
+                                    for (int si = 0; si < padded.length; si += pack_size) {
+                                        long maxInGroup = 0;
+                                        for (int sj = si; sj < si + pack_size; ++sj) {
+                                            long v = padded[sj];
+                                            if (v > maxInGroup) maxInGroup = v;
+                                        }
+                                        int bitWidth = 0;
+                                        if (maxInGroup > 0) {
+                                            bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
+                                        } else {
+                                            bitWidth = 0;
+                                        }
+                                        bitWidths[gidx++] = bitWidth;
+                                    }
+    
+                                    // pass original length (un-padded) so decoder can trim
+                                    List<Integer> bitWidthsList = new ArrayList<>(groups);
+                                    for (int x = 0; x < groups; ++x) bitWidthsList.add(bitWidths[x]);
+    
+                                    PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
+                                    long duration = System.nanoTime() - startTime;
+                                    modelTime = modelTime.add(BigDecimal.valueOf(duration));
+                                    modelCost = modelCost.add(BigDecimal.valueOf(res.compressedData.length * 8L));
+    
+                                    // 新增：测试解压性能
+                                    if (res.compressedData != null) {
+                                        long startDecodeTime = System.nanoTime();
+                                        long[] decompressed = fastDecompress(res.compressedData, bitWidths, pack_size, scaledInts.length);
+                                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                                        modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
+                                    }
+    
+    //                                if (rep == 0) {
+    //                                    compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
+    //                                }
+                                }
+                            }
+    
+                            BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                            modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                            modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                            modelDecodeTime = modelDecodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP); // 平均解压时间
+    
+                            BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                            BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP); // compressed / original bytes
+                            BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000L)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP); // points/s
+                            BigDecimal modelDecodeTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000L)).divide(modelDecodeTime, 10, BigDecimal.ROUND_HALF_UP); // points/s
+    
+                            writer.write(entry.toString() + ",");
+                            writer.write("BP-RL,");
+                            writer.write(modelTime_throughput.toPlainString() + ",");
+                            writer.write(modelDecodeTime_throughput.toPlainString() + ","); // 解压吞吐率
+                            writer.write(String.valueOf(numbers.size()) + ",");
+                            writer.write(modelCost.toPlainString() + ",");
+                            writer.write(String.valueOf(pack_size) + ",");
+                            writer.write(model_ratio.toPlainString() + "\n");
+    
+    //                        System.out.println("Pack Size: " + pack_size);
+    //                        System.out.println("Encoding throughput: " + modelTime_throughput + " points/s");
+    //                        System.out.println("Decoding throughput: " + modelDecodeTime_throughput + " points/s");
+    //                        System.out.println("Compression ratio: " + model_ratio);
+                        }
+                    } catch (IOException e) {
+                        System.err.println("Error writing output file for " + fname);
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Error iterating directory: " + directory);
+            }
+        }
+    
+    
     @Test
     public void TestVarPackSize() {
         String trainCsv = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/processed_data.csv";
@@ -1137,9 +1325,12 @@ public static final class BitReader {
 
         int epochs = 80;
 
+        long startTime = System.nanoTime();
         RLDecisionModel model = new RLDecisionModel();
         model = trainModel(epochs, trainCsv);
-        performanceTest(model, dataDir, outDir);
+        long modelTime = System.nanoTime() - startTime;
+        System.out.println("training time: " +  modelTime);
+        performanceTestVarPackSize(model, dataDir, outDir);
     }
     // ========== performanceTest with variable chunk sizes ==========
     static void performanceTestVariableChunkSize(RLDecisionModel model, String directory, String outputDirStr) {
@@ -1194,7 +1385,7 @@ public static final class BitReader {
                     int time_of_repeat = 50; // Reduced for faster testing with multiple chunk sizes
                     int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
 
-// 分批处理，每1024个元素一批
+                    // 分批处理，每1024个元素一批
                     int batchSize = 1024;
                     List<long[]> batches = new ArrayList<>();
 
@@ -1221,8 +1412,8 @@ public static final class BitReader {
 
                         for (int pack_size_exp = 3; pack_size_exp < 4; pack_size_exp++) {
                             int pack_size = (int) Math.pow(2, pack_size_exp);
-                            long modelCost = 0;
-                            long modelTime = 0;
+                            BigDecimal modelCost = BigDecimal.ZERO;
+                            BigDecimal modelTime = BigDecimal.ZERO;
                             long compressedSize = 0;
 
                             for (int rep = 0; rep < time_of_repeat; ++rep) {
@@ -1273,8 +1464,8 @@ public static final class BitReader {
 
                                     PackingResult res = packOctads(bitWidthsList, model, null, pack_size, padded, scaledInts.length);
                                     long duration = System.nanoTime() - startTime;
-                                    modelTime += duration;
-                                    modelCost += (res.compressedData.length* 8L);
+                                    modelTime = modelTime.add(BigDecimal.valueOf(duration));
+                                    modelCost = modelCost.add(BigDecimal.valueOf(res.compressedData.length * 8L));
 
 //                                    if (rep == 0) {
 //                                        compressedSize += (res.compressedData != null) ? res.compressedData.length : 0;
@@ -1282,19 +1473,21 @@ public static final class BitReader {
                                 }
                             }
 
-                            modelCost /= time_of_repeat;
-                            modelTime /= time_of_repeat;
-                            double model_ratio = (double) modelCost / (double) (numbers.size() * 64); // compressed / original bytes
-                            double modelTime_throughput = (double) (numbers.size() * 1000) / (double) modelTime; // points/ms
+                            BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                            modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                            modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                            BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                            BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP); // compressed / original bytes
+                            BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(1000)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP); // points/ms
 
                             writer.write(String.valueOf(chunkSize/8) + ",");
                             writer.write(entry.toString() + ",");
                             writer.write("BP-RL,");
-                            writer.write(String.valueOf(modelTime_throughput) + ",");
+                            writer.write(modelTime_throughput.toPlainString() + ",");
                             writer.write(String.valueOf(numbers.size()) + ",");
-                            writer.write(String.valueOf(modelCost) + ",");
+                            writer.write(modelCost.toPlainString() + ",");
                             writer.write(String.valueOf(pack_size) + ",");
-                            writer.write(String.valueOf(model_ratio) + "\n");
+                            writer.write(model_ratio.toPlainString() + "\n");
                         }
                     }
                 } catch (IOException e) {
