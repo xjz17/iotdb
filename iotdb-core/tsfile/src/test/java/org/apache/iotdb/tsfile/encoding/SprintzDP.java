@@ -19,7 +19,7 @@ public class SprintzDP {
     private static final List<String> IGNORE_FILES =  Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
             "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv","Disk-usage.csv",
             "City-temp.csv", "Wind-Speed.csv","IR-bio-temp.csv","Air-pressure.csv","Stocks-USA.csv","Stocks-DE.csv",
-            "Bitcoin-price.csv","Bird-migration.csv","Cpu-usage_right.csv","Disk-usage.csv","Mem-usage.csv","SSD-bench.csv");
+            "Bitcoin-price.csv","Bird-migration.csv","Cpu-usage_right.csv","Disk-usage.csv","Mem-usage.csv","SSD-bench.csv","Dew-point-temp.csv");
 
     private static final int CHUNK_SIZE = 1024;
 

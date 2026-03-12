@@ -74,282 +74,9 @@ public class BPApproximate {
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE";
-        File outputDir = new File(outputDirstr);
-
-        if (!outputDir.exists()) outputDir.mkdir();
-        File dir = new File(directory);
-        for (File file : Objects.requireNonNull(dir.listFiles())) {
-
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
-            System.out.println(file.getName());
-            String Output = outputDirstr+"/"+file.getName();
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            // 表头
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Compression Ratio",
-                    "Selected Scheme",
-                    "Average Segment Length",
-                    "Pack Size Used"
-            };
-            writer.writeRecord(head);
-            System.out.println("Processing " + file.getName() + "...");
-
-            // 读取数据
-            List<String> numbers = new ArrayList<>();
-            List<Integer> decimalPlaces = new ArrayList<>();
-            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
-            while (csvReader.readRecord()) {
-                for (String value : csvReader.getValues()) {
-                    String numStr = value.trim();
-                    if (!numStr.isEmpty()) {
-                        numbers.add(numStr);
-                        int decimal = 0;
-                        if (numStr.contains(".")) {
-                            String[] parts = numStr.split("\\.");
-                            decimal = parts[1].length();
-                        }
-                        decimalPlaces.add(decimal);
-                    }
-                }
-            }
-
-            int time_of_repeat = 50;
-
-            long modelCost = 0;
-            long modelTime = 0;
-            long modelDecodeTime = 0;
-            int baselineCount = 0;
-            int rleCount = 0;
-            double avgSegmentLength = 0;
-            int avgPackSizeUsed = 0;
-
-            for(int j = 0; j < time_of_repeat; j++){
-                int totalCost = 0;
-                int totalSegments = 0;
-                int totalPackSizeUsed = 0;
-
-                for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
-                    List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
-                    if(chunkNumbers.size() < 8) continue;
-
-                    int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
-                            .stream().max(Integer::compare).orElse(0);
-
-                    int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
-
-                    long startTime = System.nanoTime();
-
-                    // 使用智能选择方案
-                    CompressionResult compResult = encodeWithSmartSelection(scaledInts, 8);
-                    int curCost = compResult.compressedSize;
-                    totalPackSizeUsed += compResult.packSize;
-
-                    // 统计方案选择
-                    if (compResult.scheme == SCHEME_BASELINE) {
-                        baselineCount++;
-                    } else {
-                        rleCount++;
-
-                        // 获取分段信息
-                        SegmentationResult segResult = getSegmentationInfo(scaledInts, compResult.packSize);
-                        totalSegments += segResult.numSegments;
-                    }
-
-                    long duration = System.nanoTime() - startTime;
-                    modelTime += duration;
-                    modelCost += curCost;
-
-                    // 解码测试
-                    long startDecodeTime = System.nanoTime();
-                    int[] decodedData = decodeWithSmartSelection(compResult.data, scaledInts.length, compResult.packSize);
-                    long decodeDuration = System.nanoTime() - startDecodeTime;
-                    modelDecodeTime += decodeDuration;
-                }
-
-                avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * 8) : 0;
-                avgPackSizeUsed = numbers.size() > 0 ? totalPackSizeUsed / (numbers.size() / CHUNK_SIZE + 1) : 0;
-            }
-
-            // 计算统计结果
-            modelCost /= time_of_repeat;
-            modelTime = modelTime / time_of_repeat;
-            modelDecodeTime = modelDecodeTime / time_of_repeat;
-
-            double model_ratio = (double) modelCost / (double) (numbers.size()*64);
-            double modelTime_throughput = modelTime > 0 ? (double)(numbers.size()*8000L) / (double) (modelTime) : 0;
-            double modelDecodeTime_throughput = modelDecodeTime > 0 ? (double)(numbers.size()*8000L) / (double) (modelDecodeTime) : 0;
-
-            // 确定选择的方案
-            String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
-
-            // 输出结果
-            String[] record = {
-                    file.toString(),
-                    "RLE_Only",
-                    String.valueOf(modelTime_throughput),
-                    String.valueOf(modelDecodeTime_throughput),
-                    String.valueOf(numbers.size()),
-                    String.valueOf(modelCost),
-                    String.valueOf(model_ratio),
-                    selectedScheme,
-                    String.valueOf(avgSegmentLength),
-                    String.valueOf(avgPackSizeUsed)
-            };
-            writer.writeRecord(record);
-            writer.close();
-        }
-    }
-
-    @Test
-    public void TestVarPackSize() throws IOException {
-        System.out.println("\nPerformance Testing with Variable Pack Sizes...");
-        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE_vary_pack_size";
-        File outputDir = new File(outputDirstr);
-
-        if (!outputDir.exists()) outputDir.mkdir();
-        File dir = new File(directory);
-
-        for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
-
-            System.out.println("Processing " + file.getName() + "...");
-            String Output = outputDirstr + "/" + file.getName();
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            // 表头
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Pack Size",
-                    "Compression Ratio",
-                    "Selected Scheme",
-                    "Average Segment Length"
-            };
-            writer.writeRecord(head);
-
-            List<String> numbers = new ArrayList<>();
-            List<Integer> decimalPlaces = new ArrayList<>();
-            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
-
-            while (csvReader.readRecord()) {
-                for (String value : csvReader.getValues()) {
-                    String numStr = value.trim();
-                    if (!numStr.isEmpty()) {
-                        numbers.add(numStr);
-                        int decimal = 0;
-                        if (numStr.contains(".")) {
-                            String[] parts = numStr.split("\\.");
-                            decimal = parts[1].length();
-                        }
-                        decimalPlaces.add(decimal);
-                    }
-                }
-            }
-
-            int time_of_repeat = 10;
-
-            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
-                int pack_size = (int) Math.pow(2, pack_size_exp);
-                System.out.println("Testing pack size: " + pack_size);
-
-                long modelCost = 0;
-                long modelTime = 0;
-                long modelDecodeTime = 0;
-                int baselineCount = 0;
-                int rleCount = 0;
-                double avgSegmentLength = 0;
-
-                for (int j = 0; j < time_of_repeat; j++) {
-                    int totalCost = 0;
-                    int totalSegments = 0;
-
-                    for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
-                        List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
-                        if (chunkNumbers.size() < 8) continue;
-
-                        int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
-                                .stream().max(Integer::compare).orElse(0);
-
-                        int[] scaledInts = scaleNumbers(chunkNumbers, decimalMax);
-
-                        long startTime = System.nanoTime();
-
-                        // 使用智能选择方案
-                        CompressionResult compResult = encodeWithSmartSelection(scaledInts, pack_size);
-                        int cur_cost = compResult.compressedSize;
-
-                        // 统计方案选择
-                        if (compResult.scheme == SCHEME_BASELINE) {
-                            baselineCount++;
-                        } else {
-                            rleCount++;
-
-                            // 获取分段信息
-                            SegmentationResult segResult = getSegmentationInfo(scaledInts, compResult.packSize);
-                            totalSegments += segResult.numSegments;
-                        }
-
-                        long duration = System.nanoTime() - startTime;
-                        modelTime += duration;
-                        modelCost += cur_cost;
-
-                        // 解码测试
-                        long startDecodeTime = System.nanoTime();
-                        int[] decodedData = decodeWithSmartSelection(compResult.data, scaledInts.length, compResult.packSize);
-                        long decodeDuration = System.nanoTime() - startDecodeTime;
-                        modelDecodeTime += decodeDuration;
-                    }
-
-                    avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * pack_size) : 0;
-                }
-
-                modelCost /= time_of_repeat;
-                modelTime = modelTime / time_of_repeat;
-                modelDecodeTime = modelDecodeTime / time_of_repeat;
-
-                double model_ratio = (double) modelCost / (double) (numbers.size() * 64);
-                double modelTime_throughput = modelTime > 0 ? (double) (numbers.size() * 8000) / (double) (modelTime) : 0;
-                double modelDecodeTime_throughput = modelDecodeTime > 0 ? (double) (numbers.size() * 8000) / (double) (modelDecodeTime) : 0;
-
-                // 确定选择的方案
-                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
-
-                String[] record = {
-                        file.toString(),
-                        "RLE_Only",
-                        String.valueOf(modelTime_throughput),
-                        String.valueOf(modelDecodeTime_throughput),
-                        String.valueOf(numbers.size()),
-                        String.valueOf(modelCost),
-                        String.valueOf(pack_size),
-                        String.valueOf(model_ratio),
-                        selectedScheme,
-                        String.valueOf(avgSegmentLength)
-                };
-                writer.writeRecord(record);
-            }
-
-            writer.close();
-        }
-    }
 
     // 智能选择编码方案
-    private static CompressionResult encodeWithSmartSelection(int[] data, int packSize) {
+    private static CompressionResult encodeWithSmartSelection(long[] data, int packSize) {
         // 计算baseline方案的压缩成本
         BaselineCostResult baselineResult = calculateBaselineCost(data);
 
@@ -380,7 +107,7 @@ public class BPApproximate {
     }
 
     // 计算baseline方案的压缩成本，尝试packsize 8和16
-    private static BaselineCostResult calculateBaselineCost(int[] data) {
+    private static BaselineCostResult calculateBaselineCost(long[] data) {
         int bestCost = Integer.MAX_VALUE;
         int bestPackSize = 8;
 
@@ -397,14 +124,14 @@ public class BPApproximate {
             for (int i = 0; i < groupCount; i++) {
                 int startIdx = i * packSize;
                 int endIdx = Math.min(startIdx + packSize, data.length);
-                int maxVal = 0;
+                long maxVal = 0;
 
                 for (int j = startIdx; j < endIdx; j++) {
                     if (data[j] > maxVal) {
                         maxVal = data[j];
                     }
                 }
-                int bitWidth = 32 - Integer.numberOfLeadingZeros(maxVal);
+                int bitWidth = 64 - Long.numberOfLeadingZeros(maxVal);
                 totalBitWidth += bitWidth * (endIdx - startIdx);
             }
 
@@ -420,7 +147,7 @@ public class BPApproximate {
     }
 
     // 计算RLE方案的压缩成本
-    private static int calculateRLECost(int[] data, int packSize) {
+    private static int calculateRLECost(long[] data, int packSize) {
         // 获取分段信息
         SegmentationResult segResult = getSegmentationInfo(data, packSize);
 
@@ -432,7 +159,7 @@ public class BPApproximate {
     }
 
     // baseline编码方案，支持动态packsize
-    private static byte[] encodeWithBaseline(int[] data, int packSize) {
+    private static byte[] encodeWithBaseline(long[] data, int packSize) {
         List<Byte> result = new ArrayList<>();
 
         // 方案标记
@@ -449,14 +176,14 @@ public class BPApproximate {
         for (int i = 0; i < groupCount; i++) {
             int startIdx = i * packSize;
             int endIdx = Math.min(startIdx + packSize, data.length);
-            int maxVal = 0;
+            long maxVal = 0;
 
             for (int j = startIdx; j < endIdx; j++) {
                 if (data[j] > maxVal) {
                     maxVal = data[j];
                 }
             }
-            int bitWidth = 32 - Integer.numberOfLeadingZeros(maxVal);
+            int bitWidth = 64 - Long.numberOfLeadingZeros(maxVal);
             bitWidths.add(bitWidth);
             result.add((byte) bitWidth);
         }
@@ -481,9 +208,9 @@ public class BPApproximate {
             int endIdx = Math.min(startIdx + packSize, data.length);
 
             for (int j = startIdx; j < endIdx; j++) {
-                int value = data[j];
+                long value = data[j];
                 for (int bit = bitWidth - 1; bit >= 0; bit--) {
-                    int currentBit = (value >> bit) & 1;
+                    int currentBit = (int)((value >> bit) & 1);
                     packedData[currentBytePos] |= (currentBit << (7 - currentBitPos));
                     currentBitPos++;
                     if (currentBitPos == 8) {
@@ -509,9 +236,9 @@ public class BPApproximate {
     }
 
     // 智能解码方案
-    private static int[] decodeWithSmartSelection(byte[] encodedData, int originalLength, int packSize) {
+    private static long[] decodeWithSmartSelection(byte[] encodedData, int originalLength, int packSize) {
         if (encodedData.length == 0) {
-            return new int[originalLength];
+            return new long[originalLength];
         }
 
         // 读取方案标记
@@ -525,10 +252,10 @@ public class BPApproximate {
     }
 
     // baseline解码方案，支持动态packsize
-    private static int[] decodeBaseline(byte[] encodedData, int originalLength) {
+    private static long[] decodeBaseline(byte[] encodedData, int originalLength) {
         try {
             if (encodedData.length < 2) {
-                return new int[originalLength];
+                return new long[originalLength];
             }
 
             int pos = 1; // 跳过方案标记
@@ -546,7 +273,7 @@ public class BPApproximate {
                 bitWidths[i] = encodedData[pos++] & 0xFF;
             }
 
-            int[] result = new int[originalLength];
+            long[] result = new long[originalLength];
             int resultIndex = 0;
             int currentBitPos = 0;
 
@@ -555,7 +282,7 @@ public class BPApproximate {
                 int valuesInGroup = Math.min(packSize, originalLength - resultIndex);
 
                 for (int i = 0; i < valuesInGroup && resultIndex < originalLength; i++) {
-                    int value = 0;
+                    long value = 0;
 
                     for (int bit = 0; bit < bitWidth; bit++) {
                         if (pos >= encodedData.length) {
@@ -580,33 +307,33 @@ public class BPApproximate {
         } catch (Exception e) {
             System.err.println("baseline解码异常: " + e.getMessage());
             e.printStackTrace();
-            return new int[originalLength];
+            return new long[originalLength];
         }
     }
 
     // 获取分段信息
-    private static SegmentationResult getSegmentationInfo(int[] data, int packSize) {
+    private static SegmentationResult getSegmentationInfo(long[] data, int packSize) {
         int groupCount = data.length / packSize;
         int[] bitWidths = new int[groupCount];
 
         for (int i = 0; i < groupCount; i++) {
-            int maxInGroup = 0;
+            long maxInGroup = 0;
             int startIdx = i * packSize;
             for (int j = 0; j < packSize; j++) {
                 if (data[startIdx + j] > maxInGroup) {
                     maxInGroup = data[startIdx + j];
                 }
             }
-            int bitWidth = 32 - Integer.numberOfLeadingZeros(maxInGroup);
+            int bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
             bitWidths[i] = bitWidth;
         }
 
         List<Segment> segments = computeRLESegmentation(bitWidths, packSize);
-        return new SegmentationResult(segments, data.length * 32); // 原始大小为每个值32位
+        return new SegmentationResult(segments, data.length * 64); // 原始大小为每个值64位
     }
 
     // RLE编码方案
-    public static byte[] encodeWithRLE(int[] data, int packSize) {
+    public static byte[] encodeWithRLE(long[] data, int packSize) {
         List<Byte> result = new ArrayList<>();
 
         // 添加方案标记
@@ -617,7 +344,7 @@ public class BPApproximate {
         int remainder = actual_length % packSize;
         if (remainder != 0) {
             int paddingLength = packSize - remainder;
-            int[] paddedArray = new int[actual_length + paddingLength];
+            long[] paddedArray = new long[actual_length + paddingLength];
             System.arraycopy(data, 0, paddedArray, 0, actual_length);
             data = paddedArray;
             actual_length = paddedArray.length;
@@ -628,14 +355,14 @@ public class BPApproximate {
 
         // 计算每个组的bitwidth
         for (int i = 0; i < groupCount; i++) {
-            int maxInGroup = 0;
+            long maxInGroup = 0;
             int startIdx = i * packSize;
             for (int j = 0; j < packSize; j++) {
                 if (data[startIdx + j] > maxInGroup) {
                     maxInGroup = data[startIdx + j];
                 }
             }
-            int bitWidth = 32 - Integer.numberOfLeadingZeros(maxInGroup);
+            int bitWidth = 64 - Long.numberOfLeadingZeros(maxInGroup);
             bitWidths[i] = bitWidth;
         }
 
@@ -660,12 +387,12 @@ public class BPApproximate {
         for (Segment segment : segments) {
             for (int g = 0; g < segment.length; g++) {
                 int startIndex = groupIndex * packSize;
-                ArrayList<Integer> groupData = new ArrayList<>();
+                ArrayList<Long> groupData = new ArrayList<>();
                 for (int j = 0; j < packSize; j++) {
                     if (startIndex + j < data.length) {
                         groupData.add(data[startIndex + j]);
                     } else {
-                        groupData.add(0);
+                        groupData.add(0L);
                     }
                 }
                 encodePos = bitPacking(groupData, 0, segment.bitWidth, encodePos, bitPackedData);
@@ -749,7 +476,7 @@ public class BPApproximate {
     }
 
     // RLE解码方案
-    public static int[] decodeRLE(byte[] encodedData, int originalLength, int packSize) {
+    public static long[] decodeRLE(byte[] encodedData, int originalLength, int packSize) {
         try {
             // 跳过方案标记（第一个字节）
             int startPos = 1;
@@ -757,11 +484,11 @@ public class BPApproximate {
             // 解码段列表
             List<Segment> segments = decodeSegments(encodedData, startPos);
             if (segments.isEmpty()) {
-                return new int[originalLength];
+                return new long[originalLength];
             }
 
             int pos = startPos + 2 + segments.size() * 2; // 每个段2字节
-            int[] result = new int[originalLength];
+            long[] result = new long[originalLength];
             int resultIndex = 0;
             int currentBitPos = 0;
 
@@ -772,7 +499,7 @@ public class BPApproximate {
                 int valuesToRead = Math.min(totalValues, originalLength - resultIndex);
 
                 for (int i = 0; i < valuesToRead && resultIndex < originalLength; i++) {
-                    int value = 0;
+                    long value = 0;
 
                     for (int bit = 0; bit < segment.bitWidth; bit++) {
                         if (pos >= encodedData.length) {
@@ -810,7 +537,7 @@ public class BPApproximate {
             return result;
         } catch (Exception e) {
             System.err.println("解码异常: " + e.getMessage());
-            return new int[originalLength];
+            return new long[originalLength];
         }
     }
 
@@ -876,17 +603,17 @@ public class BPApproximate {
         return segments;
     }
 
-    // Bit-packing方法
-    public static int bitPacking(ArrayList<Integer> numbers, int start, int bit_width, int encode_pos,
+    // Bit-packing方法 - 处理long值
+    public static int bitPacking(ArrayList<Long> numbers, int start, int bit_width, int encode_pos,
                                  byte[] encoded_result) {
         int totalCount = numbers.size() - start;
         int currentBytePos = encode_pos;
         int currentBitPos = 0;
 
         for (int i = 0; i < totalCount; i++) {
-            int value = numbers.get(start + i);
+            long value = numbers.get(start + i);
             for (int bit = bit_width - 1; bit >= 0; bit--) {
-                int currentBit = (value >> bit) & 1;
+                int currentBit = (int)((value >> bit) & 1);
                 encoded_result[currentBytePos] |= (currentBit << (7 - currentBitPos));
                 currentBitPos++;
                 if (currentBitPos == 8) {
@@ -898,38 +625,490 @@ public class BPApproximate {
         return currentBytePos;
     }
 
-    // 数字缩放方法
-    private static int[] scaleNumbers(List<String> numbers, int decimalMax) {
+    // 缩放方法 - 返回long数组
+    private static long[] scaleNumbers(List<String> numbers, int decimalMax) {
+        // 1. 预先计算缩放因子
         BigDecimal scale = BigDecimal.TEN.pow(decimalMax);
         int size = numbers.size();
-        int[] result = new int[size];
+        long[] result = new long[size];
 
-        if (size == 0) return result;
-
-        BigDecimal min = null;
-        BigDecimal[] scaledValues = new BigDecimal[size];
-
-        for (int i = 0; i < size; i++) {
-            BigDecimal val = new BigDecimal(numbers.get(i)).multiply(scale);
-            scaledValues[i] = val;
-            if (min == null || val.compareTo(min) < 0) {
-                min = val;
-            }
+        if (size == 0) {
+            return result;
         }
 
-        BigDecimal first = scaledValues[0].subtract(min);
-        result[0] = first.toBigInteger().intValue();
-
-        for (int i = 1; i < size; i++) {
-            BigDecimal current = scaledValues[i].subtract(min);
-            result[i] = current.toBigInteger().intValue();
+        // 2. 直接缩放所有数值
+        for (int i = 0; i < size; i++) {
+            // 缩放并转换为long
+            BigDecimal scaledVal = new BigDecimal(numbers.get(i)).multiply(scale);
+            result[i] = scaledVal.longValue();
         }
 
         return result;
     }
 
+
+    // 注意：以下这些方法原本就处理long，所以不需要修改
+    public static long[] zigzag(long[] numbers) {
+        if (numbers == null || numbers.length == 0) {
+            return new long[0];
+        }
+
+        long[] result = new long[numbers.length];
+
+        for (int i = 0; i < numbers.length; i++) {
+            // ZigZag编码
+            result[i] = (numbers[i] << 1) ^ (numbers[i] >> 31);
+        }
+
+        return result;
+    }
+
+    public static long[] zigzagDecode(long[] encodedData) {
+        if (encodedData == null || encodedData.length == 0) {
+            return new long[0];
+        }
+
+        long[] result = new long[encodedData.length+1];
+
+        for (int i = 0; i < encodedData.length; i++) {
+            // ZigZag解码
+            long zigzag = encodedData[i];
+            result[i] = (zigzag >>> 1) ^ -(zigzag & 1);
+        }
+
+        return result;
+    }
+
+    // 封装结果类
+    public static class SprintzEncodedResult {
+        private final long[] encodedData;  // 编码后的数据
+        private final long firstValue;     // 第一个原始值
+
+        public SprintzEncodedResult(long[] encodedData, long firstValue) {
+            this.encodedData = encodedData;
+            this.firstValue = firstValue;
+        }
+
+        public long[] getEncodedData() {
+            return encodedData;
+        }
+
+        public long getFirstValue() {
+            return firstValue;
+        }
+
+
+        @Override
+        public String toString() {
+            return String.format("EncodedResult{firstValue=%d, minDiff=%d, encodedData=%s}",
+                    firstValue, java.util.Arrays.toString(encodedData));
+        }
+    }
+
+    public static SprintzEncodedResult sprintz(long[] numbers) {
+        if (numbers == null || numbers.length == 0) {
+            return new SprintzEncodedResult(new long[0],  0);
+        }
+
+        long[] result = new long[numbers.length];
+
+        for (int i = 1; i < numbers.length; i++) {
+            long diff = numbers[i] - numbers[i-1];
+            // ZigZag编码
+            result[i-1] = (diff << 1) ^ (diff >> 31);
+        }
+
+        return new SprintzEncodedResult(result, numbers[0]);
+    }
+
+    public static long[] sprintzDecode(long[] encodedData, long firstValue) {
+        if (encodedData == null || encodedData.length == 0) {
+            return new long[0];
+        }
+
+        long[] result = new long[encodedData.length+1];
+        result[0] = firstValue;
+
+        for (int i = 0; i < encodedData.length; i++) {
+            // ZigZag解码
+            long zigzag = encodedData[i];
+            long diff = (zigzag >>> 1) ^ -(zigzag & 1);
+            result[i+1] = result[i] + diff;
+        }
+
+        return result;
+    }
+
+    // 封装结果类
+    public static class TSDIFFEncodedResult {
+        private final long[] encodedData;  // 编码后的数据
+        private final long firstValue;     // 第一个原始值
+        private final long minDiff;        // 最小差分值
+
+        public TSDIFFEncodedResult(long[] encodedData, long firstValue, long minDiff) {
+            this.encodedData = encodedData;
+            this.firstValue = firstValue;
+            this.minDiff = minDiff;
+        }
+
+        public long[] getEncodedData() {
+            return encodedData;
+        }
+
+        public long getFirstValue() {
+            return firstValue;
+        }
+
+        public long getMinDiff() {
+            return minDiff;
+        }
+
+
+        @Override
+        public String toString() {
+            return String.format("EncodedResult{firstValue=%d, minDiff=%d, encodedData=%s}",
+                    firstValue, java.util.Arrays.toString(encodedData));
+        }
+    }
+
+    public static TSDIFFEncodedResult ts2diff(long[] numbers) {
+        if (numbers == null || numbers.length == 0) {
+            return new TSDIFFEncodedResult(new long[0],0,0);
+        }
+
+        long[] result = new long[numbers.length];
+
+        // 第一个值保持不变
+        long firstValue = numbers[0];
+        result[0] = numbers[0];
+
+        // 计算差分并找到最小差分
+        long minDiff = Long.MAX_VALUE;
+        long[] diffs = new long[numbers.length - 1];
+
+        for (int i = 1; i < numbers.length; i++) {
+            long diff = numbers[i] - numbers[i - 1];
+            diffs[i - 1] = diff;
+
+            if (diff < minDiff) {
+                minDiff = diff;
+            }
+        }
+
+        // 如果数组长度大于1，处理差分值
+        if (numbers.length > 1) {
+            // 使用最小差分进行归一化处理
+            for (int i = 1; i < numbers.length; i++) {
+                long normalizedDiff = diffs[i - 1] - minDiff;
+                // ZigZag编码
+                result[i] = (normalizedDiff << 1) ^ (normalizedDiff >> 31);
+            }
+        }
+
+        return new TSDIFFEncodedResult(result, firstValue, minDiff);
+    }
+
+    public static long[] ts2diffDecode(long[] result, long firstValue, long minDiff) {
+        if (result == null || result.length == 0) {
+            return new long[0];
+        }
+
+        long[] numbers = new long[result.length];
+        numbers[0] = firstValue;
+
+        for (int i = 1; i < result.length; i++) {
+            // ZigZag解码
+            long n = result[i];
+            long normalizedDiff = (n >>> 1) ^ -(n & 1);
+
+            // 还原原始差分
+            long diff = normalizedDiff + minDiff;
+
+            // 累加得到原始值
+            numbers[i] = numbers[i - 1] + diff;
+        }
+
+        return numbers;
+    }
+
+
     @Test
-    public void TestVariableChunkSize() throws IOException {
+    public void BPApproximate() throws IOException {
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println(file.getName());
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+            System.out.println("Processing " + file.getName() + "...");
+
+            // 读取数据
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            long modelCost = 0;
+            long modelTime = 0;
+            long modelDecodeTime = 0;
+            int baselineCount = 0;
+            int rleCount = 0;
+            double avgSegmentLength = 0;
+            int avgPackSizeUsed = 0;
+
+            for(int j = 0; j < time_of_repeat; j++){
+                int totalCost = 0;
+                int totalSegments = 0;
+                int totalPackSizeUsed = 0;
+
+                for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                    List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                    if(chunkNumbers.size() < 8) continue;
+
+                    int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                            .stream().max(Integer::compare).orElse(0);
+
+                    long[] scaledLongs = scaleNumbers(chunkNumbers, decimalMax);
+
+                    long startTime = System.nanoTime();
+
+                    // 使用智能选择方案
+                    CompressionResult compResult = encodeWithSmartSelection(scaledLongs, 8);
+                    int curCost = compResult.compressedSize;
+                    totalPackSizeUsed += compResult.packSize;
+
+                    // 统计方案选择
+                    if (compResult.scheme == SCHEME_BASELINE) {
+                        baselineCount++;
+                    } else {
+                        rleCount++;
+
+                        // 获取分段信息
+                        SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                        totalSegments += segResult.numSegments;
+                    }
+
+                    long duration = System.nanoTime() - startTime;
+                    modelTime += duration;
+                    modelCost += curCost;
+
+                    // 解码测试
+                    long startDecodeTime = System.nanoTime();
+                    long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                    long decodeDuration = System.nanoTime() - startDecodeTime;
+                    modelDecodeTime += decodeDuration;
+                }
+
+                avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * 8) : 0;
+                avgPackSizeUsed = numbers.size() > 0 ? totalPackSizeUsed / (numbers.size() / CHUNK_SIZE + 1) : 0;
+            }
+
+            // 计算统计结果
+            modelCost /= time_of_repeat;
+            modelTime = modelTime / time_of_repeat;
+            modelDecodeTime = modelDecodeTime / time_of_repeat;
+
+            double model_ratio = (double) modelCost / (double) (numbers.size()*64);
+            double modelTime_throughput = modelTime > 0 ? (double)(numbers.size()*8000L) / (double) (modelTime) : 0;
+            double modelDecodeTime_throughput = modelDecodeTime > 0 ? (double)(numbers.size()*8000L) / (double) (modelDecodeTime) : 0;
+
+            // 确定选择的方案
+            String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+            // 输出结果
+            String[] record = {
+                    file.toString(),
+                    "RLE_Only",
+                    String.valueOf(modelTime_throughput),
+                    String.valueOf(modelDecodeTime_throughput),
+                    String.valueOf(numbers.size()),
+                    String.valueOf(modelCost),
+                    String.valueOf(model_ratio),
+                    selectedScheme,
+                    String.valueOf(avgSegmentLength),
+                    String.valueOf(avgPackSizeUsed)
+            };
+            writer.writeRecord(record);
+            writer.close();
+        }
+    }
+
+    @Test
+    public void BPVarPackSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Pack Sizes...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE_vary_pack_size";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+
+            System.out.println("Processing " + file.getName() + "...");
+            String Output = outputDirstr + "/" + file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Pack Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+                int pack_size = (int) Math.pow(2, pack_size_exp);
+                System.out.println("Testing pack size: " + pack_size);
+
+                long modelCost = 0;
+                long modelTime = 0;
+                long modelDecodeTime = 0;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+
+                    for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                        List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                        if (chunkNumbers.size() < 8) continue;
+
+                        int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                                .stream().max(Integer::compare).orElse(0);
+
+                        long[] scaledLongs = scaleNumbers(chunkNumbers, decimalMax);
+
+                        long startTime = System.nanoTime();
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(scaledLongs, pack_size);
+                        int cur_cost = compResult.compressedSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        modelTime += duration;
+                        modelCost += cur_cost;
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        modelDecodeTime += decodeDuration;
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * pack_size) : 0;
+                }
+
+                modelCost /= time_of_repeat;
+                modelTime = modelTime / time_of_repeat;
+                modelDecodeTime = modelDecodeTime / time_of_repeat;
+
+                double model_ratio = (double) modelCost / (double) (numbers.size() * 64);
+                double modelTime_throughput = modelTime > 0 ? (double) (numbers.size() * 8000) / (double) (modelTime) : 0;
+                double modelDecodeTime_throughput = modelDecodeTime > 0 ? (double) (numbers.size() * 8000) / (double) (modelDecodeTime) : 0;
+
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                String[] record = {
+                        file.toString(),
+                        "RLE_Only",
+                        String.valueOf(modelTime_throughput),
+                        String.valueOf(modelDecodeTime_throughput),
+                        String.valueOf(numbers.size()),
+                        String.valueOf(modelCost),
+                        String.valueOf(pack_size),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength)
+                };
+                writer.writeRecord(record);
+            }
+
+            writer.close();
+        }
+    }
+
+    @Test
+    public void BPVarChunkSize() throws IOException {
         System.out.println("\nPerformance Testing with Variable Chunk Sizes (RLE)...");
         String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRLE_vary_m";
@@ -986,22 +1165,22 @@ public class BPApproximate {
 
             // 分批处理，每1024个元素一批进行scaling
             int batchSize = 1024;
-            List<int[]> batches = new ArrayList<>();
+            List<long[]> batches = new ArrayList<>();
 
             for (int i = 0; i < numbers.size(); i += batchSize) {
                 int end = Math.min(numbers.size(), i + batchSize);
                 List<String> batch = numbers.subList(i, end);
-                int[] scaledBatch = scaleNumbers(batch, decimalMax);
+                long[] scaledBatch = scaleNumbers(batch, decimalMax);
                 batches.add(scaledBatch);
             }
 
             // 计算总长度并拼接所有批次的结果
             int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
-            int[] scaledInts_all = new int[totalLength];
+            long[] scaledLongs_all = new long[totalLength];
 
             int currentIndex = 0;
-            for (int[] batch : batches) {
-                System.arraycopy(batch, 0, scaledInts_all, currentIndex, batch.length);
+            for (long[] batch : batches) {
+                System.arraycopy(batch, 0, scaledLongs_all, currentIndex, batch.length);
                 currentIndex += batch.length;
             }
 
@@ -1025,10 +1204,10 @@ public class BPApproximate {
                     int totalSegments = 0;
                     int totalPackSizeUsed = 0;
 
-                    for (int i = 0; i < scaledInts_all.length; i += chunkSize) {
-                        int end = Math.min(i + chunkSize, scaledInts_all.length);
-                        int[] chunkData = new int[end - i];
-                        System.arraycopy(scaledInts_all, i, chunkData, 0, end - i);
+                    for (int i = 0; i < scaledLongs_all.length; i += chunkSize) {
+                        int end = Math.min(i + chunkSize, scaledLongs_all.length);
+                        long[] chunkData = new long[end - i];
+                        System.arraycopy(scaledLongs_all, i, chunkData, 0, end - i);
 
                         if (chunkData.length < 8) continue;
 
@@ -1056,13 +1235,13 @@ public class BPApproximate {
 
                         // 解码测试
                         long startDecodeTime = System.nanoTime();
-                        int[] decodedData = decodeWithSmartSelection(compResult.data, chunkData.length, compResult.packSize);
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, chunkData.length, compResult.packSize);
                         long decodeDuration = System.nanoTime() - startDecodeTime;
                         modelDecodeTime += decodeDuration;
                     }
 
-                    avgSegmentLength = totalSegments > 0 ? (double) scaledInts_all.length / (totalSegments * pack_size) : 0;
-                    avgPackSizeUsed = scaledInts_all.length > 0 ? totalPackSizeUsed / ((scaledInts_all.length / chunkSize) + 1) : 0;
+                    avgSegmentLength = totalSegments > 0 ? (double) scaledLongs_all.length / (totalSegments * pack_size) : 0;
+                    avgPackSizeUsed = scaledLongs_all.length > 0 ? totalPackSizeUsed / ((scaledLongs_all.length / chunkSize) + 1) : 0;
                 }
 
                 // 计算平均值
@@ -1071,9 +1250,9 @@ public class BPApproximate {
                 modelDecodeTime = modelDecodeTime / time_of_repeat;
 
                 // 计算压缩比和吞吐量
-                double model_ratio = (double) modelCost / (double) (scaledInts_all.length * 32); // 每个原始值32位
-                double modelTime_throughput = modelTime > 0 ? (double) (scaledInts_all.length * 1000000L) / (double) modelTime : 0; // points/ms
-                double modelDecodeTime_throughput = modelDecodeTime > 0 ? (double) (scaledInts_all.length * 1000000L) / (double) modelDecodeTime : 0;
+                double model_ratio = (double) modelCost / (double) (scaledLongs_all.length * 64); // 每个原始值64位
+                double modelTime_throughput = modelTime > 0 ? (double) (scaledLongs_all.length * 8000L) / (double) modelTime : 0; // points/ms
+                double modelDecodeTime_throughput = modelDecodeTime > 0 ? (double) (scaledLongs_all.length * 8000L) / (double) modelDecodeTime : 0;
 
                 // 确定选择的方案
                 String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
@@ -1085,7 +1264,7 @@ public class BPApproximate {
                         "RLE_Only",
                         String.valueOf(modelTime_throughput),
                         String.valueOf(modelDecodeTime_throughput),
-                        String.valueOf(scaledInts_all.length),
+                        String.valueOf(scaledLongs_all.length),
                         String.valueOf(modelCost),
                         String.valueOf(model_ratio),
                         selectedScheme,
@@ -1097,65 +1276,1484 @@ public class BPApproximate {
             writer.close();
         }
     }
-//
-//    // 在类中添加这个方法，用于计算Baseline方案的压缩成本
-//    private static BaselineCostResult calculateBaselineCost(int[] data) {
-//        int bestCost = Integer.MAX_VALUE;
-//        int bestPackSize = 8;
-//
-//        // 尝试packsize 8和16
-//        for (int packSize : new int[]{8, 16}) {
-//            int groupCount = (data.length + packSize - 1) / packSize;
-//
-//            // baseline成本包括：方案标记(8bits) + packsize标记(8bits) + 每个组的位宽(每个组8bits) + 数据位
-//            int headerCost = 16; // 2字节 = 16bits (方案标记和packsize标记)
-//            int groupHeadersCost = groupCount * 8; // 每个组一个字节存储位宽
-//
-//            // 计算每个组的位宽和
-//            int totalBitWidth = 0;
-//            for (int i = 0; i < groupCount; i++) {
-//                int startIdx = i * packSize;
-//                int endIdx = Math.min(startIdx + packSize, data.length);
-//                int maxVal = 0;
-//
-//                for (int j = startIdx; j < endIdx; j++) {
-//                    if (data[j] > maxVal) {
-//                        maxVal = data[j];
-//                    }
-//                }
-//                int bitWidth = 32 - Integer.numberOfLeadingZeros(maxVal);
-//                totalBitWidth += bitWidth * (endIdx - startIdx);
-//            }
-//
-//            int currentCost = headerCost + groupHeadersCost + totalBitWidth;
-//
-//            if (currentCost < bestCost) {
-//                bestCost = currentCost;
-//                bestPackSize = packSize;
-//            }
-//        }
-//
-//        return new BaselineCostResult(bestCost, bestPackSize);
-//    }
-//
-//    // 在类中添加这个方法，用于获取分段信息
-//    private static SegmentationResult getSegmentationInfo(int[] data, int packSize) {
-//        int groupCount = data.length / packSize;
-//        int[] bitWidths = new int[groupCount];
-//
-//        for (int i = 0; i < groupCount; i++) {
-//            int maxInGroup = 0;
-//            int startIdx = i * packSize;
-//            for (int j = 0; j < packSize; j++) {
-//                if (data[startIdx + j] > maxInGroup) {
-//                    maxInGroup = data[startIdx + j];
-//                }
-//            }
-//            int bitWidth = 32 - Integer.numberOfLeadingZeros(maxInGroup);
-//            bitWidths[i] = bitWidth;
-//        }
-//
-//        List<Segment> segments = computeRLESegmentation(bitWidths, packSize);
-//        return new SegmentationResult(segments, data.length * 32); // 原始大小为每个值32位
-//    }
+
+    @Test
+    public void ZigzagApproximate() throws IOException {
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_Zigzag";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println(file.getName());
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+            System.out.println("Processing " + file.getName() + "...");
+
+            // 读取数据
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            BigDecimal modelCost = BigDecimal.ZERO;
+            BigDecimal encodeTime = BigDecimal.ZERO;
+            BigDecimal decodeTime = BigDecimal.ZERO;
+            int baselineCount = 0;
+            int rleCount = 0;
+            double avgSegmentLength = 0;
+            int avgPackSizeUsed = 0;
+
+            for(int j = 0; j < time_of_repeat; j++){
+                int totalCost = 0;
+                int totalSegments = 0;
+                int totalPackSizeUsed = 0;
+
+                for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                    List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                    if(chunkNumbers.size() < 8) continue;
+
+                    int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                            .stream().max(Integer::compare).orElse(0);
+
+                    long[] scaledLong = scaleNumbers(chunkNumbers, decimalMax);
+
+                    long startTime = System.nanoTime();
+                    long[] scaledLongs = zigzag(scaledLong);
+
+                    // 使用智能选择方案
+                    CompressionResult compResult = encodeWithSmartSelection(scaledLongs, 8);
+                    long curCost = compResult.compressedSize;
+                    totalPackSizeUsed += compResult.packSize;
+
+                    // 统计方案选择
+                    if (compResult.scheme == SCHEME_BASELINE) {
+                        baselineCount++;
+                    } else {
+                        rleCount++;
+
+                        // 获取分段信息
+                        SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                        totalSegments += segResult.numSegments;
+                    }
+
+                    long duration = System.nanoTime() - startTime;
+//                    modelTime += duration;
+//                    modelCost += curCost;
+                    encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                    modelCost = modelCost.add(BigDecimal.valueOf(curCost));
+                    // 解码测试
+                    long startDecodeTime = System.nanoTime();
+                    long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                    long[] result = zigzagDecode(decodedData);
+                    long decodeDuration = System.nanoTime() - startDecodeTime;
+                    decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+//                    modelDecodeTime += decodeDuration;
+                }
+
+                avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * 8) : 0;
+                avgPackSizeUsed = !numbers.isEmpty() ? totalPackSizeUsed / (numbers.size() / CHUNK_SIZE + 1) : 0;
+            }
+
+            // 计算统计结果
+            BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+            modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+            encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+            decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+            BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+            BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+            // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+            // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+            BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+            BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+            BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                    .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+            // 计算解码吞吐量
+            BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+            BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                    .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+            // 确定选择的方案
+            String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+            // 输出结果
+            String[] record = {
+                    file.toString(),
+                    "RLE_Only",
+                    String.valueOf(encodeThroughput.doubleValue()),
+                    String.valueOf(decodeThroughput.doubleValue()),
+                    String.valueOf(numbers.size()),
+                    String.valueOf(modelCost),
+                    String.valueOf(model_ratio.doubleValue()),
+                    selectedScheme,
+                    String.valueOf(avgSegmentLength),
+                    String.valueOf(avgPackSizeUsed)
+            };
+            writer.writeRecord(record);
+            writer.close();
+        }
+    }
+
+
+    @Test
+    public void ZigzagVarPackSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Pack Sizes...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_Zigzag_vary_pack_size";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+
+            System.out.println("Processing " + file.getName() + "...");
+            String Output = outputDirstr + "/" + file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Pack Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+                int pack_size = (int) Math.pow(2, pack_size_exp);
+                System.out.println("Testing pack size: " + pack_size);
+
+                BigDecimal modelCost = BigDecimal.ZERO;
+                BigDecimal encodeTime = BigDecimal.ZERO;
+                BigDecimal decodeTime = BigDecimal.ZERO;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+
+                    for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                        List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                        if (chunkNumbers.size() < 8) continue;
+
+                        int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                                .stream().max(Integer::compare).orElse(0);
+
+                        long[] scaledLong = scaleNumbers(chunkNumbers, decimalMax);
+
+                        long startTime = System.nanoTime();
+                        long[] scaledLongs = zigzag(scaledLong);
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(scaledLongs, pack_size);
+                        int cur_cost = compResult.compressedSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                        modelCost = modelCost.add(BigDecimal.valueOf(cur_cost));
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                        long[] result = zigzagDecode(decodedData);
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * pack_size) : 0;
+                }
+
+                // 计算统计结果
+                BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+                BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+                // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+                // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+                BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+                BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+                // 计算解码吞吐量
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                String[] record = {
+                        file.toString(),
+                        "RLE_Only",
+                        String.valueOf(encodeThroughput.doubleValue()),
+                        String.valueOf(decodeThroughput.doubleValue()),
+                        String.valueOf(numbers.size()),
+                        String.valueOf(modelCost),
+                        String.valueOf(pack_size),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength)
+                };
+                writer.writeRecord(record);
+            }
+
+            writer.close();
+        }
+    }
+
+    @Test
+    public void ZigzagVarChunkSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Chunk Sizes (RLE)...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_Zigzag_vary_m";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        // 定义要测试的chunk sizes (m*8 where m is 16, 32, 64, 128, 256, 512, 1024)
+        int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "m",
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10; // 减少重复次数以加快测试速度
+            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+            // 分批处理，每1024个元素一批进行scaling
+            int batchSize = 1024;
+            List<long[]> batches = new ArrayList<>();
+
+            for (int i = 0; i < numbers.size(); i += batchSize) {
+                int end = Math.min(numbers.size(), i + batchSize);
+                List<String> batch = numbers.subList(i, end);
+                long[] scaledBatch = scaleNumbers(batch, decimalMax);
+                batches.add(scaledBatch);
+            }
+
+            // 计算总长度并拼接所有批次的结果
+            int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+            long[] scaledLongs_all = new long[totalLength];
+
+            int currentIndex = 0;
+            for (long[] batch : batches) {
+                System.arraycopy(batch, 0, scaledLongs_all, currentIndex, batch.length);
+                currentIndex += batch.length;
+            }
+
+            // 测试每个chunk size
+            for (int chunkSize : chunkSizes) {
+                System.out.println("Testing chunk size: " + chunkSize);
+
+                // 固定pack size为8
+                int pack_size = 8;
+
+                BigDecimal modelCost = BigDecimal.ZERO;
+                BigDecimal encodeTime = BigDecimal.ZERO;
+                BigDecimal decodeTime = BigDecimal.ZERO;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+                int avgPackSizeUsed = 0;
+
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+                    int totalPackSizeUsed = 0;
+
+                    for (int i = 0; i < scaledLongs_all.length; i += chunkSize) {
+                        int end = Math.min(i + chunkSize, scaledLongs_all.length);
+                        long[] scaleInt = new long[end - i];
+                        System.arraycopy(scaledLongs_all, i, scaleInt, 0, end - i);
+
+                        if (scaleInt.length < 8) continue;
+
+                        long startTime = System.nanoTime();
+                        long[] chunkData = zigzag(scaleInt);
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(chunkData, pack_size);
+                        int curCost = compResult.compressedSize;
+                        totalPackSizeUsed += compResult.packSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(chunkData, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                        modelCost = modelCost.add(BigDecimal.valueOf(curCost));
+
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, chunkData.length, compResult.packSize);
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double) scaledLongs_all.length / (totalSegments * pack_size) : 0;
+                    avgPackSizeUsed = scaledLongs_all.length > 0 ? totalPackSizeUsed / ((scaledLongs_all.length / chunkSize) + 1) : 0;
+                }
+
+                // 计算平均值
+                BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+                BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+                // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+                // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+                BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+                BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+                // 计算解码吞吐量
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                // 写入结果
+                String[] record = {
+                        String.valueOf(chunkSize),
+                        file.toString(),
+                        "RLE_Zigzag",
+                        String.valueOf(encodeThroughput.doubleValue()),
+                        String.valueOf(decodeThroughput.doubleValue()),
+                        String.valueOf(scaledLongs_all.length),
+                        String.valueOf(modelCost),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength),
+                        String.valueOf(avgPackSizeUsed)
+                };
+                writer.writeRecord(record);
+            }
+            writer.close();
+        }
+    }
+
+    @Test
+    public void SprintzApproximate() throws IOException {
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_Sprintz";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println(file.getName());
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+            System.out.println("Processing " + file.getName() + "...");
+
+            // 读取数据
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            BigDecimal modelCost = BigDecimal.ZERO;
+            BigDecimal encodeTime = BigDecimal.ZERO;
+            BigDecimal decodeTime = BigDecimal.ZERO;
+            int baselineCount = 0;
+            int rleCount = 0;
+            double avgSegmentLength = 0;
+            int avgPackSizeUsed = 0;
+
+            for(int j = 0; j < time_of_repeat; j++){
+                int totalCost = 0;
+                int totalSegments = 0;
+                int totalPackSizeUsed = 0;
+
+                for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                    List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                    if(chunkNumbers.size() < 8) continue;
+
+                    int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                            .stream().max(Integer::compare).orElse(0);
+
+                    long[] scaledLong = scaleNumbers(chunkNumbers, decimalMax);
+
+                    long startTime = System.nanoTime();
+                    SprintzEncodedResult ser = sprintz(scaledLong);
+                    long[] scaledLongs = ser.getEncodedData();
+
+                    // 使用智能选择方案
+                    CompressionResult compResult = encodeWithSmartSelection(scaledLongs, 8);
+                    long curCost = compResult.compressedSize;
+                    totalPackSizeUsed += compResult.packSize;
+
+                    // 统计方案选择
+                    if (compResult.scheme == SCHEME_BASELINE) {
+                        baselineCount++;
+                    } else {
+                        rleCount++;
+
+                        // 获取分段信息
+                        SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                        totalSegments += segResult.numSegments;
+                    }
+
+                    long duration = System.nanoTime() - startTime;
+//                    modelTime += duration;
+//                    modelCost += curCost;
+                    encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                    modelCost = modelCost.add(BigDecimal.valueOf(curCost));
+                    // 解码测试
+                    long startDecodeTime = System.nanoTime();
+                    long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                    long[] result = sprintzDecode(decodedData,ser.getFirstValue());
+                    long decodeDuration = System.nanoTime() - startDecodeTime;
+                    decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+//                    modelDecodeTime += decodeDuration;
+                }
+
+                avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * 8) : 0;
+                avgPackSizeUsed = !numbers.isEmpty() ? totalPackSizeUsed / (numbers.size() / CHUNK_SIZE + 1) : 0;
+            }
+
+            // 计算统计结果
+            BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+            modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+            encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+            decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+            BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+            BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+            // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+            // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+            BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+            BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+            BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                    .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+            // 计算解码吞吐量
+            BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+            BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                    .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+            // 确定选择的方案
+            String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+            // 输出结果
+            String[] record = {
+                    file.toString(),
+                    "RLE_Sprintz",
+                    String.valueOf(encodeThroughput.doubleValue()),
+                    String.valueOf(decodeThroughput.doubleValue()),
+                    String.valueOf(numbers.size()),
+                    String.valueOf(modelCost),
+                    String.valueOf(model_ratio.doubleValue()),
+                    selectedScheme,
+                    String.valueOf(avgSegmentLength),
+                    String.valueOf(avgPackSizeUsed)
+            };
+            writer.writeRecord(record);
+            writer.close();
+        }
+    }
+
+
+    @Test
+    public void SprintzVarPackSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Pack Sizes...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_Sprintz_vary_pack_size";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+
+            System.out.println("Processing " + file.getName() + "...");
+            String Output = outputDirstr + "/" + file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Pack Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+                int pack_size = (int) Math.pow(2, pack_size_exp);
+                System.out.println("Testing pack size: " + pack_size);
+
+                BigDecimal modelCost = BigDecimal.ZERO;
+                BigDecimal encodeTime = BigDecimal.ZERO;
+                BigDecimal decodeTime = BigDecimal.ZERO;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+
+                    for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                        List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                        if (chunkNumbers.size() < 8) continue;
+
+                        int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                                .stream().max(Integer::compare).orElse(0);
+
+                        long[] scaledLong = scaleNumbers(chunkNumbers, decimalMax);
+
+                        long startTime = System.nanoTime();
+                        SprintzEncodedResult ser = sprintz(scaledLong);
+                        long[] scaledLongs = ser.getEncodedData();
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(scaledLongs, pack_size);
+                        int cur_cost = compResult.compressedSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                        modelCost = modelCost.add(BigDecimal.valueOf(cur_cost));
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                        long[] result = sprintzDecode(decodedData,ser.getFirstValue());
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * pack_size) : 0;
+                }
+
+                // 计算统计结果
+                BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+                BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+                // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+                // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+                BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+                BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+                // 计算解码吞吐量
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                String[] record = {
+                        file.toString(),
+                        "RLE_Only",
+                        String.valueOf(encodeThroughput.doubleValue()),
+                        String.valueOf(decodeThroughput.doubleValue()),
+                        String.valueOf(numbers.size()),
+                        String.valueOf(modelCost),
+                        String.valueOf(pack_size),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength)
+                };
+                writer.writeRecord(record);
+            }
+
+            writer.close();
+        }
+    }
+
+    @Test
+    public void SprintzVarChunkSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Chunk Sizes (RLE)...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_Sprintz_vary_m";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        // 定义要测试的chunk sizes (m*8 where m is 16, 32, 64, 128, 256, 512, 1024)
+        int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "m",
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10; // 减少重复次数以加快测试速度
+            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+            // 分批处理，每1024个元素一批进行scaling
+            int batchSize = 1024;
+            List<long[]> batches = new ArrayList<>();
+
+            for (int i = 0; i < numbers.size(); i += batchSize) {
+                int end = Math.min(numbers.size(), i + batchSize);
+                List<String> batch = numbers.subList(i, end);
+                long[] scaledBatch = scaleNumbers(batch, decimalMax);
+                batches.add(scaledBatch);
+            }
+
+            // 计算总长度并拼接所有批次的结果
+            int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+            long[] scaledLongs_all = new long[totalLength];
+
+            int currentIndex = 0;
+            for (long[] batch : batches) {
+                System.arraycopy(batch, 0, scaledLongs_all, currentIndex, batch.length);
+                currentIndex += batch.length;
+            }
+
+            // 测试每个chunk size
+            for (int chunkSize : chunkSizes) {
+                System.out.println("Testing chunk size: " + chunkSize);
+
+                // 固定pack size为8
+                int pack_size = 8;
+
+                BigDecimal modelCost = BigDecimal.ZERO;
+                BigDecimal encodeTime = BigDecimal.ZERO;
+                BigDecimal decodeTime = BigDecimal.ZERO;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+                int avgPackSizeUsed = 0;
+
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+                    int totalPackSizeUsed = 0;
+
+                    for (int i = 0; i < scaledLongs_all.length; i += chunkSize) {
+                        int end = Math.min(i + chunkSize, scaledLongs_all.length);
+                        long[] scaleInt = new long[end - i];
+                        System.arraycopy(scaledLongs_all, i, scaleInt, 0, end - i);
+
+                        if (scaleInt.length < 8) continue;
+
+                        long startTime = System.nanoTime();
+                        SprintzEncodedResult ser = sprintz(scaleInt);
+                        long[] chunkData = ser.getEncodedData();
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(chunkData, pack_size);
+                        int curCost = compResult.compressedSize;
+                        totalPackSizeUsed += compResult.packSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(chunkData, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                        modelCost = modelCost.add(BigDecimal.valueOf(curCost));
+
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, chunkData.length, compResult.packSize);
+                        long[] result = sprintzDecode(decodedData,ser.getFirstValue());
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double) scaledLongs_all.length / (totalSegments * pack_size) : 0;
+                    avgPackSizeUsed = scaledLongs_all.length > 0 ? totalPackSizeUsed / ((scaledLongs_all.length / chunkSize) + 1) : 0;
+                }
+
+                // 计算平均值
+                BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+                BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+                // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+                // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+                BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+                BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+                // 计算解码吞吐量
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                // 写入结果
+                String[] record = {
+                        String.valueOf(chunkSize),
+                        file.toString(),
+                        "RLE_Sprintz",
+                        String.valueOf(encodeThroughput.doubleValue()),
+                        String.valueOf(decodeThroughput.doubleValue()),
+                        String.valueOf(scaledLongs_all.length),
+                        String.valueOf(modelCost),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength),
+                        String.valueOf(avgPackSizeUsed)
+                };
+                writer.writeRecord(record);
+            }
+            writer.close();
+        }
+    }
+
+    @Test
+    public void TS2DIFFApproximate() throws IOException {
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_TS2DIFF";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println(file.getName());
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+            System.out.println("Processing " + file.getName() + "...");
+
+            // 读取数据
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            BigDecimal modelCost = BigDecimal.ZERO;
+            BigDecimal encodeTime = BigDecimal.ZERO;
+            BigDecimal decodeTime = BigDecimal.ZERO;
+            int baselineCount = 0;
+            int rleCount = 0;
+            double avgSegmentLength = 0;
+            int avgPackSizeUsed = 0;
+
+            for(int j = 0; j < time_of_repeat; j++){
+                int totalCost = 0;
+                int totalSegments = 0;
+                int totalPackSizeUsed = 0;
+
+                for (int i = 0; i < numbers.size(); i += CHUNK_SIZE) {
+                    List<String> chunkNumbers = numbers.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()));
+                    if(chunkNumbers.size() < 8) continue;
+
+                    int decimalMax = decimalPlaces.subList(i, Math.min(i + CHUNK_SIZE, numbers.size()))
+                            .stream().max(Integer::compare).orElse(0);
+
+                    long[] scaledLong = scaleNumbers(chunkNumbers, decimalMax);
+
+                    long startTime = System.nanoTime();
+                    TSDIFFEncodedResult ter = ts2diff(scaledLong);
+                    long[] scaledLongs = ter.getEncodedData();
+
+                    // 使用智能选择方案
+                    CompressionResult compResult = encodeWithSmartSelection(scaledLongs, 8);
+                    long curCost = compResult.compressedSize;
+                    totalPackSizeUsed += compResult.packSize;
+
+                    // 统计方案选择
+                    if (compResult.scheme == SCHEME_BASELINE) {
+                        baselineCount++;
+                    } else {
+                        rleCount++;
+
+                        // 获取分段信息
+                        SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                        totalSegments += segResult.numSegments;
+                    }
+
+                    long duration = System.nanoTime() - startTime;
+//                    modelTime += duration;
+//                    modelCost += curCost;
+                    encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                    modelCost = modelCost.add(BigDecimal.valueOf(curCost));
+                    // 解码测试
+                    long startDecodeTime = System.nanoTime();
+                    long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                    long[] result = ts2diffDecode(decodedData,ter.getFirstValue(),ter.getMinDiff());
+                    long decodeDuration = System.nanoTime() - startDecodeTime;
+                    decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+//                    modelDecodeTime += decodeDuration;
+                }
+
+                avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * 8) : 0;
+                avgPackSizeUsed = !numbers.isEmpty() ? totalPackSizeUsed / (numbers.size() / CHUNK_SIZE + 1) : 0;
+            }
+
+            // 计算统计结果
+            BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+            modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+            encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+            decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+            BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+            BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+            // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+            // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+            BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+            BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+            BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                    .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+            // 计算解码吞吐量
+            BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+            BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                    .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+            // 确定选择的方案
+            String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+            // 输出结果
+            String[] record = {
+                    file.toString(),
+                    "RLE_Sprintz",
+                    String.valueOf(encodeThroughput.doubleValue()),
+                    String.valueOf(decodeThroughput.doubleValue()),
+                    String.valueOf(numbers.size()),
+                    String.valueOf(modelCost),
+                    String.valueOf(model_ratio.doubleValue()),
+                    selectedScheme,
+                    String.valueOf(avgSegmentLength),
+                    String.valueOf(avgPackSizeUsed)
+            };
+            writer.writeRecord(record);
+            writer.close();
+        }
+    }
+
+    @Test
+    public void TS2DIFFVarPackSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Pack Sizes...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_TS2DIFF_vary_pack_size";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+
+            System.out.println("Processing " + file.getName() + "...");
+            String Output = outputDirstr + "/" + file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            // 表头
+            String[] head = {
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Pack Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10;
+
+            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+                int pack_size = (int) Math.pow(2, pack_size_exp);
+                System.out.println("Testing pack size: " + pack_size);
+
+                BigDecimal modelCost = BigDecimal.ZERO;
+                BigDecimal encodeTime = BigDecimal.ZERO;
+                BigDecimal decodeTime = BigDecimal.ZERO;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+                    int chunksize = CHUNK_SIZE+1;
+
+                    for (int i = 0; i < numbers.size(); i += chunksize) {
+                        List<String> chunkNumbers = numbers.subList(i, Math.min(i + chunksize, numbers.size()));
+                        if (chunkNumbers.size() < 8) continue;
+
+                        int decimalMax = decimalPlaces.subList(i, Math.min(i + chunksize, numbers.size()))
+                                .stream().max(Integer::compare).orElse(0);
+
+                        long[] scaledLong = scaleNumbers(chunkNumbers, decimalMax);
+
+                        long startTime = System.nanoTime();
+                        TSDIFFEncodedResult ter = ts2diff(scaledLong);
+                        long[] scaledLongs = ter.getEncodedData();
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(scaledLongs, pack_size);
+                        int cur_cost = compResult.compressedSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(scaledLongs, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                        modelCost = modelCost.add(BigDecimal.valueOf(cur_cost));
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, scaledLongs.length, compResult.packSize);
+                        long[] result = ts2diffDecode(decodedData,ter.getFirstValue(),ter.getMinDiff());
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double)numbers.size() / (totalSegments * pack_size) : 0;
+                }
+
+                // 计算统计结果
+                BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+                BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+                // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+                // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+                BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+                BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+                // 计算解码吞吐量
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                String[] record = {
+                        file.toString(),
+                        "RLE_Only",
+                        String.valueOf(encodeThroughput.doubleValue()),
+                        String.valueOf(decodeThroughput.doubleValue()),
+                        String.valueOf(numbers.size()),
+                        String.valueOf(modelCost),
+                        String.valueOf(pack_size),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength)
+                };
+                writer.writeRecord(record);
+            }
+
+            writer.close();
+        }
+    }
+
+    @Test
+    public void TS2DIFFVarChunkSize() throws IOException {
+        System.out.println("\nPerformance Testing with Variable Chunk Sizes (RLE)...");
+        String directory = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
+        String outputDirstr = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RLE_TS2DIFF_vary_m";
+        File outputDir = new File(outputDirstr);
+
+        if (!outputDir.exists()) outputDir.mkdir();
+        File dir = new File(directory);
+
+        // 定义要测试的chunk sizes (m*8 where m is 16, 32, 64, 128, 256, 512, 1024)
+        int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
+
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
+
+            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
+            String Output = outputDirstr+"/"+file.getName();
+            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+            String[] head = {
+                    "m",
+                    "Input Direction",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio",
+                    "Selected Scheme",
+                    "Average Segment Length",
+                    "Pack Size Used"
+            };
+            writer.writeRecord(head);
+
+            List<String> numbers = new ArrayList<>();
+            List<Integer> decimalPlaces = new ArrayList<>();
+            CsvReader csvReader = new CsvReader(file.getPath(), ',', StandardCharsets.UTF_8);
+            while (csvReader.readRecord()) {
+                for (String value : csvReader.getValues()) {
+                    String numStr = value.trim();
+                    if (!numStr.isEmpty()) {
+                        numbers.add(numStr);
+                        int decimal = 0;
+                        if (numStr.contains(".")) {
+                            String[] parts = numStr.split("\\.");
+                            decimal = parts[1].length();
+                        }
+                        decimalPlaces.add(decimal);
+                    }
+                }
+            }
+
+            int time_of_repeat = 10; // 减少重复次数以加快测试速度
+            int decimalMax = decimalPlaces.stream().max(Integer::compare).orElse(0);
+
+            // 分批处理，每1024个元素一批进行scaling
+            int batchSize = 1024;
+            List<long[]> batches = new ArrayList<>();
+
+            for (int i = 0; i < numbers.size(); i += batchSize) {
+                int end = Math.min(numbers.size(), i + batchSize);
+                List<String> batch = numbers.subList(i, end);
+                long[] scaledBatch = scaleNumbers(batch, decimalMax);
+                batches.add(scaledBatch);
+            }
+
+            // 计算总长度并拼接所有批次的结果
+            int totalLength = batches.stream().mapToInt(arr -> arr.length).sum();
+            long[] scaledLongs_all = new long[totalLength];
+
+            int currentIndex = 0;
+            for (long[] batch : batches) {
+                System.arraycopy(batch, 0, scaledLongs_all, currentIndex, batch.length);
+                currentIndex += batch.length;
+            }
+
+            // 测试每个chunk size
+            for (int chunkSize : chunkSizes) {
+                System.out.println("Testing chunk size: " + chunkSize);
+
+                // 固定pack size为8
+                int pack_size = 8;
+
+                BigDecimal modelCost = BigDecimal.ZERO;
+                BigDecimal encodeTime = BigDecimal.ZERO;
+                BigDecimal decodeTime = BigDecimal.ZERO;
+                int baselineCount = 0;
+                int rleCount = 0;
+                double avgSegmentLength = 0;
+                int avgPackSizeUsed = 0;
+                chunkSize += 1;
+                for (int j = 0; j < time_of_repeat; j++) {
+                    int totalCost = 0;
+                    int totalSegments = 0;
+                    int totalPackSizeUsed = 0;
+
+
+                    for (int i = 0; i < scaledLongs_all.length; i += chunkSize) {
+                        int end = Math.min(i + chunkSize, scaledLongs_all.length);
+                        long[] scaleInt = new long[end - i];
+                        System.arraycopy(scaledLongs_all, i, scaleInt, 0, end - i);
+
+                        if (scaleInt.length < 8) continue;
+
+                        long startTime = System.nanoTime();
+                        TSDIFFEncodedResult ter = ts2diff(scaleInt);
+                        long[] chunkData = ter.getEncodedData();
+
+                        // 使用智能选择方案
+                        CompressionResult compResult = encodeWithSmartSelection(chunkData, pack_size);
+                        int curCost = compResult.compressedSize;
+                        totalPackSizeUsed += compResult.packSize;
+
+                        // 统计方案选择
+                        if (compResult.scheme == SCHEME_BASELINE) {
+                            baselineCount++;
+                        } else {
+                            rleCount++;
+
+                            // 获取分段信息
+                            SegmentationResult segResult = getSegmentationInfo(chunkData, compResult.packSize);
+                            totalSegments += segResult.numSegments;
+                        }
+
+                        long duration = System.nanoTime() - startTime;
+                        encodeTime = encodeTime.add(BigDecimal.valueOf(duration));
+                        modelCost = modelCost.add(BigDecimal.valueOf(curCost));
+
+
+                        // 解码测试
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decodeWithSmartSelection(compResult.data, chunkData.length, compResult.packSize);
+                        long[] result = ts2diffDecode(decodedData,ter.getFirstValue(),ter.getMinDiff());
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
+                    }
+
+                    avgSegmentLength = totalSegments > 0 ? (double) scaledLongs_all.length / (totalSegments * pack_size) : 0;
+                    avgPackSizeUsed = scaledLongs_all.length > 0 ? totalPackSizeUsed / ((scaledLongs_all.length / chunkSize) + 1) : 0;
+                }
+
+                // 计算平均值
+                BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
+                modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+
+                BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
+                BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
+
+                // 计算编码吞吐量 (MB/s): 数据量(bytes) / 时间(s)
+                // 原始数据大小: numbers.size() * 8 bytes (因为long是8字节)
+                BigDecimal originalSizeBytes = numbersSizeBD.multiply(BigDecimal.valueOf(8));
+                BigDecimal encodeTimeSeconds = encodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+
+                // 计算解码吞吐量
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP); // 转换为MB/s
+                // 确定选择的方案
+                String selectedScheme = baselineCount > rleCount ? "BASELINE" : "RLE";
+
+                // 写入结果
+                String[] record = {
+                        String.valueOf(chunkSize-1),
+                        file.toString(),
+                        "RLE_Sprintz",
+                        String.valueOf(encodeThroughput.doubleValue()),
+                        String.valueOf(decodeThroughput.doubleValue()),
+                        String.valueOf(scaledLongs_all.length),
+                        String.valueOf(modelCost),
+                        String.valueOf(model_ratio),
+                        selectedScheme,
+                        String.valueOf(avgSegmentLength),
+                        String.valueOf(avgPackSizeUsed)
+                };
+                writer.writeRecord(record);
+            }
+            writer.close();
+        }
+    }
+
 }
