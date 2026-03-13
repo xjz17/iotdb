@@ -572,17 +572,20 @@ public class ALPTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/encoding-subcolumn/";
 
-        String input_parent_dir = parent_dir + "dataset/";
+        // String input_parent_dir = parent_dir + "dataset/";
+        String input_parent_dir = parent_dir + "ElfTestData_camel/";
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "alp_long.csv";
+        // String outputPath = output_parent_dir + "alp_long.csv";
+        String outputPath = output_parent_dir + "alp_long2_repeat50.csv";
 
         int block_size = 1024;
 
-        int repeatTime = 500;
+        int repeatTime = 50;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');

@@ -16,7 +16,7 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class BUFFDoubleTest {
+public class BUFFDouble2Test {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -26,290 +26,117 @@ public class BUFFDoubleTest {
         return 64 - Long.numberOfLeadingZeros(value);
     }
 
-    public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
-        int cnt = pos & 0x07;
-        int index = pos >> 3;
-        while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
-            width -= m;
-            int mask = 1 << (8 - cnt);
-            cnt += m;
-            byte y = (byte) (srcNum >>> width);
-            y = (byte) (y << (8 - cnt));
-            mask = ~(mask - (1 << (8 - cnt)));
-            result[index] = (byte) (result[index] & mask | y);
-            srcNum = srcNum & ~(-1 << width);
-            if (cnt == 8) {
-                index++;
-                cnt = 0;
+    // 逐位写入整数到字节数组
+    public static void writeBits(int srcNum, byte[] result, int bitPos, int width) {
+        for (int i = 0; i < width; i++) {
+            int bit = (srcNum >> (width - 1 - i)) & 1;
+            int byteIndex = bitPos / 8;
+            int bitOffset = 7 - (bitPos % 8); // 从最高位开始
+            
+            if (bit == 1) {
+                result[byteIndex] |= (1 << bitOffset);
+            } else {
+                result[byteIndex] &= ~(1 << bitOffset);
             }
+            bitPos++;
         }
     }
 
-    public static int bytesToInt(byte[] result, int pos, int width) {
+    // 从字节数组逐位读取整数
+    public static int readBits(byte[] result, int bitPos, int width) {
         int ret = 0;
-        int cnt = pos & 0x07;
-        int index = pos >> 3;
-        while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
-            width -= m;
-            ret = ret << m;
-            byte y = (byte) (result[index] & (0xff >> cnt));
-            y = (byte) ((y & 0xff) >>> (8 - cnt - m));
-            ret = ret | (y & 0xff);
-            cnt += m;
-            if (cnt == 8) {
-                cnt = 0;
-                index++;
-            }
+        for (int i = 0; i < width; i++) {
+            int byteIndex = bitPos / 8;
+            int bitOffset = 7 - (bitPos % 8);
+            int bit = (result[byteIndex] >> bitOffset) & 1;
+            ret = (ret << 1) | bit;
+            bitPos++;
         }
         return ret;
     }
 
-    public static void longToBytes(long srcNum, byte[] result, int pos, int width) {
-        int cnt = pos & 0x07;
-        int index = pos >> 3;
-
-        while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
-            width -= m;
-            int mask = 1 << (8 - cnt);
-            cnt += m;
-            byte y = (byte) (srcNum >>> width);
-            y = (byte) (y << (8 - cnt));
-            mask = ~(mask - (1 << (8 - cnt)));
-            result[index] = (byte) (result[index] & mask | y);
-            srcNum = srcNum & ~(-1L << width);
-            if (cnt == 8) {
-                index++;
-                cnt = 0;
+    // 逐位写入长整数到字节数组
+    public static void writeBits(long srcNum, byte[] result, int bitPos, int width) {
+        for (int i = 0; i < width; i++) {
+            long bit = (srcNum >> (width - 1 - i)) & 1L;
+            int byteIndex = bitPos / 8;
+            int bitOffset = 7 - (bitPos % 8); // 从最高位开始
+            
+            if (bit == 1) {
+                result[byteIndex] |= (1 << bitOffset);
+            } else {
+                result[byteIndex] &= ~(1 << bitOffset);
             }
+            bitPos++;
         }
     }
 
-    public static long bytesToLong(byte[] result, int pos, int width) {
+    // 从字节数组逐位读取长整数
+    public static long readBitsLong(byte[] result, int bitPos, int width) {
         long ret = 0;
-        int cnt = pos & 0x07;
-        int index = pos >> 3;
-        while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
-            width -= m;
-            ret = ret << m;
-            byte y = (byte) (result[index] & (0xff >> cnt));
-            y = (byte) ((y & 0xff) >>> (8 - cnt - m));
-            ret = ret | (y & 0xff);
-            cnt += m;
-            if (cnt == 8) {
-                cnt = 0;
-                index++;
-            }
+        for (int i = 0; i < width; i++) {
+            int byteIndex = bitPos / 8;
+            int bitOffset = 7 - (bitPos % 8);
+            long bit = (result[byteIndex] >> bitOffset) & 1L;
+            ret = (ret << 1) | bit;
+            bitPos++;
         }
         return ret;
     }
 
-    public static void pack8Values(int[] values, int offset, int width, int encode_pos,
-            byte[] encoded_result) {
-        int bufIdx = 0;
-        int valueIdx = offset;
-        int leftBit = 0;
-
-        while (valueIdx < 8 + offset) {
-            int buffer = 0;
-            int leftSize = 32;
-
-            if (leftBit > 0) {
-                buffer |= (values[valueIdx] << (32 - leftBit));
-                leftSize -= leftBit;
-                leftBit = 0;
-                valueIdx++;
-            }
-
-            while (leftSize >= width && valueIdx < 8 + offset) {
-                buffer |= (values[valueIdx] << (leftSize - width));
-                leftSize -= width;
-                valueIdx++;
-            }
-
-            if (leftSize > 0 && valueIdx < 8 + offset) {
-                buffer |= (values[valueIdx] >>> (width - leftSize));
-                leftBit = width - leftSize;
-            }
-
-            for (int j = 0; j < 4; j++) {
-                encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
-                encode_pos++;
-                bufIdx++;
-                if (bufIdx >= width) {
-                    return;
-                }
-            }
-        }
-
-    }
-
-    public static void pack8Values(
-            long[] values, int offset, int width, int encode_pos, byte[] encoded_result) {
-        int bufIdx = 0;
-        int valueIdx = offset;
-        int leftBit = 0;
-
-        while (valueIdx < 8 + offset) {
-            long buffer = 0;
-            int leftSize = 64;
-
-            if (leftBit > 0) {
-                buffer |= (values[valueIdx] << (64 - leftBit));
-                leftSize -= leftBit;
-                leftBit = 0;
-                valueIdx++;
-            }
-
-            while (leftSize >= width && valueIdx < 8 + offset) {
-                buffer |= (values[valueIdx] << (leftSize - width));
-                leftSize -= width;
-                valueIdx++;
-            }
-            if (leftSize > 0 && valueIdx < 8 + offset) {
-                buffer |= (values[valueIdx] >>> (width - leftSize));
-                leftBit = width - leftSize;
-            }
-
-            for (int j = 0; j < 8; j++) {
-                encoded_result[encode_pos] = (byte) ((buffer >>> ((8 - j - 1) * 8)) & 0xFF);
-                encode_pos++;
-                bufIdx++;
-                if (bufIdx >= width * 8 / 8) {
-                    return;
-                }
-            }
-        }
-    }
-
-    public static void unpack8Values(byte[] encoded, int offset, int width, int[] result_list, int result_offset) {
-        int byteIdx = offset;
-        long buffer = 0;
-        int totalBits = 0;
-        int valueIdx = 0;
-
-        while (valueIdx < 8) {
-            while (totalBits < width) {
-                buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
-                byteIdx++;
-                totalBits += 8;
-            }
-
-            while (totalBits >= width && valueIdx < 8) {
-                result_list[result_offset + valueIdx] = (int) (buffer >>> (totalBits - width));
-                valueIdx++;
-                totalBits -= width;
-                buffer = buffer & ((1L << totalBits) - 1);
-            }
-        }
-    }
-
-    public static void unpack8Values(
-            byte[] encoded, int offset, int width, long[] result_list, int result_offset) {
-        int byteIdx = offset;
-        long buffer = 0;
-        int totalBits = 0;
-        int valueIdx = 0;
-
-        while (valueIdx < 8) {
-            while (totalBits < width) {
-                buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
-                byteIdx++;
-                totalBits += 8;
-            }
-
-            while (totalBits >= width && valueIdx < 8) {
-                result_list[result_offset + valueIdx] = buffer >>> (totalBits - width);
-                valueIdx++;
-                totalBits -= width;
-                buffer = buffer & ((1L << totalBits) - 1);
-            }
-        }
-    }
-
-    public static int bitPacking(int[] numbers, int bit_width, int encode_pos,
+    // 逐位打包整数数组
+    public static int bitPacking(int[] numbers, int bit_width, int startBitPos,
             byte[] encoded_result, int num_values) {
-        int block_num = num_values / 8;
-        int remainder = num_values % 8;
-
-        for (int i = 0; i < block_num; i++) {
-            pack8Values(numbers, i * 8, bit_width, encode_pos, encoded_result);
-            encode_pos += bit_width;
+        int currentBitPos = startBitPos;
+        
+        for (int i = 0; i < num_values; i++) {
+            writeBits(numbers[i], encoded_result, currentBitPos, bit_width);
+            currentBitPos += bit_width;
         }
-
-        encode_pos *= 8;
-
-        for (int i = 0; i < remainder; i++) {
-            intToBytes(numbers[block_num * 8 + i], encoded_result, encode_pos, bit_width);
-            encode_pos += bit_width;
-        }
-
-        return (encode_pos + 7) / 8;
+        
+        return (currentBitPos + 7) / 8; // 返回字节位置
     }
 
-    public static int bitPacking(long[] numbers, int bit_width, int encode_pos,
+    // 逐位打包长整数数组
+    public static int bitPacking(long[] numbers, int bit_width, int startBitPos,
             byte[] encoded_result, int num_values) {
-        int block_num = num_values / 8;
-        int remainder = num_values % 8;
-
-        for (int i = 0; i < block_num; i++) {
-            pack8Values(numbers, i * 8, bit_width, encode_pos, encoded_result);
-            encode_pos += bit_width;
+        int currentBitPos = startBitPos;
+        
+        for (int i = 0; i < num_values; i++) {
+            writeBits(numbers[i], encoded_result, currentBitPos, bit_width);
+            currentBitPos += bit_width;
         }
-
-        encode_pos *= 8;
-
-        for (int i = 0; i < remainder; i++) {
-            longToBytes(numbers[block_num * 8 + i], encoded_result, encode_pos, bit_width);
-            encode_pos += bit_width;
-        }
-
-        return (encode_pos + 7) / 8;
+        
+        return (currentBitPos + 7) / 8; // 返回字节位置
     }
 
+    // 逐位解包整数数组
     public static int decodeBitPacking(
-            byte[] encoded, int decode_pos, int bit_width, int num_values, int[] result_list) {
-        int block_num = num_values / 8;
-        int remainder = num_values % 8;
-
-        for (int i = 0; i < block_num; i++) {
-            unpack8Values(encoded, decode_pos, bit_width, result_list, i * 8);
-            decode_pos += bit_width;
+            byte[] encoded, int startBitPos, int bit_width, int num_values, int[] result_list) {
+        int currentBitPos = startBitPos;
+        
+        for (int i = 0; i < num_values; i++) {
+            result_list[i] = readBits(encoded, currentBitPos, bit_width);
+            currentBitPos += bit_width;
         }
-
-        decode_pos *= 8;
-
-        for (int i = 0; i < remainder; i++) {
-            result_list[block_num * 8 + i] = bytesToInt(encoded, decode_pos, bit_width);
-            decode_pos += bit_width;
-        }
-
-        return (decode_pos + 7) / 8;
+        
+        return (currentBitPos + 7) / 8; // 返回字节位置
     }
 
+    // 逐位解包长整数数组
     public static int decodeBitPacking(
-            byte[] encoded, int decode_pos, int bit_width, int num_values, long[] result_list) {
-        int block_num = num_values / 8;
-        int remainder = num_values % 8;
-
-        for (int i = 0; i < block_num; i++) {
-            unpack8Values(encoded, decode_pos, bit_width, result_list, i * 8);
-            decode_pos += bit_width;
+            byte[] encoded, int startBitPos, int bit_width, int num_values, long[] result_list) {
+        int currentBitPos = startBitPos;
+        
+        for (int i = 0; i < num_values; i++) {
+            result_list[i] = readBitsLong(encoded, currentBitPos, bit_width);
+            currentBitPos += bit_width;
         }
-
-        decode_pos *= 8;
-
-        for (int i = 0; i < remainder; i++) {
-            result_list[block_num * 8 + i] = bytesToLong(encoded, decode_pos, bit_width);
-            decode_pos += bit_width;
-        }
-
-        return (decode_pos + 7) / 8;
+        
+        return (currentBitPos + 7) / 8; // 返回字节位置
     }
 
+    // 辅助函数：将整数写入字节数组（字节对齐）
     public static void int2Bytes(int integer, int encode_pos, byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
         cur_byte[encode_pos + 1] = (byte) (integer >> 16);
@@ -317,10 +144,7 @@ public class BUFFDoubleTest {
         cur_byte[encode_pos + 3] = (byte) (integer);
     }
 
-    public static void intByte2Bytes(int integer, int encode_pos, byte[] cur_byte) {
-        cur_byte[encode_pos] = (byte) (integer);
-    }
-
+    // 辅助函数：将长整数写入字节数组（字节对齐）
     public static void long2Bytes(long integer, int encode_pos, byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 56);
         cur_byte[encode_pos + 1] = (byte) (integer >> 48);
@@ -332,9 +156,9 @@ public class BUFFDoubleTest {
         cur_byte[encode_pos + 7] = (byte) (integer);
     }
 
+    // 从字节数组读取整数
     public static int bytes2Integer(byte[] encoded, int start, int num) {
         int value = 0;
-
         for (int i = 0; i < num; i++) {
             value <<= 8;
             int b = encoded[i + start] & 0xFF;
@@ -343,9 +167,9 @@ public class BUFFDoubleTest {
         return value;
     }
 
+    // 从字节数组读取长整数
     public static long bytes2Long(byte[] encoded, int start, int num) {
         long value = 0;
-
         for (int i = 0; i < num; i++) {
             value <<= 8;
             int b = encoded[i + start] & 0xFF;
@@ -354,10 +178,12 @@ public class BUFFDoubleTest {
         return value;
     }
 
+    // 不同精度下小数部分所需的位数
     public static int[] bits_needed = { 0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35,
         38, 41, 45, 48, 51, 55, 58
     };
 
+    // 块编码器
     public static int BlockEncoder(double[] data, int block_index, int block_size, int remainder, int max_decimal,
             int encode_pos, byte[] encoded_result) {
 
@@ -368,29 +194,31 @@ public class BUFFDoubleTest {
         long min_integer_part = Long.MAX_VALUE;
         long max_integer_part = Long.MIN_VALUE;
 
+        // 提取每个双精度值的符号、整数部分和小数部分
         for (int i = 0; i < remainder; i++) {
             double value = data[block_index * block_size + i];
 
+            // 符号位
             if (value < 0) {
                 sign_bits[i] = 1;
             }
 
+            // 整数部分
             long currentInt = (long) Math.abs(value);
             integer_parts[i] = currentInt;
 
+            // 更新最小和最大整数部分
             if (currentInt < min_integer_part) {
                 min_integer_part = currentInt;
             }
-
             if (currentInt > max_integer_part) {
                 max_integer_part = currentInt;
             }
 
+            // 提取小数部分
             long bits = Double.doubleToLongBits(value);
-
             long exponent = (bits >> 52) & 0x7FF;
             long mantissa = bits & (long) ((1L << 52) - 1);
-
             long actualExponent = exponent - 1023;
 
             if (actualExponent >= 0) {
@@ -401,7 +229,6 @@ public class BUFFDoubleTest {
             }
 
             long shift = 52 - actualExponent - bits_needed[max_decimal];
-
             if (shift < 0) {
                 mantissa <<= -shift;
             } else {
@@ -415,116 +242,120 @@ public class BUFFDoubleTest {
             decimal_parts[i] = mantissa;
         }
 
+        // 写入最小整数部分（8字节）
         long2Bytes(min_integer_part, encode_pos, encoded_result);
         encode_pos += 8;
 
+        // 计算整数部分所需的位数并写入
         int bw = bitWidth(max_integer_part - min_integer_part);
-
         encoded_result[encode_pos] = (byte) bw;
         encode_pos += 1;
 
+        // 对整数部分进行差分编码
         for (int i = 0; i < remainder; i++) {
             integer_parts[i] -= min_integer_part;
         }
 
+        // 计算总位宽
         int totalBitWidth = 1 + bw + bits_needed[max_decimal];
 
-        int intArrayCount = (totalBitWidth + 7) / 8;
-
-        long[][] combinedArrays = new long[intArrayCount][remainder];
-
-        for (int i = 0; i < intArrayCount; i++) {
-            for (int j = 0; j < remainder; j++) {
-                long combined = (sign_bits[j] << (bw + bits_needed[max_decimal]))
-                        | (integer_parts[j] << bits_needed[max_decimal]) | decimal_parts[j];
-                combinedArrays[i][j] = ((combined >> (i * 8)) & 0xFF);
-            }
+        // 为每个值分配一个长整数数组来存储组合位
+        long[] combinedValues = new long[remainder];
+        
+        // 将符号位、整数部分和小数部分组合成一个长整数
+        for (int i = 0; i < remainder; i++) {
+            long combined = (sign_bits[i] << (bw + bits_needed[max_decimal]))
+                    | (integer_parts[i] << bits_needed[max_decimal]) | decimal_parts[i];
+            combinedValues[i] = combined;
         }
 
-        for (int i = 0; i < intArrayCount; i++) {
-            int currentBitWidth = Math.min(8, totalBitWidth - i * 8);
-            encode_pos = bitPacking(combinedArrays[i], currentBitWidth, encode_pos, encoded_result, remainder);
-        }
-
+        // 使用逐位打包方式编码组合值
+        int bitPos = encode_pos * 8; // 转换为位位置
+        encode_pos = bitPacking(combinedValues, totalBitWidth, bitPos, encoded_result, remainder);
+        
         return encode_pos;
     }
 
+    // 块解码器
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
             int max_decimal, int encode_pos, double[] data) {
 
-        long[] sign_bits = new long[remainder];
-        long[] integer_parts = new long[remainder];
-        long[] decimal_parts = new long[remainder];
-
+        // 读取最小整数部分
         long min_integer_part = bytes2Long(encoded_result, encode_pos, 8);
         encode_pos += 8;
 
-        int bw = encoded_result[encode_pos];
+        // 读取整数部分位宽
+        int bw = encoded_result[encode_pos] & 0xFF;
         encode_pos += 1;
 
+        // 计算总位宽
         int totalBitWidth = 1 + bw + bits_needed[max_decimal];
 
-        int intArrayCount = (totalBitWidth + 7) / 8;
+        // 解码组合值
+        long[] combinedValues = new long[remainder];
+        int bitPos = encode_pos * 8; // 转换为位位置
+        encode_pos = decodeBitPacking(encoded_result, bitPos, totalBitWidth, remainder, combinedValues);
 
-        long[][] combinedArrays = new long[intArrayCount][remainder];
-
-        long[] combined = new long[remainder];
-
-        for (int i = 0; i < intArrayCount; i++) {
-            int currentBitWidth = Math.min(8, totalBitWidth - i * 8);
-            encode_pos = decodeBitPacking(encoded_result, encode_pos, currentBitWidth, remainder, combinedArrays[i]);
-            for (int j = 0; j < remainder; j++) {
-                combined[j] |= (combinedArrays[i][j]) << (i * 8);
-            }
-        }
-
+        // 解码每个值
         for (int i = 0; i < remainder; i++) {
-            sign_bits[i] = ((combined[i] >> (bw + bits_needed[max_decimal])) & 1);
-            integer_parts[i] = ((combined[i] >> bits_needed[max_decimal]) & ((1 << bw) - 1));
-            integer_parts[i] += min_integer_part;
-            decimal_parts[i] = (combined[i] & ((1 << bits_needed[max_decimal]) - 1));
-        }
-
-        for (int i = 0; i < remainder; i++) {
-            double decimal = decimal_parts[i];
+            long combined = combinedValues[i];
+            
+            // 提取符号位、整数部分和小数部分
+            long sign_bit = (combined >> (bw + bits_needed[max_decimal])) & 1L;
+            long integer_part = (combined >> bits_needed[max_decimal]) & ((1L << bw) - 1);
+            long decimal_part = combined & ((1L << bits_needed[max_decimal]) - 1);
+            
+            // 恢复原始整数部分
+            integer_part += min_integer_part;
+            
+            // 将小数部分转换为double
+            double decimal = decimal_part;
             for (int j = 0; j < bits_needed[max_decimal]; j++) {
                 decimal /= 2;
             }
-            double value = (integer_parts[i] + decimal);
-            value = sign_bits[i] == 1 ? -value : value;
+            
+            // 组合成最终的双精度值
+            double value = integer_part + decimal;
+            value = sign_bit == 1 ? -value : value;
             data[block_index * block_size + i] = value;
         }
 
         return encode_pos;
     }
 
+    // 主编码器
     public static int Encoder(double[] data, int block_size, int max_decimal, byte[] encoded_result) {
         int data_length = data.length;
         int encode_pos = 0;
 
+        // 写入数据长度（4字节）
         encoded_result[0] = (byte) (data_length >> 24);
         encoded_result[1] = (byte) (data_length >> 16);
         encoded_result[2] = (byte) (data_length >> 8);
         encoded_result[3] = (byte) data_length;
         encode_pos += 4;
 
+        // 写入块大小（4字节）
         encoded_result[4] = (byte) (block_size >> 24);
         encoded_result[5] = (byte) (block_size >> 16);
         encoded_result[6] = (byte) (block_size >> 8);
         encoded_result[7] = (byte) block_size;
         encode_pos += 4;
 
+        // 写入最大小数位数（1字节）
         encoded_result[8] = (byte) max_decimal;
         encode_pos += 1;
 
+        // 计算块数
         int num_blocks = data_length / block_size;
-
         int remainder = data_length % block_size;
 
+        // 编码完整块
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockEncoder(data, i, block_size, block_size, max_decimal, encode_pos, encoded_result);
         }
 
+        // 编码剩余部分
         if (remainder > 0) {
             encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, max_decimal, encode_pos, encoded_result);
         }
@@ -532,31 +363,41 @@ public class BUFFDoubleTest {
         return encode_pos;
     }
 
+    // 主解码器
     public static double[] Decoder(byte[] encoded_result) {
         int encode_pos = 0;
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
-                |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        // 读取数据长度
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | 
+                         ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                         ((encoded_result[encode_pos + 2] & 0xFF) << 8) | 
+                         (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
-        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        // 读取块大小
+        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | 
+                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | 
+                        (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
-        int max_decimal = encoded_result[encode_pos];
+        // 读取最大小数位数
+        int max_decimal = encoded_result[encode_pos] & 0xFF;
         encode_pos += 1;
 
+        // 计算块数
         int num_blocks = data_length / block_size;
-
         int remainder = data_length % block_size;
 
+        // 分配结果数组
         double[] data = new double[data_length];
 
+        // 解码完整块
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, max_decimal, encode_pos, data);
         }
 
+        // 解码剩余部分
         if (remainder > 0) {
             encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder, max_decimal, encode_pos, data);
         }
@@ -602,7 +443,7 @@ public class BUFFDoubleTest {
         String output_parent_dir = parent_dir + "result/";
 
         // String outputPath = output_parent_dir + "buff_long0.csv";
-        String outputPath = output_parent_dir + "buff_long2_repeat50.csv";
+        String outputPath = output_parent_dir + "buff_long_repeat50.csv";
 
         int block_size = 1024;
 
