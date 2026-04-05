@@ -14,7 +14,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Stream;
 
-public class SubcolumnAddDictPruneTest {
+public class SubcolumnVariableAlpha {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -219,244 +219,315 @@ public class SubcolumnAddDictPruneTest {
         return value;
     }
 
-    public static int Subcolumn(int[] x, int x_length, int m, int block_size, int[] encodingType) {
+    /**
+     * Compute cost and best encoding type for a segment [bitStart, bitEnd) (bitwidth = bitEnd - bitStart).
+     * Returns int[2]: { cost, encodingType } where encodingType is 0=BPE, 1=RLE, 2=DE.
+     */
+    private static int[] costForSegment(
+            int[] x, int x_length, int bitStart, int bitEnd,
+            int[] bpe_cost_single, int[] rle_cost_single, int[] de_cost_single,
+            BitSet[] bitsets, int[] threshold) {
+        int beta = bitEnd - bitStart;
+        if (beta <= 0 || beta > threshold.length) {
+            return new int[] { Integer.MAX_VALUE, 0 };
+        }
+        int currentCost;
+        int bestType = 0;
+
+        int bpCost = 0;
+        int beta_start = bitEnd - 1;
+        while (beta_start >= bitStart && bpe_cost_single[beta_start] == 0) {
+            beta_start--;
+        }
+        if (beta_start >= bitStart) {
+            bpCost = bpe_cost_single[beta_start] * (beta_start - bitStart + 1);
+        }
+        currentCost = bpCost;
+
+        int rleCostMax = 0;
+        for (int j = bitStart; j < bitEnd && j < rle_cost_single.length; j++) {
+            if (rle_cost_single[j] > rleCostMax) {
+                rleCostMax = rle_cost_single[j];
+            }
+        }
+        if (rleCostMax < currentCost) {
+            BitSet mergedBitSet = new BitSet(x_length);
+            for (int j = bitStart; j < bitEnd && j < bitsets.length; j++) {
+                mergedBitSet.or(bitsets[j]);
+                if (mergedBitSet.cardinality() >= currentCost) {
+                    break;
+                }
+            }
+            int rleCost = mergedBitSet.cardinality() * (beta + bitWidth(x_length));
+            if (rleCost < currentCost) {
+                currentCost = rleCost;
+                bestType = 1;
+            }
+        }
+
+        if (bitEnd <= 32) {
+            int th = threshold[beta - 1];
+            Set<Integer> uniqueValues = new HashSet<>();
+            for (int j = 0; j < x_length; j++) {
+                int currentNumber = (x[j] >> bitStart) & ((1 << beta) - 1);
+                uniqueValues.add(currentNumber);
+                if (uniqueValues.size() >= th) {
+                    break;
+                }
+            }
+            if (uniqueValues.size() < th) {
+                int deCost = x_length * bitWidth(uniqueValues.size()) + uniqueValues.size() * beta;
+                if (deCost < currentCost) {
+                    currentCost = deCost;
+                    bestType = 2;
+                }
+            }
+        }
+
+        return new int[] { currentCost, bestType };
+    }
+
+    /**
+     * Subcolumn with variable bitwidth per subcolumn: each subcolumn can have a different bitwidth.
+     * Uses DP to find the partition of [0, m) into segments (subcolumns) that minimizes a cost model.
+     *
+     * Optimality note: The result is optimal only with respect to our *cost model* (BPE/RLE/DE cost
+     * estimates in bits). The model is approximate: it does not match exact bit-packing (e.g. 8 values
+     * per block), RLE/DE headers, or alignment. We do include the overhead of storing the variable
+     * beta list (1 byte per subcolumn) so that more segments are penalized. Fixed beta can still
+     * win when: (1) the cost model underestimates real size, (2) data suits one beta well, or
+     * (3) block is small so the extra (1+l) bytes for variable betas matter.
+     *
+     * Fills encodingType[0..l-1] and betaOut[0..l-1], returns l (number of subcolumns).
+     */
+    public static int Subcolumn(int[] x, int x_length, int m, int block_size, int[] encodingType, int[] betaOut) {
 
         if (m == 0) {
+            betaOut[0] = 1;
             return 1;
         }
-    
-        int betaBest = 1;
 
         int[] bpe_cost_single = new int[m];
         int[] rle_cost_single = new int[m];
         int[] de_cost_single = new int[m];
 
-        int[] threshold = null;
-    
-        switch(block_size) {
-            case 32:
-                threshold = new int[] {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};
-                break;
-            case 64:
-                threshold = new int[] {2, 3, 5, 9, 13, 17, 19, 24, 29, 32, 33, 33, 35, 37, 39, 40, 42, 43, 44, 45, 46, 47, 48, 48, 49, 50, 50, 51, 51, 52, 52, 52};
-                break;
-            case 128:
-                threshold = new int[] {2, 3, 5, 9, 17, 22, 33, 33, 43, 52, 59, 64, 65, 65, 69, 72, 76, 79, 81, 84, 86, 88, 90, 91, 93, 94, 95, 96, 98, 99, 100, 100};
-                break;
-            case 256:
-                threshold = new int[] {2, 3, 5, 9, 17, 33, 37, 64, 65, 77, 94, 107, 119, 128, 129, 129, 136, 143, 149, 154, 159, 163, 167, 171, 175, 178, 181, 183, 186, 188, 190, 192};
-                break;
-            case 512:
-                threshold = new int[] {2, 3, 5, 9, 17, 33, 65, 65, 114, 129, 140, 171, 197, 220, 239, 256, 257, 257, 270, 282, 293, 303, 312, 320, 328, 335, 342, 348, 354, 359, 364, 368};
-                break;
-            case 1024:
-                threshold = new int[] {2, 3, 5, 9, 17, 33, 65, 128, 129, 205, 257, 257, 316, 366, 410, 448, 482, 512, 513, 513, 537, 559, 579, 598, 615, 631, 645, 659, 671, 683, 694, 704};
-                break;
-            case 2048:
-                threshold = new int[] {2, 3, 5, 9, 17, 33, 65, 129, 228, 257, 373, 512, 513, 586, 683, 768, 844, 911, 971, 1024, 1025, 1025, 1069, 1110, 1147, 1182, 1214, 1244, 1272, 1298, 1322, 1344};
-                break;
-            case 4096:
-                threshold = new int[] {2, 3, 5, 9, 17, 33, 65, 129, 257, 410, 513, 683, 946, 1025, 1093, 1280, 1446, 1593, 1725, 1844, 1951, 2048, 2049, 2049, 2130, 2206, 2276, 2341, 2402, 2458, 2511, 2560};
-                break;
-            case 8192:
-                threshold = new int[] {2, 3, 5, 9, 17, 33, 65, 129, 257, 513, 745, 1025, 1261, 1756, 2049, 2049, 2410, 2731, 3019, 3277, 3511, 3724, 3918, 4096, 4097, 4097, 4248, 4389, 4520, 4643, 4757, 4864};
-                break;
-            default:
-                threshold = new int[] {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};
-                break;
-        }
-
-        int cost1 = 0;
-
-        // System.out.println("x:");
-        // for (int i = 0; i < x_length; i++) {
-        //     System.out.print(x[i] + " ");
-        // }
-        // System.out.println();
+        int[] threshold = getThreshold(block_size);
 
         BitSet[] bitsets = new BitSet[m];
-
         for (int i = 0; i < m; i++) {
             bitsets[i] = new BitSet(x_length);
         }
 
         for (int i = 0; i < m; i++) {
-            // System.out.println("subcolumn index: " + i);
-
             int current_value = (x[0] >> i) & 1;
-
             if (current_value == 1) {
                 bpe_cost_single[i] = x_length;
             }
-
             int count = 0;
-
             de_cost_single[i] = x_length * 1 + 2 * 1;
-
             for (int j = 1; j < x_length; j++) {
-
                 int subcolumn_ij = (x[j] >> i) & 1;
                 if (subcolumn_ij == 1) {
                     bpe_cost_single[i] = x_length;
                 }
-
                 if (subcolumn_ij != current_value) {
                     count++;
                     current_value = subcolumn_ij;
                     de_cost_single[i] = x_length * 2 + 2 * 1;
-
                     bitsets[i].set(j - 1);
                 }
-
             }
-
             bitsets[i].set(x_length - 1);
-
             count++;
-
             rle_cost_single[i] = count * (1 + bitWidth(x_length));
+        }
 
+        int maxBeta = Math.min(m, 32);
+        int[] dp = new int[m + 1];
+        int[] bestBeta = new int[m + 1];
+        int[] bestEncodingType = new int[m + 1];
+        dp[0] = 0;
+        final int BETA_STORAGE_BITS = 8;
+        for (int i = 1; i <= m; i++) {
+            dp[i] = Integer.MAX_VALUE;
+            for (int beta = 1; beta <= Math.min(i, maxBeta); beta++) {
+                int segStart = i - beta;
+                int[] segResult = costForSegment(x, x_length, segStart, i,
+                        bpe_cost_single, rle_cost_single, de_cost_single, bitsets, threshold);
+                int segCost = segResult[0];
+                int segType = segResult[1];
+                long total = (long) dp[segStart] + segCost + BETA_STORAGE_BITS;
+                if (total < dp[i]) {
+                    dp[i] = (int) total;
+                    bestBeta[i] = beta;
+                    bestEncodingType[i] = segType;
+                }
+            }
+        }
+
+        int pos = m;
+        int l = 0;
+        int[] revBeta = new int[m];
+        int[] revType = new int[m];
+        while (pos > 0) {
+            int beta = bestBeta[pos];
+            revBeta[l] = beta;
+            revType[l] = bestEncodingType[pos];
+            l++;
+            pos -= beta;
+        }
+        for (int i = 0; i < l; i++) {
+            betaOut[i] = revBeta[l - 1 - i];
+            encodingType[i] = revType[l - 1 - i];
+        }
+        return l;
+    }
+
+    /**
+     * Fixed beta: find the single beta that minimizes total cost over all subcolumns.
+     * Fills encodingType[0..l-1] where l = ceil(m/betaBest). Returns betaBest.
+     */
+    public static int SubcolumnFixed(int[] x, int x_length, int m, int block_size, int[] encodingType) {
+        if (m == 0) {
+            encodingType[0] = 0;
+            return 1;
+        }
+        int[] bpe_cost_single = new int[m];
+        int[] rle_cost_single = new int[m];
+        int[] de_cost_single = new int[m];
+        int[] threshold = getThreshold(block_size);
+        BitSet[] bitsets = new BitSet[m];
+        for (int i = 0; i < m; i++) {
+            bitsets[i] = new BitSet(x_length);
+        }
+        for (int i = 0; i < m; i++) {
+            int current_value = (x[0] >> i) & 1;
+            if (current_value == 1) {
+                bpe_cost_single[i] = x_length;
+            }
+            int count = 0;
+            de_cost_single[i] = x_length * 1 + 2 * 1;
+            for (int j = 1; j < x_length; j++) {
+                int subcolumn_ij = (x[j] >> i) & 1;
+                if (subcolumn_ij == 1) {
+                    bpe_cost_single[i] = x_length;
+                }
+                if (subcolumn_ij != current_value) {
+                    count++;
+                    current_value = subcolumn_ij;
+                    de_cost_single[i] = x_length * 2 + 2 * 1;
+                    bitsets[i].set(j - 1);
+                }
+            }
+            bitsets[i].set(x_length - 1);
+            count++;
+            rle_cost_single[i] = count * (1 + bitWidth(x_length));
+        }
+        int cost1 = 0;
+        for (int i = 0; i < m; i++) {
             if (bpe_cost_single[i] <= rle_cost_single[i] && bpe_cost_single[i] <= de_cost_single[i]) {
-                encodingType[i] = 0; // bpe
+                encodingType[i] = 0;
                 cost1 += bpe_cost_single[i];
             } else if (rle_cost_single[i] < bpe_cost_single[i] && rle_cost_single[i] <= de_cost_single[i]) {
-                encodingType[i] = 1; // rle
+                encodingType[i] = 1;
                 cost1 += rle_cost_single[i];
             } else {
-                encodingType[i] = 2; // de
+                encodingType[i] = 2;
                 cost1 += de_cost_single[i];
             }
-
         }
-
         int cMin = cost1;
-
-        int[] beta_list = new int[m - 1];
-        for (int i = 0; i < m - 1; i++) {
-            beta_list[i] = i + 2;
-        }
-
-        for (int beta : beta_list) {
-            if (beta > m) {
-                break;
-            }
-            // System.out.println("beta: " + beta);
-
+        int betaBest = 1;
+        for (int beta = 2; beta <= m; beta++) {
             int l = (m + beta - 1) / beta;
-
-            // System.out.println("l: " + l);
-
             int cost = 0;
-        
             int[] encodingTypeTemp = new int[l];
-
             for (int i = 0; i < l; i++) {
-                // System.out.println("subcolumn index: " + i);
-
                 int currentCost = 0;
-
                 int bpCost = 0;
-
-                int beta_start = (Math.min(m - 1, (i + 1) * beta - 1));
+                int beta_start = Math.min(m - 1, (i + 1) * beta - 1);
                 while (beta_start >= i * beta && bpe_cost_single[beta_start] == 0) {
                     beta_start--;
                 }
-
                 if (beta_start < i * beta) {
                     beta_start = i * beta;
                 }
-
                 bpCost = bpe_cost_single[beta_start] * (beta_start - i * beta + 1);
-
-                // System.out.println("bpCost: " + bpCost);
-
                 currentCost = bpCost;
-
                 int rleCostMax = 0;
                 for (int j = i * beta; j < (i + 1) * beta && j < m; j++) {
                     if (rle_cost_single[j] > rleCostMax) {
                         rleCostMax = rle_cost_single[j];
                     }
                 }
-
                 if (rleCostMax < currentCost) {
-                // if (rle_cost_single[i * beta] < currentCost) {
-                    int rleCost = 0;
-
-                    boolean currentBetter = false;
-
                     BitSet mergedBitSet = new BitSet(x_length);
                     for (int j = i * beta; j < (i + 1) * beta && j < m; j++) {
                         mergedBitSet.or(bitsets[j]);
                         if (mergedBitSet.cardinality() >= currentCost) {
-                            currentBetter = true;
                             break;
                         }
                     }
-
-                    if (!currentBetter) {
-                        rleCost = mergedBitSet.cardinality() * (beta + bitWidth(x_length));
-                        if (currentCost > rleCost) {
-                            currentCost = rleCost;
-                            encodingTypeTemp[i] = 1;
-                        }
-                    }
-
-                }
-
-                int deCostMax = 0;
-                for (int j = i * beta; j < (i + 1) * beta && j < m; j++) {
-                    if (de_cost_single[j] > deCostMax) {
-                        deCostMax = de_cost_single[j];
+                    int rleCost = mergedBitSet.cardinality() * (beta + bitWidth(x_length));
+                    if (rleCost < currentCost) {
+                        currentCost = rleCost;
+                        encodingTypeTemp[i] = 1;
                     }
                 }
-
-                if (deCostMax < currentCost) {
-                // if (de_cost_single[i * beta] < currentCost) {
-                    boolean currentBetter = false;
+                if (beta <= threshold.length) {
                     Set<Integer> uniqueValues = new HashSet<>();
-
                     for (int j = 0; j < x_length; j++) {
                         int currentNumber = (x[j] >> (i * beta)) & ((1 << beta) - 1);
                         uniqueValues.add(currentNumber);
-
                         if (uniqueValues.size() >= threshold[beta - 1]) {
-                            currentBetter = true;
                             break;
                         }
                     }
-
-                    if (!currentBetter) {
+                    if (uniqueValues.size() < threshold[beta - 1]) {
                         int deCost = x_length * bitWidth(uniqueValues.size()) + uniqueValues.size() * beta;
-
                         if (deCost < currentCost) {
                             currentCost = deCost;
-
                             encodingTypeTemp[i] = 2;
                         }
                     }
-
                 }
-
                 cost += currentCost;
             }
-
-            // System.out.println("cost: " + cost);
-
             if (cost < cMin) {
                 cMin = cost;
                 betaBest = beta;
-
                 System.arraycopy(encodingTypeTemp, 0, encodingType, 0, l);
             }
         }
-
-        // System.out.println("betaBest: " + betaBest);
-
         return betaBest;
     }
 
-    public static int SubcolumnEncoder(int[] list, int encode_pos, byte[] encoded_result, int[] beta, int block_size, int[] encodingType) {
+    private static int[] getThreshold(int block_size) {
+        switch (block_size) {
+            case 32:
+                return new int[] {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};
+            case 64:
+                return new int[] {2, 3, 5, 9, 13, 17, 19, 24, 29, 32, 33, 33, 35, 37, 39, 40, 42, 43, 44, 45, 46, 47, 48, 48, 49, 50, 50, 51, 51, 52, 52, 52};
+            case 128:
+                return new int[] {2, 3, 5, 9, 17, 22, 33, 33, 43, 52, 59, 64, 65, 65, 69, 72, 76, 79, 81, 84, 86, 88, 90, 91, 93, 94, 95, 96, 98, 99, 100, 100};
+            case 256:
+                return new int[] {2, 3, 5, 9, 17, 33, 37, 64, 65, 77, 94, 107, 119, 128, 129, 129, 136, 143, 149, 154, 159, 163, 167, 171, 175, 178, 181, 183, 186, 188, 190, 192};
+            case 512:
+                return new int[] {2, 3, 5, 9, 17, 33, 65, 65, 114, 129, 140, 171, 197, 220, 239, 256, 257, 257, 270, 282, 293, 303, 312, 320, 328, 335, 342, 348, 354, 359, 364, 368};
+            case 1024:
+                return new int[] {2, 3, 5, 9, 17, 33, 65, 128, 129, 205, 257, 257, 316, 366, 410, 448, 482, 512, 513, 513, 537, 559, 579, 598, 615, 631, 645, 659, 671, 683, 694, 704};
+            case 2048:
+                return new int[] {2, 3, 5, 9, 17, 33, 65, 129, 228, 257, 373, 512, 513, 586, 683, 768, 844, 911, 971, 1024, 1025, 1025, 1069, 1110, 1147, 1182, 1214, 1244, 1272, 1298, 1322, 1344};
+            case 4096:
+                return new int[] {2, 3, 5, 9, 17, 33, 65, 129, 257, 410, 513, 683, 946, 1025, 1093, 1280, 1446, 1593, 1725, 1844, 1951, 2048, 2049, 2049, 2130, 2206, 2276, 2341, 2402, 2458, 2511, 2560};
+            case 8192:
+                return new int[] {2, 3, 5, 9, 17, 33, 65, 129, 257, 513, 745, 1025, 1261, 1756, 2049, 2049, 2410, 2731, 3019, 3277, 3511, 3724, 3918, 4096, 4097, 4097, 4248, 4389, 4520, 4643, 4757, 4864};
+            default:
+                return new int[] {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};
+        }
+    }
+
+    public static int SubcolumnEncoder(int[] list, int encode_pos, byte[] encoded_result, int[] beta, int l, int block_size, int[] encodingType) {
         int list_length = list.length;
         int maxValue = 0;
         for (int k : list) {
@@ -465,42 +536,38 @@ public class SubcolumnAddDictPruneTest {
             }
         }
 
-        // System.out.println("maxValue: " + maxValue);
-
         int m = bitWidth(maxValue);
 
         intByte2Bytes(m, encode_pos, encoded_result);
         encode_pos += 1;
 
         if (m == 0) {
-            // System.out.println("All zero list.");
             return encode_pos;
         }
 
-        int l;
-
-        l = (m + beta[0] - 1) / beta[0];
-
         int[] bitWidthList = new int[l];
-
         int[][] subcolumnList = new int[l][list_length];
 
-        intByte2Bytes(beta[0], encode_pos, encoded_result);
+        intByte2Bytes(l, encode_pos, encoded_result);
         encode_pos += 1;
+        for (int i = 0; i < l; i++) {
+            intByte2Bytes(beta[i], encode_pos + i, encoded_result);
+        }
+        encode_pos += l;
 
         int bw = bitWidth(block_size);
-        int mask = (1 << beta[0]) - 1;
-
+        int shiftSoFar = 0;
         for (int i = 0; i < l; i++) {
+            int mask = (1 << beta[i]) - 1;
             int maxValuePart = 0;
-            int shiftAmount = i * beta[0];
             for (int j = 0; j < list_length; j++) {
-                subcolumnList[i][j] = (list[j] >> shiftAmount) & mask;
+                subcolumnList[i][j] = (list[j] >> shiftSoFar) & mask;
                 if (subcolumnList[i][j] > maxValuePart) {
                     maxValuePart = subcolumnList[i][j];
                 }
             }
             bitWidthList[i] = bitWidth(maxValuePart);
+            shiftSoFar += beta[i];
         }
 
         encode_pos = bitPacking(bitWidthList, 8, encode_pos, encoded_result, l);
@@ -611,7 +678,6 @@ public class SubcolumnAddDictPruneTest {
     public static int SubcolumnDecoder(byte[] encoded_result, int encode_pos, int[] list, int block_size) {
         int list_length = list.length;
 
-        // int m = encoded_result[encode_pos];
         int m = bytes2Integer(encoded_result, encode_pos, 1);
         encode_pos += 1;
 
@@ -621,10 +687,13 @@ public class SubcolumnAddDictPruneTest {
 
         int bw = bitWidth(block_size);
 
-        int beta = bytes2Integer(encoded_result, encode_pos, 1);
+        int l = bytes2Integer(encoded_result, encode_pos, 1);
         encode_pos += 1;
-
-        int l = (m + beta - 1) / beta;
+        int[] beta = new int[l];
+        for (int i = 0; i < l; i++) {
+            beta[i] = bytes2Integer(encoded_result, encode_pos + i, 1);
+        }
+        encode_pos += l;
 
         int[] bitWidthList = new int[l];
 
@@ -691,11 +760,12 @@ public class SubcolumnAddDictPruneTest {
             }
         }
 
+        int shiftSoFar = 0;
         for (int i = 0; i < l; i++) {
-            int shiftAmount = i * beta;
             for (int j = 0; j < list_length; j++) {
-                list[j] |= subcolumnList[i][j] << shiftAmount;
+                list[j] |= subcolumnList[i][j] << shiftSoFar;
             }
+            shiftSoFar += beta[i];
         }
 
         return encode_pos;
@@ -733,32 +803,59 @@ public class SubcolumnAddDictPruneTest {
         return ts_block_delta;
     }
 
+    private static final int TEMP_ENCODE_BUF_SIZE = 256 * 1024;
+
     public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
             int encode_pos, byte[] encoded_result, int[] beta) {
         int[] min_delta = new int[3];
 
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
                 remainder, min_delta);
-                
+
         int2Bytes(min_delta[0], encode_pos, encoded_result);
         encode_pos += 4;
 
-            int maxValue = 0;
-            for (int j = 0; j < remainder; j++) {
-                if (data_delta[j] > maxValue) {
-                    maxValue = data_delta[j];
-                }
+        int maxValue = 0;
+        for (int j = 0; j < remainder; j++) {
+            if (data_delta[j] > maxValue) {
+                maxValue = data_delta[j];
             }
-            int m = bitWidth(maxValue);
+        }
+        int m = bitWidth(maxValue);
 
-            int[] encodingType = new int[m];
+        if (m == 0) {
+            encode_pos = SubcolumnEncoder(data_delta, encode_pos, encoded_result,
+                    beta, 1, block_size, new int[] {0});
+            return encode_pos;
+        }
 
-            beta[0] = Subcolumn(data_delta, remainder, m, block_size, encodingType);
+        int[] encodingTypeVar = new int[Math.max(m, 1)];
+        int[] betaOut = new int[Math.max(m, 1)];
+        int lVar = Subcolumn(data_delta, remainder, m, block_size, encodingTypeVar, betaOut);
 
+        byte[] tempVar = new byte[TEMP_ENCODE_BUF_SIZE];
+        int posVar = SubcolumnEncoder(data_delta, 0, tempVar, betaOut, lVar, block_size, encodingTypeVar);
+        int sizeVar = posVar;
 
-        encode_pos = SubcolumnEncoder(data_delta, encode_pos,
-                encoded_result, beta, block_size, encodingType);
+        int[] encodingTypeFixed = new int[Math.max(m, 1)];
+        int betaFixed = SubcolumnFixed(data_delta, remainder, m, block_size, encodingTypeFixed);
+        int lFixed = (m + betaFixed - 1) / betaFixed;
+        int[] betaFixedArr = new int[33];
+        for (int i = 0; i < lFixed; i++) {
+            betaFixedArr[i] = betaFixed;
+        }
 
+        byte[] tempFixed = new byte[TEMP_ENCODE_BUF_SIZE];
+        int posFixed = SubcolumnEncoder(data_delta, 0, tempFixed, betaFixedArr, lFixed, block_size, encodingTypeFixed);
+        int sizeFixed = posFixed;
+
+        if (sizeVar <= sizeFixed) {
+            System.arraycopy(tempVar, 0, encoded_result, encode_pos, sizeVar);
+            encode_pos += sizeVar;
+        } else {
+            System.arraycopy(tempFixed, 0, encoded_result, encode_pos, sizeFixed);
+            encode_pos += sizeFixed;
+        }
         return encode_pos;
     }
 
@@ -795,8 +892,7 @@ public class SubcolumnAddDictPruneTest {
 
         int remainder = data_length % block_size;
 
-        int[] beta = new int[1];
-        beta[0] = 2;
+        int[] beta = new int[33];
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result, beta);
@@ -884,11 +980,11 @@ public class SubcolumnAddDictPruneTest {
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_dictionary.csv";
+        String outputPath = output_parent_dir + "subcolumn_variable_alpha.csv";
 
         int block_size = 512;
 
-        int repeatTime = 500;
+        int repeatTime = 50;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
