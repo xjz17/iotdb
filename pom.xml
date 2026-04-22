@@ -584,14 +584,12 @@
                 <artifactId>httpclient</artifactId>
                 <version>${httpclient.version}</version>
             </dependency>
-
             <!-- Brotli -->
             <dependency>
                 <groupId>com.aayushatharva.brotli4j</groupId>
                 <artifactId>brotli4j</artifactId>
                 <version>1.11.0</version>
             </dependency>
-
             <!-- for spark-iotdb conflict -->
             <dependency>
                 <groupId>com.google.errorprone</groupId>

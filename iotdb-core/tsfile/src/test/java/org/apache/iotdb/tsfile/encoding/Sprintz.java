@@ -15,8 +15,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class Sprintz {
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv", "POI-lat.csv",
-            "POI-lon.csv", "Air-sensor.csv", "Basel-wind.csv", "Basel-temp.csv");
     private static final int CHUNK_SIZE = 1024;
 
     // 1. 修复：逐位（bit-by-bit）的bitPacking方法 - 使用int[]替代ArrayList<Integer>
@@ -411,7 +409,7 @@ public class Sprintz {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
@@ -561,7 +559,7 @@ public class Sprintz {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
@@ -571,6 +569,7 @@ public class Sprintz {
                     "Input Direction",
                     "Encoding Algorithm",
                     "Encoding Time",
+                    "Decoding Time",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -604,6 +603,7 @@ public class Sprintz {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
                 BigDecimal modelCost = BigDecimal.ZERO;
                 BigDecimal modelTime = BigDecimal.ZERO;
+                BigDecimal modelDecodeTime = BigDecimal.ZERO;
                 boolean allVerified = true;
 
                 for (int j = 0; j < time_of_repeat; j++) {
@@ -615,7 +615,7 @@ public class Sprintz {
                                 .stream().max(Integer::compare).orElse(0);
 
                         int[] scaledInt = scaleNumbers(chunkNumbers, decimalMax);
-                        long startTime = System.nanoTime();
+                        long encodeStart = System.nanoTime();
                         int[] scaledInts = sprintz(scaledInt);
 
                         int remainder = scaledInts.length % pack_size;
@@ -635,21 +635,23 @@ public class Sprintz {
                         }
 
                         byte[] compressedData = encodeBitPacking(paddedArray, bitWidths, pack_size);
+                        long encodeDuration = System.nanoTime() - encodeStart;
 
-                        // 验证解压
+                        long decodeStart = System.nanoTime();
                         int[] decodedFromBitPacking = decodeBitPacking(compressedData, paddedArray.length, pack_size);
                         int[] actualDecoded = Arrays.copyOf(decodedFromBitPacking, scaledInts.length);
-                        int[] finalDecoded = sprintzDecode(actualDecoded);
+                        sprintzDecode(actualDecoded);
+                        long decodeDuration = System.nanoTime() - decodeStart;
 
-                        long duration = System.nanoTime() - startTime;
-
-                        modelTime = modelTime.add(BigDecimal.valueOf(duration));
+                        modelTime = modelTime.add(BigDecimal.valueOf(encodeDuration));
+                        modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
                         modelCost = modelCost.add(BigDecimal.valueOf(compressedData.length * 8L));
                     }
                 }
 
                 modelCost = modelCost.divide(BigDecimal.valueOf(time_of_repeat), 6, RoundingMode.HALF_UP);
                 modelTime = modelTime.divide(BigDecimal.valueOf(time_of_repeat), 6, RoundingMode.HALF_UP);
+                modelDecodeTime = modelDecodeTime.divide(BigDecimal.valueOf(time_of_repeat), 6, RoundingMode.HALF_UP);
 
                 BigDecimal totalPoints = BigDecimal.valueOf(numbers.size());
                 BigDecimal originalBits = totalPoints.multiply(BigDecimal.valueOf(64));
@@ -657,11 +659,17 @@ public class Sprintz {
                 BigDecimal modelTimeThroughput = totalPoints
                         .multiply(BigDecimal.valueOf(8000))
                         .divide(modelTime, 6, RoundingMode.HALF_UP);
+                BigDecimal decodeThroughput = BigDecimal.ZERO;
+                if (modelDecodeTime.compareTo(BigDecimal.ZERO) != 0) {
+                    decodeThroughput =
+                            totalPoints.multiply(BigDecimal.valueOf(8000)).divide(modelDecodeTime, 6, RoundingMode.HALF_UP);
+                }
 
                 String[] record = {
                         file.toString(),
                         "SPRINTZ",
                         modelTimeThroughput.toString(),
+                        decodeThroughput.toString(),
                         totalPoints.toString(),
                         modelCost.toString(),
                         String.valueOf(pack_size),
@@ -690,7 +698,7 @@ public class Sprintz {
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);

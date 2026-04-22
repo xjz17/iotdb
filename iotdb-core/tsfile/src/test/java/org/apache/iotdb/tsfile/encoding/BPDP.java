@@ -11,18 +11,14 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class BPDP {
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv","init.csv",
-            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv","Disk-usage.csv",
-            "City-temp.csv", "Wind-Speed.csv","IR-bio-temp.csv","Air-pressure.csv","Stocks-USA.csv","Stocks-DE.csv","City-lat.csv","City-lon.csv",
-            "Bitcoin-price.csv","Bird-migration.csv","Cpu-usage_right.csv","Disk-usage.csv","Mem-usage.csv","SSD-bench.csv","Dew-point-temp.csv");
-
 
     private static final int CHUNK_SIZE = 1024;
+    static int all_time_of_repeat = 10;
+    static int all_max_pack_size = 1;
 
     static String trimStr(String s) {
         if (s == null) return "";
@@ -825,7 +821,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -833,8 +829,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -975,7 +971,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -983,8 +979,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -1009,9 +1005,9 @@ public class BPDP {
                     }
                 }
             }
-            int time_of_repeat = 10;
+            int time_of_repeat = all_time_of_repeat;
 
-            for(int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+            for(int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
 
                 BigDecimal modelCost = BigDecimal.ZERO;
@@ -1121,7 +1117,7 @@ public class BPDP {
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1130,7 +1126,8 @@ public class BPDP {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -1186,6 +1183,7 @@ public class BPDP {
                     int pack_size = (int) Math.pow(2, pack_size_exp);
                     BigDecimal modelCost = BigDecimal.ZERO;
                     BigDecimal modelTime = BigDecimal.ZERO;
+                    BigDecimal modelDecodeTime = BigDecimal.ZERO;
 
                     for (int j = 0; j < time_of_repeat; j++) {
                         int totalCost = 0;
@@ -1223,21 +1221,33 @@ public class BPDP {
                             long duration = System.nanoTime() - startTime;
                             modelTime = modelTime.add(BigDecimal.valueOf(duration));
                             modelCost = modelCost.add(cur_cost);
+
+                            long decodeStart = System.nanoTime();
+                            decompressWithOptimalPacking(res, paddedArray.length, pack_size);
+                            long decodeDuration = System.nanoTime() - decodeStart;
+                            modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
                         }
                     }
 
                     BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
                     modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                    modelDecodeTime = modelDecodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
                     BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP);
+                    BigDecimal decodeThroughput = BigDecimal.ZERO;
+                    if (modelDecodeTime.compareTo(BigDecimal.ZERO) != 0) {
+                        decodeThroughput =
+                                numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelDecodeTime, 10, BigDecimal.ROUND_HALF_UP);
+                    }
 
                     String[] record = {
                             String.valueOf(chunkSize),
                             file.toString(),
                             "BP-DP",
                             String.valueOf(modelTime_throughput.doubleValue()),
+                            decodeThroughput.toPlainString(),
                             String.valueOf(numbers.size()),
                             String.valueOf(modelCost),
                             String.valueOf(pack_size),
@@ -1262,7 +1272,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1270,8 +1280,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size (bits)",
                     "Pack Size",
@@ -1416,7 +1426,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1424,8 +1434,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -1450,9 +1460,9 @@ public class BPDP {
                     }
                 }
             }
-            int time_of_repeat = 10;
+            int time_of_repeat = all_time_of_repeat;
 
-            for(int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+            for(int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
 
                 BigDecimal modelCost = BigDecimal.ZERO;
@@ -1563,7 +1573,7 @@ public class BPDP {
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1572,7 +1582,8 @@ public class BPDP {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
 //                    "Pack Size",
@@ -1628,6 +1639,7 @@ public class BPDP {
                     int pack_size = (int) Math.pow(2, pack_size_exp);
                     BigDecimal modelCost = BigDecimal.ZERO;
                     BigDecimal modelTime = BigDecimal.ZERO;
+                    BigDecimal modelDecodeTime = BigDecimal.ZERO;
 
 
                     for (int j = 0; j < time_of_repeat; j++) {
@@ -1666,21 +1678,34 @@ public class BPDP {
                             long duration = System.nanoTime() - startTime;
                             modelTime = modelTime.add(BigDecimal.valueOf(duration));
                             modelCost = modelCost.add(cur_cost);
+
+                            long decodeStart = System.nanoTime();
+                            long[] decoded = decompressWithOptimalPacking(res, paddedArray.length, 1);
+                            zigzagDecode(decoded);
+                            long decodeDuration = System.nanoTime() - decodeStart;
+                            modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
                         }
                     }
 
                     BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
                     modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                    modelDecodeTime = modelDecodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
                     BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP);
+                    BigDecimal decodeThroughput = BigDecimal.ZERO;
+                    if (modelDecodeTime.compareTo(BigDecimal.ZERO) != 0) {
+                        decodeThroughput =
+                                numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelDecodeTime, 10, BigDecimal.ROUND_HALF_UP);
+                    }
 
                     String[] record = {
                             String.valueOf(chunkSize),
                             file.toString(),
                             "Zigzag-DP",
                             String.valueOf(modelTime_throughput.doubleValue()),
+                            decodeThroughput.toPlainString(),
                             String.valueOf(numbers.size()),
                             String.valueOf(modelCost),
 //                            String.valueOf(pack_size),
@@ -1706,7 +1731,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1714,8 +1739,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -1860,7 +1885,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1868,7 +1893,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -1893,9 +1919,9 @@ public class BPDP {
                     }
                 }
             }
-            int time_of_repeat = 10;
+            int time_of_repeat = all_time_of_repeat;
 
-            for(int pack_size_exp = 0; pack_size_exp < 1; pack_size_exp++) {
+            for(int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
 
                 BigDecimal modelCost = BigDecimal.ZERO;
@@ -1944,9 +1970,14 @@ public class BPDP {
                         byte[] compressedData = compressWithOptimalPacking(paddedArray, bitWidths, pack_size, encodePos);
                         long encodeDuration = System.nanoTime() - startEncodeTime;
 
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decompressWithOptimalPacking(compressedData, paddedArray.length, pack_size);
+                        sprintzDecode(decodedData, ser.getFirstValue());
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
 
                         BigDecimal cur_cost = BigDecimal.valueOf(encodePos[0] * 8L);
                         encodeTime = encodeTime.add(BigDecimal.valueOf(encodeDuration));
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
                         modelCost = modelCost.add(cur_cost);
                     }
 
@@ -1954,6 +1985,7 @@ public class BPDP {
                 BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
                 modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                 encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                 BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
                 BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
 
@@ -1963,10 +1995,15 @@ public class BPDP {
                 BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
                         .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP);
 
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP);
+
                 String[] record = {
                         file.toString(),
                         "BP-DP-AllPackSize",
                         encodeThroughput.toPlainString(),
+                        decodeThroughput.toPlainString(),
                         String.valueOf(numbers.size()),
                         modelCost.toPlainString(),
                         String.valueOf(pack_size),
@@ -1995,7 +2032,7 @@ public class BPDP {
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -2004,7 +2041,8 @@ public class BPDP {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -2060,6 +2098,7 @@ public class BPDP {
                     int pack_size = (int) Math.pow(2, pack_size_exp);
                     BigDecimal modelCost = BigDecimal.ZERO;
                     BigDecimal modelTime = BigDecimal.ZERO;
+                    BigDecimal modelDecodeTime = BigDecimal.ZERO;
 
                     for (int j = 0; j < time_of_repeat; j++) {
                         int totalCost = 0;
@@ -2098,21 +2137,34 @@ public class BPDP {
                             long duration = System.nanoTime() - startTime;
                             modelTime = modelTime.add(BigDecimal.valueOf(duration));
                             modelCost = modelCost.add(cur_cost);
+
+                            long decodeStart = System.nanoTime();
+                            long[] decoded = decompressWithOptimalPacking(res, paddedArray.length, pack_size);
+                            sprintzDecode(decoded, ser.getFirstValue());
+                            long decodeDuration = System.nanoTime() - decodeStart;
+                            modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
                         }
                     }
 
                     BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
                     modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                    modelDecodeTime = modelDecodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
                     BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP);
+                    BigDecimal decodeThroughput = BigDecimal.ZERO;
+                    if (modelDecodeTime.compareTo(BigDecimal.ZERO) != 0) {
+                        decodeThroughput =
+                                numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelDecodeTime, 10, BigDecimal.ROUND_HALF_UP);
+                    }
 
                     String[] record = {
                             String.valueOf(chunkSize),
                             file.toString(),
                             "Sprintz-DP",
                             String.valueOf(modelTime_throughput.doubleValue()),
+                            decodeThroughput.toPlainString(),
                             String.valueOf(numbers.size()),
                             String.valueOf(modelCost),
                             String.valueOf(pack_size),
@@ -2137,7 +2189,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -2145,8 +2197,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -2291,7 +2343,7 @@ public class BPDP {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -2299,7 +2351,8 @@ public class BPDP {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -2324,9 +2377,9 @@ public class BPDP {
                     }
                 }
             }
-            int time_of_repeat = 10;
+            int time_of_repeat = all_time_of_repeat;
 
-            for(int pack_size_exp = 0; pack_size_exp < 1; pack_size_exp++) {
+            for(int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int pack_size = (int) Math.pow(2, pack_size_exp);
 
                 BigDecimal modelCost = BigDecimal.ZERO;
@@ -2376,9 +2429,14 @@ public class BPDP {
                         byte[] compressedData = compressWithOptimalPacking(paddedArray, bitWidths, pack_size, encodePos);
                         long encodeDuration = System.nanoTime() - startEncodeTime;
 
+                        long startDecodeTime = System.nanoTime();
+                        long[] decodedData = decompressWithOptimalPacking(compressedData, paddedArray.length, pack_size);
+                        ts2diffDecode(decodedData, ter.getFirstValue(), ter.getMinDiff());
+                        long decodeDuration = System.nanoTime() - startDecodeTime;
 
                         BigDecimal cur_cost = BigDecimal.valueOf(encodePos[0] * 8L);
                         encodeTime = encodeTime.add(BigDecimal.valueOf(encodeDuration));
+                        decodeTime = decodeTime.add(BigDecimal.valueOf(decodeDuration));
                         modelCost = modelCost.add(cur_cost);
                     }
 
@@ -2386,6 +2444,7 @@ public class BPDP {
                 BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
                 modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                 encodeTime = encodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                decodeTime = decodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                 BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
                 BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
 
@@ -2395,10 +2454,15 @@ public class BPDP {
                 BigDecimal encodeThroughput = originalSizeBytes.divide(encodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
                         .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP);
 
+                BigDecimal decodeTimeSeconds = decodeTime.divide(BigDecimal.valueOf(1_000_000_000), 10, BigDecimal.ROUND_HALF_UP);
+                BigDecimal decodeThroughput = originalSizeBytes.divide(decodeTimeSeconds, 10, BigDecimal.ROUND_HALF_UP)
+                        .divide(BigDecimal.valueOf(1024 * 1024), 10, BigDecimal.ROUND_HALF_UP);
+
                 String[] record = {
                         file.toString(),
                         "TS2DIFF-DP",
                         encodeThroughput.toPlainString(),
+                        decodeThroughput.toPlainString(),
                         String.valueOf(numbers.size()),
                         modelCost.toPlainString(),
                         String.valueOf(pack_size),
@@ -2427,7 +2491,7 @@ public class BPDP {
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -2436,7 +2500,8 @@ public class BPDP {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Pack Size",
@@ -2493,6 +2558,7 @@ public class BPDP {
                     int pack_size = (int) Math.pow(2, pack_size_exp);
                     BigDecimal modelCost = BigDecimal.ZERO;
                     BigDecimal modelTime = BigDecimal.ZERO;
+                    BigDecimal modelDecodeTime = BigDecimal.ZERO;
 
                     for (int j = 0; j < time_of_repeat; j++) {
                         int totalCost = 0;
@@ -2531,21 +2597,34 @@ public class BPDP {
                             long duration = System.nanoTime() - startTime;
                             modelTime = modelTime.add(BigDecimal.valueOf(duration));
                             modelCost = modelCost.add(cur_cost);
+
+                            long decodeStart = System.nanoTime();
+                            long[] decoded = decompressWithOptimalPacking(res, paddedArray.length, pack_size);
+                            ts2diffDecode(decoded, ter.getFirstValue(), ter.getMinDiff());
+                            long decodeDuration = System.nanoTime() - decodeStart;
+                            modelDecodeTime = modelDecodeTime.add(BigDecimal.valueOf(decodeDuration));
                         }
                     }
 
                     BigDecimal timeOfRepeatBD = BigDecimal.valueOf(time_of_repeat);
                     modelCost = modelCost.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     modelTime = modelTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
+                    modelDecodeTime = modelDecodeTime.divide(timeOfRepeatBD, 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal numbersSizeBD = BigDecimal.valueOf(numbers.size());
                     BigDecimal model_ratio = modelCost.divide(numbersSizeBD.multiply(BigDecimal.valueOf(64)), 10, BigDecimal.ROUND_HALF_UP);
                     BigDecimal modelTime_throughput = numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelTime, 10, BigDecimal.ROUND_HALF_UP);
+                    BigDecimal decodeThroughput = BigDecimal.ZERO;
+                    if (modelDecodeTime.compareTo(BigDecimal.ZERO) != 0) {
+                        decodeThroughput =
+                                numbersSizeBD.multiply(BigDecimal.valueOf(8000)).divide(modelDecodeTime, 10, BigDecimal.ROUND_HALF_UP);
+                    }
 
                     String[] record = {
                             String.valueOf(chunkSize-1),
                             file.toString(),
                             "TS2DIFF-DP",
                             String.valueOf(modelTime_throughput.doubleValue()),
+                            decodeThroughput.toPlainString(),
                             String.valueOf(numbers.size()),
                             String.valueOf(modelCost),
                             String.valueOf(pack_size),
@@ -2569,7 +2648,7 @@ public class BPDP {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " for packsize=1 group sizes...");
 

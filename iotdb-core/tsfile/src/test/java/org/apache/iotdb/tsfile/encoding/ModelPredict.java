@@ -14,7 +14,6 @@ public class ModelPredict{
 
     private static RandomForestPredictor modelPredictor;
     private static final int CHUNK_SIZE = 10000;
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv");
 
     public ModelPredict() throws Exception {
         // 初始化模型预测器（建议使用单例模式）
@@ -41,7 +40,7 @@ public class ModelPredict{
 
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 //            if(!file.getName().equals("Stocks-DE.csv")) continue;
 
             System.out.println("Processing " + file.getName() + "...");

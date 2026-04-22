@@ -22,8 +22,6 @@ import java.util.*;
  */
 public class SprintzBDCTest {
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
-            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     private static final int CHUNK_SIZE = 1024;
 
     // -------------------- 工具 --------------------
@@ -483,7 +481,7 @@ public class SprintzBDCTest {
         final int qmbdLen = 8;  // QMBD 队列上限（可调）
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -703,7 +701,7 @@ public class SprintzBDCTest {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable pack sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -876,7 +874,7 @@ public class SprintzBDCTest {
         int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr + "/" + file.getName();

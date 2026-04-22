@@ -18,7 +18,6 @@ import java.nio.file.Paths;
 
 public class RFOctadPacking {
 
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv");
     private static final int CHUNK_SIZE = 1000;
 
     public static List<int[]> loadDataFromCSV(String filename) {
@@ -572,7 +571,7 @@ public class RFOctadPacking {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 //            if(!file.getName().equals("Stocks-DE.csv")) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();

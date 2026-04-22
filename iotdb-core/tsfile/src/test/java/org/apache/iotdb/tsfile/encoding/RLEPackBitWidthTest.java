@@ -19,8 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RLEPackBitWidthTest {
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
-            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
+
     private static final int CHUNK_SIZE = 1024;
     private static final int BASELINE_PACK_SIZE = 8;
 
@@ -129,7 +128,7 @@ public class RLEPackBitWidthTest {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -273,7 +272,7 @@ public class RLEPackBitWidthTest {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + "...");
             String Output = outputDirstr + "/" + file.getName();
@@ -427,7 +426,7 @@ public class RLEPackBitWidthTest {
         int pack_size = 8;
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr + "/" + file.getName();

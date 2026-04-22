@@ -121,7 +121,7 @@
         </dependency>
         <dependency>
             <groupId>org.jpmml</groupId>
-            <artifactId>jpmml-sklearn</artifactId>
+            <artifactId>pmml-sklearn</artifactId>
             <version>1.7.3</version>
         </dependency>
         <dependency>
@@ -165,11 +165,11 @@
             <artifactId>xz</artifactId>
             <scope>compile</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.openjdk.jol</groupId>-->
-<!--            <artifactId>jol-core</artifactId>-->
-<!--            <version>0.16</version>-->
-<!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>org.openjdk.jol</groupId>-->
+        <!--            <artifactId>jol-core</artifactId>-->
+        <!--            <version>0.16</version>-->
+        <!--        </dependency>-->
         <!-- for mocked test-->
         <dependency>
             <groupId>org.powermock</groupId>
@@ -206,7 +206,8 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
-            <version>1.21</version> <!-- 请检查是否有更新的版本 -->
+            <version>1.21</version>
+            <!-- 请检查是否有更新的版本 -->
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

@@ -21,9 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RLEfficientOctadPacking {
-//    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv","POI-lat.csv",
-//            "POI-lon.csv","Air-sensor.csv","Basel-temp.csv");
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv");
+
     private static final int CHUNK_SIZE = 1000;
 
 
@@ -228,7 +226,7 @@ public class RLEfficientOctadPacking {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 //            if(!file.getName().equals("Stocks-DE.csv")) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();

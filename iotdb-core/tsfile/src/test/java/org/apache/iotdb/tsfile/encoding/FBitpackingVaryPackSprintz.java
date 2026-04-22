@@ -10,16 +10,13 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 import static java.lang.Math.pow;
 
 public class FBitpackingVaryPackSprintz {
-//    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv","POI-lat.csv",
-//            "POI-lon.csv","Air-sensor.csv","Basel-temp.csv");
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv");
+
     private static final int CHUNK_SIZE = 10000;
     // 轻量级Octad表示
     static String trimStr(String s) {
@@ -143,7 +140,7 @@ public class FBitpackingVaryPackSprintz {
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
 
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 //            if(!file.getName().equals("Stocks-DE.csv")) continue;
             System.out.println(file.getName());
             String Output = outputDirstr+"/"+file.getName();

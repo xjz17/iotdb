@@ -12,8 +12,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class EfficientOctadPackingMLPImproveSprintz {
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv", "POI-lat.csv",
-            "POI-lon.csv", "Basel-wind.csv", "Basel-temp.csv", "Air-sensor.csv");
     static final int CHUNK_SIZE = 1024;
     static final int INPUT_DIM = 16;  // 从12增加到16维特征
     static final int HIDDEN_DIM = 64;
@@ -1050,7 +1048,7 @@ public class EfficientOctadPackingMLPImproveSprintz {
             for (Path entry : ds) {
                 if (!Files.isRegularFile(entry)) continue;
                 String fname = entry.getFileName().toString();
-                if (IGNORE_FILES.contains(fname)) continue;
+                if (!BenchmarkDatasetFilter.includeDatasetFile(fname)) continue;
                 if (!fname.toLowerCase().endsWith(".csv")) continue;
 
                 System.out.println("Reading training data from: " + fname);
@@ -1318,7 +1316,7 @@ public class EfficientOctadPackingMLPImproveSprintz {
             for (Path entry : ds) {
                 if (!Files.isRegularFile(entry)) continue;
                 String fname = entry.getFileName().toString();
-                if (IGNORE_FILES.contains(fname)) continue;
+                if (!BenchmarkDatasetFilter.includeDatasetFile(fname)) continue;
                 System.out.println("Processing " + fname + "...");
                 List<String> numbers = new ArrayList<>();
                 List<Integer> decimalPlaces = new ArrayList<>();

@@ -22,8 +22,6 @@ import java.util.List;
 
 public class CompressionTestBenchmark {
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv", "POI-lat.csv", "POI-lon.csv", "Basel-wind.csv", "Basel-temp.csv", "Air-sensor.csv");
-
     // LZ4 压缩器工厂
     private static final LZ4Factory lz4Factory = LZ4Factory.fastestInstance();
     private static final LZ4Compressor lz4Compressor = lz4Factory.fastCompressor();
@@ -321,7 +319,7 @@ public class CompressionTestBenchmark {
         }
 
         for (File file : files) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("\nProcessing file: " + file.getName());
             String outputPath = outputDirstr + "/" + file.getName() ;

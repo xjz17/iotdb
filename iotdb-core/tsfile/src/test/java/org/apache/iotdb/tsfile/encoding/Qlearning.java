@@ -42,7 +42,6 @@ public class Qlearning {
     private static final int CHUNK_SIZE = 10000;
     static Map<State, Map<Integer, Double>> qTable = new HashMap<>();
     static Random rand = new Random();
-    private static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data","test.csv");
 
     public static void main(String[] args) throws IOException {
         // 示例数据（实际应替换为真实时间序列）
@@ -51,7 +50,7 @@ public class Qlearning {
         if (!outputDir.exists()) outputDir.mkdir();
         File dir = new File(directory);
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 //            if(!file.getName().equals("Stocks-DE.csv")) continue;
 
             System.out.println("Processing " + file.getName() + "...");

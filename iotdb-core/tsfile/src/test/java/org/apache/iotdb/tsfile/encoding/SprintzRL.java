@@ -12,8 +12,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class SprintzRL {
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
-            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     static final int CHUNK_SIZE = 1024;
     static final int INPUT_DIM = 5;
     static final int HIDDEN_DIM = 48;
@@ -727,7 +725,7 @@ public class SprintzRL {
         }
 
         for (File file : files) {
-            if (IGNORE_FILES.contains(file.getName())) {
+            if (!BenchmarkDatasetFilter.includeDatasetFile(file.getName())) {
                 continue;
             }
 
@@ -1265,7 +1263,7 @@ public class SprintzRL {
             for (Path entry : ds) {
                 if (!Files.isRegularFile(entry)) continue;
                 String fname = entry.getFileName().toString();
-                if (IGNORE_FILES.contains(fname)) continue;
+                if (!BenchmarkDatasetFilter.includeDatasetFile(fname)) continue;
 
                 System.out.println("Processing " + fname + "...");
                 List<String> numbers = new ArrayList<>();
@@ -1468,7 +1466,7 @@ public class SprintzRL {
             for (Path entry : ds) {
                 if (!Files.isRegularFile(entry)) continue;
                 String fname = entry.getFileName().toString();
-                if (IGNORE_FILES.contains(fname)) continue;
+                if (!BenchmarkDatasetFilter.includeDatasetFile(fname)) continue;
 
                 System.out.println("Processing " + fname + "...");
                 List<String> numbers = new ArrayList<>();
@@ -1661,7 +1659,7 @@ public class SprintzRL {
             for (Path entry : ds) {
                 if (!Files.isRegularFile(entry)) continue;
                 String fname = entry.getFileName().toString();
-                if (IGNORE_FILES.contains(fname)) continue;
+                if (!BenchmarkDatasetFilter.includeDatasetFile(fname)) continue;
 
                 System.out.println("Processing " + fname + " with variable chunk sizes...");
                 List<String> numbers = new ArrayList<>();

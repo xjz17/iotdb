@@ -182,9 +182,8 @@ public class BDCTest {
 //        packBitWidths.add(Math.max(1, maxBD));
 //    }
 
-    static final List<String> IGNORE_FILES = Arrays.asList(".DS_Store", "full_data", "test.csv","POI-lat.csv",
-            "POI-lon.csv","Basel-wind.csv","Basel-temp.csv","Air-sensor.csv");
     private static final int CHUNK_SIZE = 1024;
+    static int all_max_pack_size = 1;
 
     // -------------------- 工具 --------------------
     public static int getBitWidth(long num) {
@@ -843,7 +842,7 @@ public class BDCTest {
         final int qmbdLen = 16;  // QMBD 队列上限（可调）
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -851,8 +850,8 @@ public class BDCTest {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -1050,7 +1049,7 @@ public class BDCTest {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable pack sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -1060,8 +1059,8 @@ public class BDCTest {
                     "Pack Size",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -1104,7 +1103,7 @@ public class BDCTest {
             int qmbdLen = 64;
 
             // 测试不同的pack size: 2^0 到 2^9 (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
-            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+            for (int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int packSize = (int) Math.pow(2, pack_size_exp);
 
                 System.out.println("Testing pack size: " + packSize + " (2^" + pack_size_exp + ")");
@@ -1238,7 +1237,7 @@ public class BDCTest {
         int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -1248,8 +1247,8 @@ public class BDCTest {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -1430,7 +1429,7 @@ public class BDCTest {
         final int qmbdLen = 16;  // QMBD 队列上限（可调）
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1438,8 +1437,8 @@ public class BDCTest {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -1557,7 +1556,7 @@ public class BDCTest {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable pack sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -1567,8 +1566,8 @@ public class BDCTest {
                     "Pack Size",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -1611,7 +1610,7 @@ public class BDCTest {
             int qmbdLen = 256;
 
             // 测试不同的pack size: 2^0 到 2^9 (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
-            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+            for (int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int packSize = (int) Math.pow(2, pack_size_exp);
 
                 System.out.println("Testing pack size: " + packSize + " (2^" + pack_size_exp + ")");
@@ -1666,6 +1665,7 @@ public class BDCTest {
                         // 解码
                         long decodeStartTime = System.nanoTime();
                         long[] decoded = decodeDynamicPacking(compressed, packSize, paddedArray.length);
+                        decoded = zigzagDecode(decoded);
                         long decodeDuration = System.nanoTime() - decodeStartTime;
 
                         // 验证无损性（只比较原始长度部分）
@@ -1706,8 +1706,8 @@ public class BDCTest {
                 // 解码吞吐量（points/ms）
                 BigDecimal decodeThroughput = BigDecimal.ZERO;
                 if (modelDecodeTime.compareTo(BigDecimal.ZERO) != 0) {
-                    BigDecimal modelDecodeTimeMs = modelDecodeTime.divide(BigDecimal.valueOf(8000), 10, BigDecimal.ROUND_HALF_UP);
-                    decodeThroughput = numbersSizeBD.divide(modelDecodeTimeMs, 10, BigDecimal.ROUND_HALF_UP);
+                    BigDecimal modelDecodeTimeMs = modelDecodeTime.divide(BigDecimal.valueOf(1000000000), 10, BigDecimal.ROUND_HALF_UP);
+                    decodeThroughput = numbersSizeBD.multiply(BigDecimal.valueOf(8)).divide(BigDecimal.valueOf(1000000)).divide(modelDecodeTimeMs, 10, BigDecimal.ROUND_HALF_UP);
                 }
 
                 // 写入结果
@@ -1747,7 +1747,7 @@ public class BDCTest {
         int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -1757,8 +1757,8 @@ public class BDCTest {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -1939,7 +1939,7 @@ public class BDCTest {
         final int qmbdLen = 8;  // QMBD 队列上限（可调）
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1947,8 +1947,8 @@ public class BDCTest {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -2068,7 +2068,7 @@ public class BDCTest {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable pack sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -2078,8 +2078,8 @@ public class BDCTest {
                     "Pack Size",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -2122,7 +2122,7 @@ public class BDCTest {
             int qmbdLen = 64;
 
             // 测试不同的pack size: 2^0 到 2^9 (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
-            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+            for (int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int packSize = (int) Math.pow(2, pack_size_exp);
 
                 System.out.println("Testing pack size: " + packSize + " (2^" + pack_size_exp + ")");
@@ -2261,7 +2261,7 @@ public class BDCTest {
         int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -2271,8 +2271,8 @@ public class BDCTest {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -2456,7 +2456,7 @@ public class BDCTest {
         final int qmbdLen = 8;  // QMBD 队列上限（可调）
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
             System.out.println(file.getName());
             String Output = outputDirstr + "/" + file.getName();
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -2464,8 +2464,8 @@ public class BDCTest {
             String[] head = {
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -2585,7 +2585,7 @@ public class BDCTest {
         File dir = new File(directory);
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable pack sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -2595,8 +2595,8 @@ public class BDCTest {
                     "Pack Size",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
@@ -2639,7 +2639,7 @@ public class BDCTest {
             int qmbdLen = 64;
 
             // 测试不同的pack size: 2^0 到 2^9 (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
-            for (int pack_size_exp = 0; pack_size_exp < 10; pack_size_exp++) {
+            for (int pack_size_exp = 0; pack_size_exp < all_max_pack_size; pack_size_exp++) {
                 int packSize = (int) Math.pow(2, pack_size_exp);
 
                 System.out.println("Testing pack size: " + packSize + " (2^" + pack_size_exp + ")");
@@ -2778,7 +2778,7 @@ public class BDCTest {
         int[] chunkSizes = {16*8, 32*8, 64*8, 128*8, 256*8, 512*8, 1024*8};
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (IGNORE_FILES.contains(file.getName()) || file.isDirectory()) continue;
+            if (file.isDirectory() || !BenchmarkDatasetFilter.includeDatasetFile(file.getName())) continue;
 
             System.out.println("Processing " + file.getName() + " with variable chunk sizes...");
             String Output = outputDirstr + "/" + file.getName();
@@ -2788,8 +2788,8 @@ public class BDCTest {
                     "m",
                     "Input Direction",
                     "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
+                    "Compression Throughput",
+                    "Decompression Throughput",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",

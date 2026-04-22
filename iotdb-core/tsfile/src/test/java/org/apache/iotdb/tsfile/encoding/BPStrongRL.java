@@ -11,17 +11,99 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.*;
 
-public class BPRL {
+public class BPStrongRL {
 
     static final int CHUNK_SIZE = 1024;
-    /** RL 训练时每个 octad 对应的真实 pack 大小（与 {@link #trainModelFromDirectory} 中 DP 预计算必须一致）。 */
-    static final int TRAINING_OCTAD_PACK_SIZE = 1;
+    /**
+     * 训练/DP 奖励里每个逻辑「octad」包含多少原始数值，必须与后续评测时的 {@code octadSize} 一致，否则策略学在
+     * 错误粒度上（例如用 1 训练却在 {@code octadSize=8} 上比压缩比，会弱于在同样为 8 下训练的 {@link BPRL}）。
+     * 与 {@link #trainModelFromDirectory} 中 bitWidth 切段、{@link DPPackingWrapper#computeOptimalCostDP} 的 pack 宽度参数一致。
+     */
+    static final int TRAINING_OCTAD_PACK_SIZE = 8;
+    /**
+     * {@code false}：与 {@link BPRL} 一致——单条轨迹 + 标量奖励的 REINFORCE，无 GRPO/熵/PPO/梯度裁剪；
+     * 在 octadSize=8 上通常比复杂 GRPO 更稳、压缩比更接近或优于旧版 RL。{@code true}：多轨迹 GRPO（实验向）。
+     */
+    static final boolean USE_GRPO_TRAINING = true;
     static final int INPUT_DIM = 5;
-    static final int HIDDEN_DIM = 48;
+    /** 两层隐层，表达能力强于原单层 48 维 MLP。 */
+    static final int HIDDEN1_DIM = 64;
+    static final int HIDDEN2_DIM = 64;
+    /**
+     * GRPO（Group Relative Policy Optimization）：同一条序列上采样多条轨迹，对回报做组内标准化得到优势。
+     * 比单轨迹 REINFORCE 方差更小，但每个序列需 pack GRPO_GROUP_SIZE 次，训练更慢。
+     */
+    static final int GRPO_GROUP_SIZE = 4;
+    /**
+     * 同一条序列上多次采样的回报往往高度相关、方差极小；纯 z-score 会使优势≈0，策略几乎不学。
+     * 对分母设下限，使相对项仍有有效步长（类似 GRPO 文献中的温度/裁剪思想）。
+     */
+    static final float GRPO_MIN_STD = 0.08f;
+    /**
+     * 混合标量回报（与组内 z-score 同量级）：纯 GRPO 只保留「组内谁更好」，丢掉与 BPRL 相当的绝对尺度；
+     * 混入 {@link ImprovedRewardFunction#calculateRewardGroupRelative} 可恢复对「压低 totalCost」的直接梯度。
+     */
+    static final float GRPO_RAW_REWARD_MIX = 0.45f;
+    /** 裁剪混合后的优势，抑制偶发大梯度（策略梯度里「loss」本身不应期望像监督学习一样单调降）。 */
+    static final float GRPO_ADV_CLIP = 2.5f;
+    /** 熵奖励系数：鼓励策略别过早塌缩到 0/1，与 PPO/SAC 中 entropy bonus 同角色。 */
+    static final float GRPO_ENTROPY_COEF = 0.02f;
+    /** 每个 epoch 末尾对学习率乘的衰减因子（下限见 {@link RLDecisionModel#decayLearningRate()}）。 */
+    static final float GRPO_LR_EPOCH_DECAY = 0.9985f;
+    /**
+     * 组内回报方差低于该阈值时，z-score 不可靠，改用秩次优势（-1…1），避免「全差不多」时学不到相对好坏。
+     */
+    static final float GRPO_RANK_VAR_THRESHOLD = 1e-6f;
+    /** 跨序列回报 EMA，用于弱化 raw 项的非平稳性（类似 value baseline，无额外网络）。 */
+    static final float GRPO_REWARD_EMA_DECAY = 0.995f;
+    /** 组内回报最高的一条轨迹，优势再乘该系数，加强「向当前最好行为」更新。 */
+    static final float GRPO_BEST_ADV_BOOST = 1.18f;
+    /** 单次 {@link RLDecisionModel#train} 内梯度全局 L2 范数上限（按整条轨迹累积梯度后裁剪）。 */
+    static final float GRPO_MAX_GRAD_NORM = 12.0f;
+    /**
+     * PPO 式 ratio 裁剪区间 [1-ε, 1+ε]；0 表示关闭（仅 REINFORCE+熵）。开启后使用 {@link DecisionPoint#probability}
+     * 作为采样时策略概率。
+     */
+    static final float GRPO_PPO_CLIP_EPS = 0.12f;
     static int max_octad_size = 4;
+    /** REINFORCE 默认与 BPRL 一致；若开启 {@link #USE_GRPO_TRAINING} 可适当加大。 */
     static int all_epochs = 300;
     static int all_time_of_repeat = 100;
+    /**
+     * 对真实数据写 {@code compressedData} 时使用的探索率。训练后 {@link RLDecisionModel#explorationRate}
+     * 仍约 0.05，若评测仍用该值则约 5% 拆/合决策随机，会明显拉低压缩比，故推理默认 0（纯贪心）。
+     */
+    static final float INFERENCE_EXPLORATION = 0.0f;
+    /**
+     * 推理时对同一 octad 序列多次重打包取最低 {@link PackingResult#totalCost}；
+     * 第 1 次贪心，其余用小探索率换多样性。1=仅一次贪心；4~8 可能略增压缩比但编码更慢。
+     */
+    static int INFERENCE_PACK_TRIALS = 1;
+    /** {@link #INFERENCE_PACK_TRIALS}&gt;1 时第 2 次起的试探用探索率。 */
+    static final float INFERENCE_MULTI_TRIAL_EXPLORATION = 0.06f;
+    /** 奖励中主项（负比特代价）的权重，略 &gt;1 使策略更直接对齐压缩比。 */
+    static final float REWARD_COST_WEIGHT = 1.12f;
 
+    /** 按回报降序将秩 0…G-1 映射到 [-1, 1]，用于方差极小时的组内相对优势。 */
+    static float[] grpoRankScores(float[] rewards) {
+        int g = rewards.length;
+        Integer[] idx = new Integer[g];
+        for (int i = 0; i < g; i++) {
+            idx[i] = i;
+        }
+        Arrays.sort(idx, (a, b) -> Float.compare(rewards[b], rewards[a]));
+        float[] z = new float[g];
+        if (g <= 1) {
+            z[0] = 0.0f;
+            return z;
+        }
+        for (int i = 0; i < g; i++) {
+            // i=0 为回报最高，映射到 +1；最低到 -1
+            float pos = 1.0f - 2.0f * i / (g - 1);
+            z[idx[i]] = pos;
+        }
+        return z;
+    }
 
     // ========== Pack / Result / DecisionPoint ==========
     static class Pack {
@@ -131,7 +213,7 @@ public class BPRL {
             float reward = 0.0f;
 
             // 1. 基础奖励：负的总成本（成本越低，奖励越高）
-            float costReward = -result.totalCost / 100000.0f;
+            float costReward = -result.totalCost / 100000.0f * REWARD_COST_WEIGHT;
             reward += costReward;
 
             // 2. 如果动态规划最优解已知，计算相对改进
@@ -197,36 +279,86 @@ public class BPRL {
             baselineCost = 0;
             bestCost = Float.MAX_VALUE;
         }
+
+        /**
+         * GRPO 组内标量：与 {@link #calculateReward} 主项一致，但<strong>不更新</strong> baseline / best，
+         * 避免同一条序列上采样 G 条轨迹时重复刷新基线。
+         */
+        float calculateRewardGroupRelative(PackingResult result) {
+            float reward = -result.totalCost / 100000.0f * REWARD_COST_WEIGHT;
+            if (optimalDPCost > 0) {
+                float ratio = (float) result.totalCost / optimalDPCost;
+                if (ratio < 1.0f) {
+                    reward += (1.0f - ratio) * 2.0f;
+                } else {
+                    reward -= (ratio - 1.0f) * 0.5f;
+                }
+            }
+            reward -= result.packCount * 0.01f;
+            reward += calculateSizeBalanceReward(result.packs);
+            return reward;
+        }
     }
 
-    // ========== 2-layer MLP policy with REINFORCE ==========
+    // ========== 两层隐层 MLP 策略 + GRPO（组相对优势，替代简单 REINFORCE） ==========
     static class RLDecisionModel {
-        float[] W1; // size HIDDEN_DIM * INPUT_DIM
-        float[] b1; // size HIDDEN_DIM
-        float[] W2; // size HIDDEN_DIM
-        float b2;
+        float[] W1; // HIDDEN1_DIM * INPUT_DIM
+        float[] b1; // HIDDEN1_DIM
+        float[] W2; // HIDDEN2_DIM * HIDDEN1_DIM
+        float[] b2; // HIDDEN2_DIM
+        float[] W3; // HIDDEN2_DIM
+        float b3;
 
         float explorationRate = 0.3f;
+        /** 与 BPRL 中策略网络默认步长一致，避免深层网络 + 过小步长导致欠拟合。 */
         float learningRate = 0.01f;
-        ImprovedRewardFunction rewardFunction;  // 改进的奖励函数
+        float minLearningRate = 0.002f;
+        ImprovedRewardFunction rewardFunction;
 
         Random rng;
 
+        void decayLearningRate() {
+            learningRate *= GRPO_LR_EPOCH_DECAY;
+            if (learningRate < minLearningRate) {
+                learningRate = minLearningRate;
+            }
+        }
+
+        /** 二元分布熵 H(p) = -p log p - (1-p) log(1-p)，用于熵正则。 */
+        static float binaryEntropy(float p) {
+            float pc = Math.min(Math.max(p, 1e-7f), 1.0f - 1e-7f);
+            return -(pc * (float) Math.log(pc) + (1.0f - pc) * (float) Math.log(1.0f - pc));
+        }
+
         RLDecisionModel() {
             rng = new Random();
-            W1 = new float[HIDDEN_DIM * INPUT_DIM];
-            b1 = new float[HIDDEN_DIM];
-            W2 = new float[HIDDEN_DIM];
-            for (int i = 0; i < W1.length; ++i) W1[i] = randUniform(-0.08f, 0.08f);
-            for (int i = 0; i < b1.length; ++i) b1[i] = randUniform(-0.08f, 0.08f);
-            for (int i = 0; i < W2.length; ++i) W2[i] = randUniform(-0.08f, 0.08f);
-            b2 = randUniform(-0.08f, 0.08f);
-
-            // 初始化奖励函数
+            float s1 = (float) Math.sqrt(2.0 / (INPUT_DIM + HIDDEN1_DIM));
+            float s2 = (float) Math.sqrt(2.0 / (HIDDEN1_DIM + HIDDEN2_DIM));
+            float s3 = (float) Math.sqrt(2.0 / (HIDDEN2_DIM + 1));
+            W1 = new float[HIDDEN1_DIM * INPUT_DIM];
+            b1 = new float[HIDDEN1_DIM];
+            W2 = new float[HIDDEN2_DIM * HIDDEN1_DIM];
+            b2 = new float[HIDDEN2_DIM];
+            W3 = new float[HIDDEN2_DIM];
+            for (int i = 0; i < W1.length; ++i) {
+                W1[i] = randUniform(-s1, s1);
+            }
+            for (int i = 0; i < b1.length; ++i) {
+                b1[i] = randUniform(-s1, s1);
+            }
+            for (int i = 0; i < W2.length; ++i) {
+                W2[i] = randUniform(-s2, s2);
+            }
+            for (int i = 0; i < b2.length; ++i) {
+                b2[i] = randUniform(-s2, s2);
+            }
+            for (int i = 0; i < W3.length; ++i) {
+                W3[i] = randUniform(-s3, s3);
+            }
+            b3 = randUniform(-s3, s3);
             rewardFunction = new ImprovedRewardFunction();
         }
 
-        // 设置动态规划最优解（用于奖励计算）
         public void setOptimalDPCost(int optimalDPCost) {
             rewardFunction.setOptimalDPCost(optimalDPCost);
         }
@@ -235,68 +367,116 @@ public class BPRL {
             return a + rng.nextFloat() * (b - a);
         }
 
-        static float relu(float x) { return x > 0.0f ? x : 0.0f; }
-        static float reluDeriv(float x) { return x > 0.0f ? 1.0f : 0.0f; }
+        static float relu(float x) {
+            return x > 0.0f ? x : 0.0f;
+        }
+
+        static float reluDeriv(float x) {
+            return x > 0.0f ? 1.0f : 0.0f;
+        }
+
         static float sigmoid(float x) {
             if (x >= 0) {
                 double z = Math.exp(-x);
-                return (float)(1.0 / (1.0 + z));
+                return (float) (1.0 / (1.0 + z));
             } else {
                 double z = Math.exp(x);
-                return (float)(z / (1.0 + z));
+                return (float) (z / (1.0 + z));
             }
         }
 
-        float forwardProb(float[] feat, float[] outHidden, float[] outZ1) {
-            if (outHidden != null) Arrays.fill(outHidden, 0.0f);
-            if (outZ1 != null) Arrays.fill(outZ1, 0.0f);
+        /**
+         * 前向：feat → relu → relu → sigmoid；若传入缓存则写出 h1,z1,h2,z2 供反传。
+         */
+        float forwardProb(float[] feat, float[] h1, float[] z1, float[] h2, float[] z2) {
+            if (h1 != null) {
+                Arrays.fill(h1, 0.0f);
+            }
+            if (z1 != null) {
+                Arrays.fill(z1, 0.0f);
+            }
+            if (h2 != null) {
+                Arrays.fill(h2, 0.0f);
+            }
+            if (z2 != null) {
+                Arrays.fill(z2, 0.0f);
+            }
 
-            for (int h = 0; h < HIDDEN_DIM; ++h) {
+            float[] bufH1 = h1;
+            float[] bufZ1 = z1;
+            if (bufH1 == null) {
+                bufH1 = new float[HIDDEN1_DIM];
+            }
+            if (bufZ1 == null) {
+                bufZ1 = new float[HIDDEN1_DIM];
+            }
+
+            for (int h = 0; h < HIDDEN1_DIM; ++h) {
                 float z = b1[h];
                 int base = h * INPUT_DIM;
                 for (int j = 0; j < INPUT_DIM; ++j) {
                     z += W1[base + j] * feat[j];
                 }
-                if (outZ1 != null) outZ1[h] = z;
-                float hval = relu(z);
-                if (outHidden != null) outHidden[h] = hval;
+                bufZ1[h] = z;
+                bufH1[h] = relu(z);
             }
 
-            float z2 = b2;
-            if (outHidden != null) {
-                for (int h = 0; h < HIDDEN_DIM; ++h) z2 += W2[h] * outHidden[h];
-            } else {
-                for (int h = 0; h < HIDDEN_DIM; ++h) {
-                    float z = b1[h];
-                    int base = h * INPUT_DIM;
-                    for (int j = 0; j < INPUT_DIM; ++j) z += W1[base + j] * feat[j];
-                    float hval = relu(z);
-                    z2 += W2[h] * hval;
-                }
+            float[] bufH2 = h2;
+            float[] bufZ2 = z2;
+            if (bufH2 == null) {
+                bufH2 = new float[HIDDEN2_DIM];
             }
-            return sigmoid(z2);
+            if (bufZ2 == null) {
+                bufZ2 = new float[HIDDEN2_DIM];
+            }
+
+            for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                float z = b2[h];
+                int base = h * HIDDEN1_DIM;
+                for (int j = 0; j < HIDDEN1_DIM; ++j) {
+                    z += W2[base + j] * bufH1[j];
+                }
+                bufZ2[h] = z;
+                bufH2[h] = relu(z);
+            }
+
+            float z3 = b3;
+            for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                z3 += W3[h] * bufH2[h];
+            }
+            return sigmoid(z3);
         }
 
         float forwardProb(float[] feat) {
-            return forwardProb(feat, null, null);
+            return forwardProb(feat, null, null, null, null);
         }
 
-        float train(List<DecisionPoint> decisions, float reward) {
-            if (decisions == null || decisions.isEmpty()) return 0.0f;
-
+        /**
+         * 与 BPRL 中单次 REINFORCE 相同（整条轨迹共享标量 {@code reward}），适配本类双层隐层网络；
+         * 在 {@link #USE_GRPO_TRAINING} 为 false 时使用（octadSize 与 TRAINING_OCTAD_PACK_SIZE 一致）。
+         */
+        float trainReinforce(List<DecisionPoint> decisions, float reward) {
+            if (decisions == null || decisions.isEmpty()) {
+                return 0.0f;
+            }
             explorationRate *= 0.99f;
-            if (explorationRate < 0.05f) explorationRate = 0.05f;
+            if (explorationRate < 0.05f) {
+                explorationRate = 0.05f;
+            }
 
             float[] dW1 = new float[W1.length];
             float[] db1 = new float[b1.length];
             float[] dW2 = new float[W2.length];
-            float db2 = 0.0f;
+            float[] db2 = new float[b2.length];
+            float[] dW3 = new float[W3.length];
+            float[] db3Box = new float[1];
 
             float totalLoss = 0.0f;
-
             float[] feat = new float[INPUT_DIM];
-            float[] hidden = new float[HIDDEN_DIM];
-            float[] z1 = new float[HIDDEN_DIM];
+            float[] h1 = new float[HIDDEN1_DIM];
+            float[] z1 = new float[HIDDEN1_DIM];
+            float[] h2 = new float[HIDDEN2_DIM];
+            float[] z2 = new float[HIDDEN2_DIM];
 
             for (DecisionPoint dp : decisions) {
                 feat[0] = dp.currentPackSize / 1024.0f;
@@ -305,40 +485,56 @@ public class BPRL {
                 feat[3] = dp.packCount / 1024.0f;
                 feat[4] = dp.currentMaxLog / 10.0f;
 
-                float p = forwardProb(feat, hidden, z1);
-
+                float p = forwardProb(feat, h1, z1, h2, z2);
                 float pClipped = Math.min(Math.max(p, 1e-6f), 1.0f - 1e-6f);
-
                 float piA = dp.action ? pClipped : (1.0f - pClipped);
                 if (piA <= 0.0f) {
                     piA = 1e-6f;
                 }
                 float lossI = -reward * (float) Math.log(piA);
-
                 if (Float.isNaN(lossI) || Float.isInfinite(lossI)) {
-                    System.err.printf("Warning: loss is NaN or Infinite. p=%.8f, piA=%.8f, reward=%.8f\n", p, piA, reward);
+                    System.err.printf(
+                            "Warning: loss is NaN or Infinite. p=%.8f, piA=%.8f, reward=%.8f\n",
+                            p, piA, reward);
                     lossI = 0.0f;
                 }
-
                 totalLoss += lossI;
 
-                float dL_dz2 = reward * (p - (dp.action ? 1.0f : 0.0f));
-
-                for (int h = 0; h < HIDDEN_DIM; ++h) {
-                    dW2[h] += dL_dz2 * hidden[h];
+                float dL_dz3 = reward * (p - (dp.action ? 1.0f : 0.0f));
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    dW3[h] += dL_dz3 * h2[h];
                 }
-                db2 += dL_dz2;
+                db3Box[0] += dL_dz3;
 
-                for (int h = 0; h < HIDDEN_DIM; ++h) {
-                    float w2h = W2[h];
-                    float dh = dL_dz2 * w2h;
-                    float dReLU = reluDeriv(z1[h]);
-                    float dZ1 = dh * dReLU;
+                float[] dh2 = new float[HIDDEN2_DIM];
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    dh2[h] = dL_dz3 * W3[h];
+                }
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    float dz2 = dh2[h] * reluDeriv(z2[h]);
+                    int base = h * HIDDEN1_DIM;
+                    for (int j = 0; j < HIDDEN1_DIM; ++j) {
+                        dW2[base + j] += dz2 * h1[j];
+                    }
+                    db2[h] += dz2;
+                }
+
+                float[] dh1 = new float[HIDDEN1_DIM];
+                Arrays.fill(dh1, 0.0f);
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    float dz2 = dh2[h] * reluDeriv(z2[h]);
+                    int base = h * HIDDEN1_DIM;
+                    for (int j = 0; j < HIDDEN1_DIM; ++j) {
+                        dh1[j] += dz2 * W2[base + j];
+                    }
+                }
+                for (int h = 0; h < HIDDEN1_DIM; ++h) {
+                    float dz1 = dh1[h] * reluDeriv(z1[h]);
                     int base = h * INPUT_DIM;
                     for (int j = 0; j < INPUT_DIM; ++j) {
-                        dW1[base + j] += dZ1 * feat[j];
+                        dW1[base + j] += dz1 * feat[j];
                     }
-                    db1[h] += dZ1;
+                    db1[h] += dz1;
                 }
             }
 
@@ -355,8 +551,150 @@ public class BPRL {
                 W2[i] -= lr * dW2[i];
                 W2[i] = clip(W2[i], -10f, 10f);
             }
-            b2 -= lr * db2;
-            b2 = clip(b2, -10f, 10f);
+            for (int i = 0; i < b2.length; ++i) {
+                b2[i] -= lr * db2[i];
+                b2[i] = clip(b2[i], -10f, 10f);
+            }
+            for (int i = 0; i < W3.length; ++i) {
+                W3[i] -= lr * dW3[i];
+                W3[i] = clip(W3[i], -10f, 10f);
+            }
+            b3 -= lr * db3Box[0];
+            b3 = clip(b3, -10f, 10f);
+
+            return totalLoss;
+        }
+
+        /**
+         * 策略梯度一步：最小化 {@code -A·log π(a|s) - β·H(π)}（β=GRPO_ENTROPY_COEF）。
+         * 打印的标量「loss」是沿整条轨迹对决策点求和，且 A 随序列变化，不必单调下降；看 reward / 压缩比更可靠。
+         */
+        float train(List<DecisionPoint> decisions, float advantage) {
+            if (decisions == null || decisions.isEmpty()) {
+                return 0.0f;
+            }
+
+            float adv = clip(advantage, -GRPO_ADV_CLIP, GRPO_ADV_CLIP);
+
+            float[] dW1 = new float[W1.length];
+            float[] db1 = new float[b1.length];
+            float[] dW2 = new float[W2.length];
+            float[] db2 = new float[b2.length];
+            float[] dW3 = new float[W3.length];
+            float[] db3Box = new float[1];
+
+            float totalLoss = 0.0f;
+            float[] feat = new float[INPUT_DIM];
+            float[] h1 = new float[HIDDEN1_DIM];
+            float[] z1 = new float[HIDDEN1_DIM];
+            float[] h2 = new float[HIDDEN2_DIM];
+            float[] z2 = new float[HIDDEN2_DIM];
+
+            for (DecisionPoint dp : decisions) {
+                feat[0] = dp.currentPackSize / 1024.0f;
+                feat[1] = dp.currentPackMaxB / 64.0f;
+                feat[2] = dp.newOctadB / 64.0f;
+                feat[3] = dp.packCount / 1024.0f;
+                feat[4] = dp.currentMaxLog / 10.0f;
+
+                float p = forwardProb(feat, h1, z1, h2, z2);
+                float pClipped = Math.min(Math.max(p, 1e-6f), 1.0f - 1e-6f);
+                float piA = dp.action ? pClipped : (1.0f - pClipped);
+                if (piA <= 0.0f) {
+                    piA = 1e-6f;
+                }
+                if (GRPO_PPO_CLIP_EPS > 1e-6f) {
+                    float pOld = dp.probability;
+                    float piOld = dp.action ? pOld : (1.0f - pOld);
+                    piOld = Math.max(piOld, 1e-8f);
+                    float piNew = dp.action ? pClipped : (1.0f - pClipped);
+                    float ratio = piNew / piOld;
+                    float clipLo = 1.0f - GRPO_PPO_CLIP_EPS;
+                    float clipHi = 1.0f + GRPO_PPO_CLIP_EPS;
+                    if (adv > 0 && ratio > clipHi) {
+                        continue;
+                    }
+                    if (adv < 0 && ratio < clipLo) {
+                        continue;
+                    }
+                }
+                float policyTerm = -adv * (float) Math.log(piA);
+                float ent = binaryEntropy(p);
+                float lossI = policyTerm - GRPO_ENTROPY_COEF * ent;
+                if (Float.isNaN(lossI) || Float.isInfinite(lossI)) {
+                    System.err.printf(
+                            "Warning: loss is NaN or Infinite. p=%.8f, piA=%.8f, adv=%.8f\n",
+                            p, piA, adv);
+                    lossI = 0.0f;
+                }
+                totalLoss += lossI;
+
+                float dL_dz3 = adv * (p - (dp.action ? 1.0f : 0.0f));
+                float dHdp = (float) Math.log((1.0f - pClipped) / pClipped);
+                float dpdz = p * (1.0f - p);
+                dL_dz3 -= GRPO_ENTROPY_COEF * dHdp * dpdz;
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    dW3[h] += dL_dz3 * h2[h];
+                }
+                db3Box[0] += dL_dz3;
+
+                float[] dh2 = new float[HIDDEN2_DIM];
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    dh2[h] = dL_dz3 * W3[h];
+                }
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    float dz2 = dh2[h] * reluDeriv(z2[h]);
+                    int base = h * HIDDEN1_DIM;
+                    for (int j = 0; j < HIDDEN1_DIM; ++j) {
+                        dW2[base + j] += dz2 * h1[j];
+                    }
+                    db2[h] += dz2;
+                }
+
+                float[] dh1 = new float[HIDDEN1_DIM];
+                Arrays.fill(dh1, 0.0f);
+                for (int h = 0; h < HIDDEN2_DIM; ++h) {
+                    float dz2 = dh2[h] * reluDeriv(z2[h]);
+                    int base = h * HIDDEN1_DIM;
+                    for (int j = 0; j < HIDDEN1_DIM; ++j) {
+                        dh1[j] += dz2 * W2[base + j];
+                    }
+                }
+                for (int h = 0; h < HIDDEN1_DIM; ++h) {
+                    float dz1 = dh1[h] * reluDeriv(z1[h]);
+                    int base = h * INPUT_DIM;
+                    for (int j = 0; j < INPUT_DIM; ++j) {
+                        dW1[base + j] += dz1 * feat[j];
+                    }
+                    db1[h] += dz1;
+                }
+            }
+
+            scalePolicyGradients(dW1, db1, dW2, db2, dW3, db3Box, GRPO_MAX_GRAD_NORM);
+
+            float lr = learningRate;
+            for (int i = 0; i < W1.length; ++i) {
+                W1[i] -= lr * dW1[i];
+                W1[i] = clip(W1[i], -10f, 10f);
+            }
+            for (int i = 0; i < b1.length; ++i) {
+                b1[i] -= lr * db1[i];
+                b1[i] = clip(b1[i], -10f, 10f);
+            }
+            for (int i = 0; i < W2.length; ++i) {
+                W2[i] -= lr * dW2[i];
+                W2[i] = clip(W2[i], -10f, 10f);
+            }
+            for (int i = 0; i < b2.length; ++i) {
+                b2[i] -= lr * db2[i];
+                b2[i] = clip(b2[i], -10f, 10f);
+            }
+            for (int i = 0; i < W3.length; ++i) {
+                W3[i] -= lr * dW3[i];
+                W3[i] = clip(W3[i], -10f, 10f);
+            }
+            b3 -= lr * db3Box[0];
+            b3 = clip(b3, -10f, 10f);
 
             return totalLoss;
         }
@@ -365,12 +703,64 @@ public class BPRL {
             return Math.min(Math.max(v, low), high);
         }
 
-        // 计算奖励（使用改进的奖励函数）
+        /** 整条轨迹累积梯度后做全局范数裁剪，抑制长序列上的梯度爆炸。 */
+        static void scalePolicyGradients(
+                float[] dW1,
+                float[] db1,
+                float[] dW2,
+                float[] db2,
+                float[] dW3,
+                float[] db3Box,
+                float maxNorm) {
+            float db3 = db3Box[0];
+            double sq = (double) db3 * db3;
+            for (float x : dW1) {
+                sq += (double) x * x;
+            }
+            for (float x : db1) {
+                sq += (double) x * x;
+            }
+            for (float x : dW2) {
+                sq += (double) x * x;
+            }
+            for (float x : db2) {
+                sq += (double) x * x;
+            }
+            for (float x : dW3) {
+                sq += (double) x * x;
+            }
+            float n = (float) Math.sqrt(sq);
+            if (n <= maxNorm || n < 1e-8f) {
+                return;
+            }
+            float s = maxNorm / n;
+            for (int i = 0; i < dW1.length; i++) {
+                dW1[i] *= s;
+            }
+            for (int i = 0; i < db1.length; i++) {
+                db1[i] *= s;
+            }
+            for (int i = 0; i < dW2.length; i++) {
+                dW2[i] *= s;
+            }
+            for (int i = 0; i < db2.length; i++) {
+                db2[i] *= s;
+            }
+            for (int i = 0; i < dW3.length; i++) {
+                dW3[i] *= s;
+            }
+            db3Box[0] *= s;
+        }
+
         public float calculateReward(PackingResult result) {
             return rewardFunction.calculateReward(result);
         }
 
-        // 重置奖励函数状态
+        /** GRPO 组内回报（无基线状态），与 {@link ImprovedRewardFunction#calculateRewardGroupRelative} 一致。 */
+        public float calculateRewardGroupRelative(PackingResult result) {
+            return rewardFunction.calculateRewardGroupRelative(result);
+        }
+
         public void resetRewardFunction() {
             rewardFunction.reset();
         }
@@ -539,7 +929,16 @@ public class BPRL {
 
     // ========== 训练方法（改进版） ==========
     static RLDecisionModel trainModelFromDirectory(int epochs, String directoryPath) {
-        System.err.println("Training RL model from directory: " + directoryPath);
+        if (USE_GRPO_TRAINING) {
+            System.err.println(
+                    "Training GRPO policy (group size=" + GRPO_GROUP_SIZE + ") from directory: " + directoryPath);
+        } else {
+            System.err.println(
+                    "Training REINFORCE policy (BPRL-style, TRAINING_OCTAD_PACK_SIZE="
+                            + TRAINING_OCTAD_PACK_SIZE
+                            + ") from directory: "
+                            + directoryPath);
+        }
         RLDecisionModel model = new RLDecisionModel();
 
         // 加载训练数据
@@ -550,6 +949,14 @@ public class BPRL {
         }
 
         System.err.println("Loaded " + sequences.size() + " sequences of 1024 values from directory");
+        if (!USE_GRPO_TRAINING) {
+            System.err.println(
+                    "REINFORCE: 策略梯度使用 calculateRewardGroupRelative（无运行期 baseline/best），Avg policyReward 可比、随压缩变好应总体上升。"
+                            + " surrogate=mean(-r*logπ)。请看 Avg totalCost(bits) 与 Avg policyReward。"
+                            + " 评测 octadSize 请为 "
+                            + TRAINING_OCTAD_PACK_SIZE
+                            + "。");
+        }
 
         List<DecisionPoint> decisionTrace = new ArrayList<>();
 
@@ -590,16 +997,21 @@ public class BPRL {
             }
         }
 
-        for (int epoch = 1; epoch <= epochs; ++epoch) {
-            long startTime = System.nanoTime();
-            float totalReward = 0.0f;
-            float totalLoss = 0.0f;
-            int processedSequences = 0;
+        if (USE_GRPO_TRAINING) {
+            float grpoRewardEma = 0.0f;
+            boolean grpoRewardEmaInit = false;
 
-            // 每5个epoch重置奖励函数
-            if (epoch % 5 == 1) {
-                model.resetRewardFunction();
-            }
+            for (int epoch = 1; epoch <= epochs; ++epoch) {
+                long startTime = System.nanoTime();
+                float totalReward = 0.0f;
+                float totalLoss = 0.0f;
+                int processedSequences = 0;
+
+                // 每5个epoch重置奖励函数
+                if (epoch % 5 == 1) {
+                    model.resetRewardFunction();
+                    grpoRewardEmaInit = false;
+                }
 
             for (int seqIdx = 0; seqIdx < sequences.size(); seqIdx++) {
                 List<Long> rawSequence = sequences.get(seqIdx);
@@ -628,28 +1040,160 @@ public class BPRL {
                 // 设置当前序列的动态规划最优解
                 model.setOptimalDPCost(dpOptimalCosts.get(seqIdx));
 
-                decisionTrace.clear();
-                PackingResult result = packOctads(bitWidths, model, decisionTrace, octadSize, null, 0);
+                float[] groupRewards = new float[GRPO_GROUP_SIZE];
+                List<List<DecisionPoint>> groupTraces = new ArrayList<>(GRPO_GROUP_SIZE);
+                PackingResult[] groupResults = new PackingResult[GRPO_GROUP_SIZE];
+                for (int g = 0; g < GRPO_GROUP_SIZE; g++) {
+                    decisionTrace.clear();
+                    PackingResult result = packOctads(bitWidths, model, decisionTrace, octadSize, null, 0);
+                    groupResults[g] = result;
+                    groupRewards[g] = model.calculateRewardGroupRelative(result);
+                    groupTraces.add(new ArrayList<>(decisionTrace));
+                }
 
-                // 使用改进的奖励函数计算奖励
-                float reward = model.calculateReward(result);
-                totalReward += reward;
+                float mean = 0.0f;
+                for (float r : groupRewards) {
+                    mean += r;
+                }
+                mean /= GRPO_GROUP_SIZE;
+                float var = 0.0f;
+                for (float r : groupRewards) {
+                    float d = r - mean;
+                    var += d * d;
+                }
+                var /= GRPO_GROUP_SIZE;
+                float std = (float) Math.sqrt(var + 1e-8f);
+                float denom = Math.max(std, GRPO_MIN_STD);
 
-                float loss = model.train(decisionTrace, reward);
-                totalLoss += loss;
+                float[] rankZ = grpoRankScores(groupRewards);
+                boolean useRank = var < GRPO_RANK_VAR_THRESHOLD;
+
+                int bestG = 0;
+                for (int g = 1; g < GRPO_GROUP_SIZE; g++) {
+                    if (groupRewards[g] > groupRewards[bestG]) {
+                        bestG = g;
+                    }
+                }
+
+                float seqRewardSum = 0.0f;
+                for (int g = 0; g < GRPO_GROUP_SIZE; g++) {
+                    float z =
+                            useRank
+                                    ? rankZ[g]
+                                    : (groupRewards[g] - mean) / denom;
+                    float rawPart = groupRewards[g];
+                    if (grpoRewardEmaInit) {
+                        rawPart = groupRewards[g] - grpoRewardEma;
+                    }
+                    float adv =
+                            (1.0f - GRPO_RAW_REWARD_MIX) * z
+                                    + GRPO_RAW_REWARD_MIX * rawPart;
+                    if (g == bestG) {
+                        adv *= GRPO_BEST_ADV_BOOST;
+                    }
+                    adv = RLDecisionModel.clip(adv, -GRPO_ADV_CLIP, GRPO_ADV_CLIP);
+                    seqRewardSum += groupRewards[g];
+                    totalLoss += model.train(groupTraces.get(g), adv);
+                }
+                totalReward += seqRewardSum / GRPO_GROUP_SIZE;
+
+                model.calculateReward(groupResults[bestG]);
+
+                if (!grpoRewardEmaInit) {
+                    grpoRewardEma = mean;
+                    grpoRewardEmaInit = true;
+                } else {
+                    grpoRewardEma =
+                            GRPO_REWARD_EMA_DECAY * grpoRewardEma
+                                    + (1.0f - GRPO_REWARD_EMA_DECAY) * mean;
+                }
+
+                model.explorationRate *= 0.99f;
+                if (model.explorationRate < 0.05f) {
+                    model.explorationRate = 0.05f;
+                }
+
                 processedSequences++;
             }
+
+            model.decayLearningRate();
 
             long durationMs = (System.nanoTime() - startTime) / 1_000_000L;
 
             if (epoch % 10 == 0 || epoch == 1 || epoch == epochs) {
-                System.out.printf("Epoch %d: Avg Reward = %.6f, Avg Loss = %.6f, Time = %d ms%n",
+                int gradSteps = processedSequences * GRPO_GROUP_SIZE;
+                System.out.printf(
+                        "Epoch %d: Avg Reward = %.6f, Surrogate Loss = %.6f (per grad step, -A·logπ - βH), lr=%.6f, Time = %d ms%n",
                         epoch,
                         totalReward / processedSequences,
-                        totalLoss / processedSequences,
+                        gradSteps > 0 ? totalLoss / gradSteps : 0.0f,
+                        model.learningRate,
                         durationMs);
             } else {
-                System.out.printf("Epoch %d done. Time = %d ms%n", epoch, durationMs);
+                System.out.printf("Epoch %d done. lr=%.6f, Time = %d ms%n", epoch, model.learningRate, durationMs);
+            }
+            }
+        } else {
+            for (int epoch = 1; epoch <= epochs; ++epoch) {
+                long startTime = System.nanoTime();
+                float totalRewardSimple = 0.0f;
+                float totalLossSimple = 0.0f;
+                long totalCostSumSimple = 0L;
+                int processedSequencesSimple = 0;
+
+                for (int seqIdx = 0; seqIdx < sequences.size(); seqIdx++) {
+                    List<Long> rawSequence = sequences.get(seqIdx);
+                    int octadSizeR = TRAINING_OCTAD_PACK_SIZE;
+
+                    long[] sequenceArray = new long[rawSequence.size()];
+                    for (int i = 0; i < rawSequence.size(); i++) {
+                        sequenceArray[i] = rawSequence.get(i);
+                    }
+
+                    List<Integer> bitWidths = new ArrayList<>();
+                    for (int i = 0; i < sequenceArray.length; i += octadSizeR) {
+                        long maxInOctad = 0;
+                        for (int j = i; j < i + octadSizeR && j < sequenceArray.length; j++) {
+                            if (sequenceArray[j] > maxInOctad) {
+                                maxInOctad = sequenceArray[j];
+                            }
+                        }
+                        int bitWidth = 0;
+                        if (maxInOctad > 0) {
+                            bitWidth = 64 - Long.numberOfLeadingZeros(maxInOctad);
+                        }
+                        bitWidths.add(bitWidth);
+                    }
+
+                    model.setOptimalDPCost(dpOptimalCosts.get(seqIdx));
+
+                    decisionTrace.clear();
+                    PackingResult result = packOctads(bitWidths, model, decisionTrace, octadSizeR, null, 0);
+                    totalCostSumSimple += result.totalCost;
+                    float reward = model.calculateRewardGroupRelative(result);
+                    totalRewardSimple += reward;
+                    totalLossSimple += model.trainReinforce(decisionTrace, reward);
+                    processedSequencesSimple++;
+                }
+
+                long durationMsSimple = (System.nanoTime() - startTime) / 1_000_000L;
+
+                if (epoch % 10 == 0 || epoch == 1 || epoch == epochs) {
+                    float avgCost =
+                            processedSequencesSimple > 0
+                                    ? (float) totalCostSumSimple / processedSequencesSimple
+                                    : 0.0f;
+                    System.out.printf(
+                            "Epoch %d: Avg totalCost=%.0f bits, Avg policyReward=%.6f, surrogate(-r*logπ)=%.6f, lr=%.6f, Time=%d ms%n",
+                            epoch,
+                            avgCost,
+                            totalRewardSimple / processedSequencesSimple,
+                            processedSequencesSimple > 0 ? totalLossSimple / processedSequencesSimple : 0.0f,
+                            model.learningRate,
+                            durationMsSimple);
+                } else {
+                    System.out.printf("Epoch %d done. Time = %d ms%n", epoch, durationMsSimple);
+                }
             }
         }
 
@@ -1020,9 +1564,16 @@ public class BPRL {
         return baos.toByteArray();
     }
 
-    static PackingResult packOctads(List<Integer> bitWidths, RLDecisionModel model,
-                                              List<DecisionPoint> decisionTrace, int octadSize,
-                                              long[] dataArray, int originalLength) {
+    /**
+     * 只生成 pack 划分与代价，不写压缩字节；{@code explorationRate} 与训练时 {@link RLDecisionModel#explorationRate}
+     * 解耦，便于推理用 0。
+     */
+    static PackingResult packOctadsPlan(
+            List<Integer> bitWidths,
+            RLDecisionModel model,
+            List<DecisionPoint> decisionTrace,
+            int octadSize,
+            float explorationRate) {
         PackingResult result = new PackingResult();
         Pack currentPack = new Pack();
         int globalMaxLog = 0;
@@ -1048,15 +1599,22 @@ public class BPRL {
                 float probability = model.forwardProb(feat);
 
                 boolean shouldMerge;
-                if (localRng.nextFloat() < model.explorationRate) {
+                if (localRng.nextFloat() < explorationRate) {
                     shouldMerge = (localRng.nextFloat() > 0.5f);
                 } else {
                     shouldMerge = probability > 0.5f;
                 }
 
                 if (decisionTrace != null) {
-                    decisionTrace.add(new DecisionPoint(currentPack.size, currentPack.maxBitWidth,
-                            b, packCount, globalMaxLog, shouldMerge, probability));
+                    decisionTrace.add(
+                            new DecisionPoint(
+                                    currentPack.size,
+                                    currentPack.maxBitWidth,
+                                    b,
+                                    packCount,
+                                    globalMaxLog,
+                                    shouldMerge,
+                                    probability));
                 }
 
                 if (shouldMerge) {
@@ -1064,7 +1622,9 @@ public class BPRL {
                 } else {
                     result.dataCostA += currentPack.dataCost(octadSize);
                     int logSize = currentPack.logSize();
-                    if (logSize > globalMaxLog) globalMaxLog = logSize;
+                    if (logSize > globalMaxLog) {
+                        globalMaxLog = logSize;
+                    }
                     result.packs.add(currentPack);
                     packCount++;
 
@@ -1077,18 +1637,54 @@ public class BPRL {
         if (currentPack.size > 0) {
             result.dataCostA += currentPack.dataCost(octadSize);
             int logSize = currentPack.logSize();
-            if (logSize > globalMaxLog) globalMaxLog = logSize;
+            if (logSize > globalMaxLog) {
+                globalMaxLog = logSize;
+            }
             result.packs.add(currentPack);
             packCount++;
         }
 
         result.packCount = packCount;
         result.calculateCost(globalMaxLog);
+        return result;
+    }
+
+    static PackingResult packOctads(
+            List<Integer> bitWidths,
+            RLDecisionModel model,
+            List<DecisionPoint> decisionTrace,
+            int octadSize,
+            long[] dataArray,
+            int originalLength) {
+        if (dataArray != null && INFERENCE_PACK_TRIALS > 1) {
+            PackingResult best = null;
+            for (int t = 0; t < INFERENCE_PACK_TRIALS; t++) {
+                float er = (t == 0) ? INFERENCE_EXPLORATION : INFERENCE_MULTI_TRIAL_EXPLORATION;
+                PackingResult cand = packOctadsPlan(bitWidths, model, null, octadSize, er);
+                if (best == null || cand.totalCost < best.totalCost) {
+                    best = cand;
+                }
+            }
+            if (best == null) {
+                best = packOctadsPlan(bitWidths, model, null, octadSize, INFERENCE_EXPLORATION);
+            }
+            try {
+                best.compressedData =
+                        performBitPackingCompression(dataArray, best.packs, octadSize, originalLength);
+            } catch (IOException e) {
+                System.err.println("Compression failed: " + e.getMessage());
+                best.compressedData = null;
+            }
+            return best;
+        }
+
+        float exploreUsed = (dataArray != null) ? INFERENCE_EXPLORATION : model.explorationRate;
+        PackingResult result = packOctadsPlan(bitWidths, model, decisionTrace, octadSize, exploreUsed);
 
         if (dataArray != null) {
             try {
-                result.compressedData = performBitPackingCompression(dataArray, result.packs,
-                        octadSize, originalLength);
+                result.compressedData =
+                        performBitPackingCompression(dataArray, result.packs, octadSize, originalLength);
             } catch (IOException e) {
                 System.err.println("Compression failed: " + e.getMessage());
                 result.compressedData = null;
@@ -1622,7 +2218,7 @@ public class BPRL {
     public void BPRL0() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL";
 
         int epochs = 20;
 
@@ -1842,7 +2438,7 @@ public class BPRL {
     public void TestVarPackSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL_vary_pack_size";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_vary_pack_size";
 
         int epochs = all_epochs;
 
@@ -2038,7 +2634,7 @@ public class BPRL {
     public void TestVariableChunkSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPRL_vary_m";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_vary_m";
 
         int epochs = all_epochs;
 
@@ -2239,7 +2835,7 @@ public class BPRL {
     public void ZigzagRL() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_Zigzag";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_Zigzag";
 
         int epochs = 200;
 
@@ -2473,7 +3069,7 @@ public class BPRL {
     public void ZigzagVarPackSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_Zigzag_vary_pack_size";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_Zigzag_vary_pack_size";
 
         int epochs = 300;
 
@@ -2669,7 +3265,7 @@ public class BPRL {
     public void ZigzagVarChunkSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_Zigzag_vary_m";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_Zigzag_vary_m";
 
         int epochs = all_epochs;
 
@@ -2873,7 +3469,7 @@ public class BPRL {
     public void SprintzRL() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_Sprintz";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_Sprintz";
 
         int epochs = 200;
 
@@ -3108,7 +3704,7 @@ public class BPRL {
     public void SprintzVarPackSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_Sprintz_vary_pack_size";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_Sprintz_vary_pack_size";
 
         int epochs = all_epochs;
 
@@ -3316,7 +3912,7 @@ public class BPRL {
     public void SprintzVarChunkSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_Sprintz_vary_m";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_Sprintz_vary_m";
 
         int epochs = all_epochs;
 
@@ -3519,7 +4115,7 @@ public class BPRL {
     public void TS2DIFFRL() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_TS2DIFF";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_TS2DIFF";
 
         int epochs = 200;
 
@@ -3755,7 +4351,7 @@ public class BPRL {
     public void TS2DIFFVarPackSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_TS2DIFF_vary_pack_size";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_TS2DIFF_vary_pack_size";
 
         int epochs = all_epochs;
 
@@ -3952,7 +4548,7 @@ public class BPRL {
     public void TS2DIFFVarChunkSize() {
         String trainDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
         String dataDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/ElfTestData_camel";
-        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_RL_TS2DIFF_vary_m";
+        String outDir = "/Users/xiaojinzhao/Documents/GitHub/encoding-block/elf_resources/output_BPStrongRL_TS2DIFF_vary_m";
 
         int epochs = all_epochs;
 
