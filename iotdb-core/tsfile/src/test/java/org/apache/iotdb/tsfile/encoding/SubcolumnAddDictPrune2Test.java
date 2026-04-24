@@ -362,12 +362,12 @@ public class SubcolumnAddDictPrune2Test {
         // int[] beta_list = {1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31};
         // int[] beta_list = { 1, 2, 3, 5, 7, 11 };
         // int[] beta_list = { 1, 2, 3, 4 };
-        // int[] beta_list = { 2, 3, 4 };
+        int[] beta_list = { 2, 3, 4 };
 
-        int[] beta_list = new int[m - 1];
-        for (int i = 0; i < m - 1; i++) {
-            beta_list[i] = i + 2;
-        }
+        // int[] beta_list = new int[m - 1];
+        // for (int i = 0; i < m - 1; i++) {
+        //     beta_list[i] = i + 2;
+        // }
 
         // int bw = bitWidth(block_size);
 

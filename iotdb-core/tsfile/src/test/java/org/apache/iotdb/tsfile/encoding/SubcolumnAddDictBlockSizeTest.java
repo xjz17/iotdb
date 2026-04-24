@@ -48,11 +48,13 @@ public class SubcolumnAddDictBlockSizeTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = parent_dir + "result/compression_vs_block_prune/";
+        // String output_parent_dir = parent_dir + "result/compression_vs_block_prune_new/";
 
         File outputDir = new File(output_parent_dir);
         if (!outputDir.exists()) {
@@ -61,7 +63,8 @@ public class SubcolumnAddDictBlockSizeTest {
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        int repeatTime = 500;
+        int repeatTime = 200;
+        // repeatTime = 500;
 
         List<String> datasetList = new ArrayList<>();
         datasetList.add("Arade4");
@@ -151,6 +154,7 @@ public class SubcolumnAddDictBlockSizeTest {
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
                     length = SubcolumnAddDictPruneTest.Encoder(data2_arr, block_size, encoded_result);
+                    // length = SubcolumnAddDictPruneNewTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -196,7 +200,8 @@ public class SubcolumnAddDictBlockSizeTest {
 
     @Test
     public void test1() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -344,11 +349,13 @@ public class SubcolumnAddDictBlockSizeTest {
 
     @Test
     public void test2() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/compression_vs_block_prune2/";
+        // String output_parent_dir = parent_dir + "result/compression_vs_block_prune2/";
+        String output_parent_dir = parent_dir + "result/compression_vs_block_prune2_new/";
 
         File outputDir = new File(output_parent_dir);
         if (!outputDir.exists()) {
@@ -447,7 +454,8 @@ public class SubcolumnAddDictBlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnAddDictPrune2Test.Encoder(data2_arr, block_size, encoded_result);
+                    // length = SubcolumnAddDictPrune2Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = SubcolumnAddDictPrune2NewTest.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
