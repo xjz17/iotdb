@@ -11,212 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
 
-public class ASubcolumnAddDictionaryAndHuffmanTest {
+import static org.junit.Assert.assertEquals;
 
-    private static final class HuffmanNode {
-        final int symbol; // -1 for internal node
-        final int freq;
-        final HuffmanNode left;
-        final HuffmanNode right;
-
-        private HuffmanNode(int symbol, int freq, HuffmanNode left, HuffmanNode right) {
-            this.symbol = symbol;
-            this.freq = freq;
-            this.left = left;
-            this.right = right;
-        }
-
-        boolean isLeaf() {
-            return left == null && right == null;
-        }
-    }
-
-    private static final class HuffmanCode {
-        final int code;
-        final int len;
-
-        private HuffmanCode(int code, int len) {
-            this.code = code;
-            this.len = len;
-        }
-    }
-
-    private static final class HuffmanBuildResult {
-        final int[] symbolsSortedAsc;
-        final byte[] codeLenBySymbolIndex; // aligned with symbolsSortedAsc
-        final HuffmanCode[] canonicalCodesBySymbolIndex; // aligned with symbolsSortedAsc
-        final int totalBits;
-
-        private HuffmanBuildResult(
-                int[] symbolsSortedAsc,
-                byte[] codeLenBySymbolIndex,
-                HuffmanCode[] canonicalCodesBySymbolIndex,
-                int totalBits) {
-            this.symbolsSortedAsc = symbolsSortedAsc;
-            this.codeLenBySymbolIndex = codeLenBySymbolIndex;
-            this.canonicalCodesBySymbolIndex = canonicalCodesBySymbolIndex;
-            this.totalBits = totalBits;
-        }
-    }
-
-    private static void writeBits(int value, int bitLen, byte[] out, int bitPos) {
-        // Write highest bits first.
-        for (int k = bitLen - 1; k >= 0; k--) {
-            boolean b = ((value >>> k) & 1) != 0;
-            boolToBytes(b, out, bitPos++);
-        }
-    }
-
-    private static int readBit(byte[] in, int bitPos) {
-        return bytesToBool(in, bitPos) ? 1 : 0;
-    }
-
-    private static void assignCodeLengths(HuffmanNode node, int depth, Map<Integer, Integer> outLen) {
-        if (node.isLeaf()) {
-            // Single-symbol edge case: assign length 1.
-            outLen.put(node.symbol, Math.max(1, depth));
-            return;
-        }
-        assignCodeLengths(node.left, depth + 1, outLen);
-        assignCodeLengths(node.right, depth + 1, outLen);
-    }
-
-    private static HuffmanBuildResult buildCanonicalHuffman(int[] values, int valueCount) {
-        // Build frequency table
-        Map<Integer, Integer> freq = new HashMap<>();
-        for (int i = 0; i < valueCount; i++) {
-            freq.merge(values[i], 1, Integer::sum);
-        }
-
-        int cardinality = freq.size();
-        int[] symbols = new int[cardinality];
-        int idx = 0;
-        for (int s : freq.keySet()) {
-            symbols[idx++] = s;
-        }
-        Arrays.sort(symbols);
-
-        // Build Huffman tree
-        PriorityQueue<HuffmanNode> pq = new PriorityQueue<>(
-                Comparator.<HuffmanNode>comparingInt(n -> n.freq).thenComparingInt(n -> n.symbol));
-        for (int s : symbols) {
-            pq.add(new HuffmanNode(s, freq.get(s), null, null));
-        }
-        while (pq.size() > 1) {
-            HuffmanNode a = pq.poll();
-            HuffmanNode b = pq.poll();
-            // Ensure deterministic structure by ordering children by (freq,symbol)
-            HuffmanNode left = a;
-            HuffmanNode right = b;
-            pq.add(new HuffmanNode(-1, a.freq + b.freq, left, right));
-        }
-        HuffmanNode root = pq.poll();
-
-        Map<Integer, Integer> lenBySymbol = new HashMap<>();
-        assignCodeLengths(root, 0, lenBySymbol);
-
-        // Prepare canonical order: by (len, symbol)
-        Integer[] order = new Integer[cardinality];
-        for (int i = 0; i < cardinality; i++) {
-            order[i] = symbols[i];
-        }
-        Arrays.sort(order, Comparator.<Integer>comparingInt(s -> lenBySymbol.get(s)).thenComparingInt(s -> s));
-
-        // Assign canonical codes
-        Map<Integer, HuffmanCode> codeBySymbol = new HashMap<>();
-        int code = 0;
-        int prevLen = lenBySymbol.get(order[0]);
-        codeBySymbol.put(order[0], new HuffmanCode(code, prevLen));
-        for (int i = 1; i < order.length; i++) {
-            int s = order[i];
-            int len = lenBySymbol.get(s);
-            code = (code + 1) << (len - prevLen);
-            codeBySymbol.put(s, new HuffmanCode(code, len));
-            prevLen = len;
-        }
-
-        // Align to symbolsSortedAsc for compact lookup
-        byte[] codeLens = new byte[cardinality];
-        HuffmanCode[] codes = new HuffmanCode[cardinality];
-        int totalBits = 0;
-        for (int i = 0; i < cardinality; i++) {
-            int s = symbols[i];
-            HuffmanCode hc = codeBySymbol.get(s);
-            codeLens[i] = (byte) hc.len;
-            codes[i] = hc;
-            totalBits += freq.get(s) * hc.len;
-        }
-
-        return new HuffmanBuildResult(symbols, codeLens, codes, totalBits);
-    }
-
-    private static Map<Integer, HuffmanCode> rebuildCanonicalCodes(int[] symbolsSortedAsc, byte[] codeLens) {
-        int cardinality = symbolsSortedAsc.length;
-        Integer[] order = new Integer[cardinality];
-        for (int i = 0; i < cardinality; i++) {
-            order[i] = symbolsSortedAsc[i];
-        }
-        Map<Integer, Integer> lenBySymbol = new HashMap<>();
-        for (int i = 0; i < cardinality; i++) {
-            lenBySymbol.put(symbolsSortedAsc[i], codeLens[i] & 0xFF);
-        }
-        Arrays.sort(order, Comparator.<Integer>comparingInt(s -> lenBySymbol.get(s)).thenComparingInt(s -> s));
-
-        Map<Integer, HuffmanCode> codeBySymbol = new HashMap<>();
-        int code = 0;
-        int prevLen = lenBySymbol.get(order[0]);
-        codeBySymbol.put(order[0], new HuffmanCode(code, prevLen));
-        for (int i = 1; i < order.length; i++) {
-            int s = order[i];
-            int len = lenBySymbol.get(s);
-            code = (code + 1) << (len - prevLen);
-            codeBySymbol.put(s, new HuffmanCode(code, len));
-            prevLen = len;
-        }
-        return codeBySymbol;
-    }
-
-    private static final class MutableTrieNode {
-        MutableTrieNode zero;
-        MutableTrieNode one;
-        int symbol = -1;
-    }
-
-    private static MutableTrieNode buildMutableDecodeTrie(Map<Integer, HuffmanCode> codeBySymbol) {
-        MutableTrieNode root = new MutableTrieNode();
-        for (Map.Entry<Integer, HuffmanCode> e : codeBySymbol.entrySet()) {
-            int sym = e.getKey();
-            HuffmanCode hc = e.getValue();
-            MutableTrieNode cur = root;
-            for (int k = hc.len - 1; k >= 0; k--) {
-                int b = (hc.code >>> k) & 1;
-                if (b == 0) {
-                    if (cur.zero == null) {
-                        cur.zero = new MutableTrieNode();
-                    }
-                    cur = cur.zero;
-                } else {
-                    if (cur.one == null) {
-                        cur.one = new MutableTrieNode();
-                    }
-                    cur = cur.one;
-                }
-            }
-            cur.symbol = sym;
-        }
-        return root;
-    }
+public class SubcolumnOnValuesTest {
 
     public static int bitWidth(int value) {
         if (value == 0)
@@ -694,34 +494,15 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
                 }
             }
             Set<Integer> uniqueValues = new HashSet<>();
-            Map<Integer, Integer> freq = new HashMap<>();
             for (int j = 0; j < list_length; j++) {
                 int currentNumber = subcolumnList[i][j];
                 uniqueValues.add(currentNumber);
-                freq.merge(currentNumber, 1, Integer::sum);
             }
             int cardinality = uniqueValues.size();
 
             index++;
 
             rleCost = bw * index + bitWidthList[i] * index;
-
-            // Huffman as the 4th option for each subcolumn
-            // We store: [cardinality:2B][totalBits:4B][symbols(bitpacked)][codeLen(bytes)][bitstream]
-            int hufTotalBits;
-            int hufOverheadBits;
-            HuffmanBuildResult hufBuild = null;
-            try {
-                hufBuild = buildCanonicalHuffman(subcolumnList[i], list_length);
-                hufTotalBits = hufBuild.totalBits;
-                // overhead: 2B + 4B + symbols(bitWidthList[i] * cardinality) + codeLen(8 * cardinality)
-                hufOverheadBits = (2 + 4) * 8 + bitWidthList[i] * cardinality + 8 * cardinality;
-            } catch (Exception ex) {
-                // If anything goes wrong, just disable Huffman for this subcolumn
-                hufTotalBits = Integer.MAX_VALUE / 2;
-                hufOverheadBits = Integer.MAX_VALUE / 2;
-            }
-            int hufCostBits = (hufTotalBits >= Integer.MAX_VALUE / 4) ? Integer.MAX_VALUE : (hufTotalBits + hufOverheadBits);
 
             if (cardinality < Math.pow(2, bitWidthList[i] - 1)) {
                 // test dictionary encoding
@@ -765,48 +546,6 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
                     encode_pos = bitPacking(subcolumnList[i], dict_bit_width, encode_pos, encoded_result, list_length);
                     continue;
                 }
-            }
-
-            // If Huffman wins, encode Huffman
-            if (hufCostBits < bpCost && hufCostBits < rleCost) {
-                encodingType[i] = 3;
-
-                // cardinality
-                encoded_result[encode_pos] = (byte) (cardinality >> 8);
-                encode_pos += 1;
-                encoded_result[encode_pos] = (byte) (cardinality & 0xFF);
-                encode_pos += 1;
-
-                // totalBits
-                int2Bytes(hufBuild.totalBits, encode_pos, encoded_result);
-                encode_pos += 4;
-
-                // symbols sorted asc
-                encode_pos = bitPacking(hufBuild.symbolsSortedAsc, bitWidthList[i], encode_pos, encoded_result, cardinality);
-
-                // code lengths in bytes aligned with symbolsSortedAsc
-                for (int j = 0; j < cardinality; j++) {
-                    encoded_result[encode_pos + j] = hufBuild.codeLenBySymbolIndex[j];
-                }
-                encode_pos += cardinality;
-
-                // build lookup from symbol->(code,len) by symbolsSortedAsc index
-                Map<Integer, HuffmanCode> codeBySymbol = new HashMap<>();
-                for (int j = 0; j < cardinality; j++) {
-                    codeBySymbol.put(hufBuild.symbolsSortedAsc[j], hufBuild.canonicalCodesBySymbolIndex[j]);
-                }
-
-                int bitPos = encode_pos * 8;
-                int bytesToWrite = (hufBuild.totalBits + 7) / 8;
-                Arrays.fill(encoded_result, encode_pos, encode_pos + bytesToWrite, (byte) 0);
-                for (int j = 0; j < list_length; j++) {
-                    int sym = subcolumnList[i][j];
-                    HuffmanCode hc = codeBySymbol.get(sym);
-                    writeBits(hc.code, hc.len, encoded_result, bitPos);
-                    bitPos += hc.len;
-                }
-                encode_pos += bytesToWrite;
-                continue;
             }
 
             if (bpCost <= rleCost) {
@@ -908,7 +647,7 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
                         currentIndex++;
                     }
                 }
-            } else if (type == 2) {
+            } else {
                 int cardinality = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
                 encode_pos += 2;
                 int dict_bit_width = bitWidth(cardinality);
@@ -936,40 +675,6 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
                     subcolumnList[i][j] = encodedValue;
                 }
 
-            } else {
-                // Huffman
-                int cardinality = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
-                encode_pos += 2;
-
-                int totalBits = bytes2Integer(encoded_result, encode_pos, 4);
-                encode_pos += 4;
-
-                int[] symbolsSortedAsc = new int[cardinality];
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], cardinality, symbolsSortedAsc);
-
-                byte[] codeLens = new byte[cardinality];
-                for (int j = 0; j < cardinality; j++) {
-                    codeLens[j] = encoded_result[encode_pos + j];
-                }
-                encode_pos += cardinality;
-
-                Map<Integer, HuffmanCode> codeBySymbol = rebuildCanonicalCodes(symbolsSortedAsc, codeLens);
-                MutableTrieNode trie = buildMutableDecodeTrie(codeBySymbol);
-
-                int bitPos = encode_pos * 8;
-                int bitsRead = 0;
-                for (int j = 0; j < list_length; j++) {
-                    MutableTrieNode cur = trie;
-                    while (cur.symbol < 0) {
-                        int b = readBit(encoded_result, bitPos++);
-                        bitsRead++;
-                        cur = (b == 0) ? cur.zero : cur.one;
-                    }
-                    subcolumnList[i][j] = cur.symbol;
-                }
-
-                // advance bytes by totalBits (trusted) rather than bitsRead (derived)
-                encode_pos += (totalBits + 7) / 8;
             }
         }
 
@@ -983,61 +688,27 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
         return encode_pos;
     }
 
-    public static int[] getAbsDeltaTsBlock(
-            int[] ts_block,
-            int i,
-            int block_size,
-            int remaining,
-            int[] min_delta) {
-        int[] ts_block_delta = new int[remaining];
-
-        int value_delta_min = Integer.MAX_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-        int base = i * block_size;
-        int end = i * block_size + remaining;
-
-        for (int j = base; j < end; j++) {
-            int cur = ts_block[j];
-            if (cur < value_delta_min) {
-                value_delta_min = cur;
-            }
-            if (cur > value_delta_max) {
-                value_delta_max = cur;
-            }
-        }
-
-        for (int j = base; j < end; j++) {
-            ts_block_delta[j - base] = ts_block[j] - value_delta_min;
-        }
-
-        min_delta[0] = value_delta_min;
-
-        return ts_block_delta;
-    }
-
     public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
             int encode_pos, byte[] encoded_result, int[] beta) {
-        int[] min_delta = new int[3];
-
-        int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size,
-                remainder, min_delta);
-
-        int2Bytes(min_delta[0], encode_pos, encoded_result);
-        encode_pos += 4;
+        int[] data_block = new int[remainder];
+        int base = block_index * block_size;
+        for (int j = 0; j < remainder; j++) {
+            data_block[j] = data[base + j];
+        }
 
         if (block_index == 0) {
             int maxValue = 0;
             for (int j = 0; j < remainder; j++) {
-                if (data_delta[j] > maxValue) {
-                    maxValue = data_delta[j];
+                if (data_block[j] > maxValue) {
+                    maxValue = data_block[j];
                 }
             }
             int m = bitWidth(maxValue);
 
-            beta[0] = Subcolumn(data_delta, remainder, m, block_size);
+            beta[0] = Subcolumn(data_block, remainder, m, block_size);
         }
 
-        encode_pos = SubcolumnEncoder(data_delta, encode_pos,
+        encode_pos = SubcolumnEncoder(data_block, encode_pos,
                 encoded_result, beta, block_size);
 
         return encode_pos;
@@ -1045,18 +716,13 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
             int encode_pos, int[] data) {
-        int[] min_delta = new int[3];
-
-        min_delta[0] = bytes2Integer(encoded_result, encode_pos, 4);
-        encode_pos += 4;
-
         int[] block_data = new int[remainder];
 
         encode_pos = SubcolumnDecoder(encoded_result, encode_pos,
                 block_data, block_size);
 
         for (int i = 0; i < remainder; i++) {
-            data[block_index * block_size + i] = block_data[i] + min_delta[0];
+            data[block_index * block_size + i] = block_data[i];
         }
 
         return encode_pos;
@@ -1171,13 +837,13 @@ public class ASubcolumnAddDictionaryAndHuffmanTest {
         String output_parent_dir = parent_dir + "result/"; // ""D:/encoding-subcolumn/result/";
         // String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_dictionary_huffman.csv";
+        String outputPath = output_parent_dir + "subcolumn_dictionary_on_values.csv";
 
         // int block_size = 512;
         int block_size = 512;
 
         // int repeatTime = 100;
-        int repeatTime = 10;
+        int repeatTime = 500;
 
         // repeatTime = 1;
 
