@@ -74,6 +74,7 @@ public class SubcolumnAddDictPruneNewUpdateSmallerTest {
       int updatedValue = (stats.minValue == Integer.MIN_VALUE) ? stats.minValue : stats.minValue - 1;
       int[] updated = new int[origin.length];
       System.arraycopy(origin, 0, updated, 0, origin.length);
+      updated[updateIndex] = updatedValue;
 
       long updateCompressTime;
       int updatedLength = encodedLength;

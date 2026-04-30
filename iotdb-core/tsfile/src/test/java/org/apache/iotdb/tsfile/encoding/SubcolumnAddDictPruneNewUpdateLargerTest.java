@@ -74,6 +74,7 @@ public class SubcolumnAddDictPruneNewUpdateLargerTest {
       int updatedValue = (stats.maxValue == Integer.MAX_VALUE) ? stats.maxValue : stats.maxValue + 1;
       int[] updated = new int[origin.length];
       System.arraycopy(origin, 0, updated, 0, origin.length);
+      updated[updateIndex] = updatedValue;
 
       long updateCompressTime;
       int updatedLength = encodedLength;
