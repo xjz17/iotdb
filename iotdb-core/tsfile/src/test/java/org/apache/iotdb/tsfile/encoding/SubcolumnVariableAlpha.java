@@ -9,12 +9,33 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Stream;
 
 public class SubcolumnVariableAlpha {
+
+    // Used to prevent JIT from optimizing away verification work.
+    private static volatile long VERIFY_SINK = 0L;
+
+    /**
+     * Verify decoded == expected, but do NOT fail the test if it's lossy.
+     * Returns number of mismatched positions (or a large count if length differs).
+     */
+    private static int verifyLosslessNoThrow(int[] expected, int[] actual) {
+        if (expected == actual) {
+            return 0;
+        }
+        if (expected == null || actual == null) {
+            return Integer.MAX_VALUE;
+        }
+        int minLen = Math.min(expected.length, actual.length);
+        int mismatches = Math.abs(expected.length - actual.length);
+        for (int i = 0; i < minLen; i++) {
+            if (expected[i] != actual[i]) {
+                mismatches++;
+            }
+        }
+        return mismatches;
+    }
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -805,6 +826,130 @@ public class SubcolumnVariableAlpha {
 
     private static final int TEMP_ENCODE_BUF_SIZE = 256 * 1024;
 
+    private static final class PartitionStats {
+        private final Map<String, Integer> partitionCount = new HashMap<>();
+        private final Map<Integer, Integer> betaHist = new HashMap<>();
+
+        void addPartition(int[] betas, int l) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < l; i++) {
+                if (i > 0) {
+                    sb.append(',');
+                }
+                sb.append(betas[i]);
+                betaHist.merge(betas[i], 1, Integer::sum);
+            }
+            partitionCount.merge(sb.toString(), 1, Integer::sum);
+        }
+
+        List<Map.Entry<String, Integer>> topPartitions(int k) {
+            ArrayList<Map.Entry<String, Integer>> entries = new ArrayList<>(partitionCount.entrySet());
+            entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+            return entries.subList(0, Math.min(k, entries.size()));
+        }
+
+        List<Map.Entry<Integer, Integer>> betaHistogram() {
+            ArrayList<Map.Entry<Integer, Integer>> entries = new ArrayList<>(betaHist.entrySet());
+            entries.sort(Map.Entry.comparingByKey());
+            return entries;
+        }
+    }
+
+    /*
+     * The following "choose + export per-block optimal partition" helper was used only for writing
+     * partition details into CSV. It's currently disabled in test0(), so we comment it out to keep
+     * this test file clean (no unused warnings). Re-enable if you want the per-block export again.
+     */
+    // private static final class OptimalPartitionResult {
+    //     private final int[] betas;
+    //     private final int l;
+    //     private final int m;
+    //     private final boolean useVariable;
+    //     private final int sizeVar;
+    //     private final int sizeFixed;
+    //
+    //     private OptimalPartitionResult(
+    //             int[] betas, int l, int m, boolean useVariable, int sizeVar, int sizeFixed) {
+    //         this.betas = betas;
+    //         this.l = l;
+    //         this.m = m;
+    //         this.useVariable = useVariable;
+    //         this.sizeVar = sizeVar;
+    //         this.sizeFixed = sizeFixed;
+    //     }
+    // }
+    //
+    // private static OptimalPartitionResult chooseOptimalPartitionForBlock(
+    //         int[] dataDelta, int remainder, int block_size) {
+    //     int maxValue = 0;
+    //     for (int j = 0; j < remainder; j++) {
+    //         int v = dataDelta[j];
+    //         if (v > maxValue) {
+    //             maxValue = v;
+    //         }
+    //     }
+    //     int m = bitWidth(maxValue);
+    //     if (m == 0) {
+    //         return new OptimalPartitionResult(new int[] {1}, 1, 0, true, 0, 0);
+    //     }
+    //
+    //     int[] encodingTypeVar = new int[m];
+    //     int[] betaOut = new int[m];
+    //     int lVar = Subcolumn(dataDelta, remainder, m, block_size, encodingTypeVar, betaOut);
+    //     byte[] tempVar = new byte[TEMP_ENCODE_BUF_SIZE];
+    //     int sizeVar = SubcolumnEncoder(dataDelta, 0, tempVar, betaOut, lVar, block_size, encodingTypeVar);
+    //
+    //     int[] encodingTypeFixed = new int[m];
+    //     int betaFixed = SubcolumnFixed(dataDelta, remainder, m, block_size, encodingTypeFixed);
+    //     int lFixed = (m + betaFixed - 1) / betaFixed;
+    //     int[] betaFixedArr = new int[lFixed];
+    //     Arrays.fill(betaFixedArr, betaFixed);
+    //     byte[] tempFixed = new byte[TEMP_ENCODE_BUF_SIZE];
+    //     int sizeFixed = SubcolumnEncoder(dataDelta, 0, tempFixed, betaFixedArr, lFixed, block_size, encodingTypeFixed);
+    //
+    //     if (sizeVar <= sizeFixed) {
+    //         return new OptimalPartitionResult(Arrays.copyOf(betaOut, lVar), lVar, m, true, sizeVar, sizeFixed);
+    //     } else {
+    //         return new OptimalPartitionResult(betaFixedArr, lFixed, m, false, sizeVar, sizeFixed);
+    //     }
+    // }
+
+    private static void collectOptimalPartitionForBlock(
+            int[] dataDelta, int remainder, int block_size, PartitionStats stats) {
+        int maxValue = 0;
+        for (int j = 0; j < remainder; j++) {
+            int v = dataDelta[j];
+            if (v > maxValue) {
+                maxValue = v;
+            }
+        }
+        int m = bitWidth(maxValue);
+        if (m == 0) {
+            stats.addPartition(new int[] {1}, 1);
+            return;
+        }
+
+        int[] encodingTypeVar = new int[m];
+        int[] betaOut = new int[m];
+        int lVar = Subcolumn(dataDelta, remainder, m, block_size, encodingTypeVar, betaOut);
+        byte[] tempVar = new byte[TEMP_ENCODE_BUF_SIZE];
+        int sizeVar = SubcolumnEncoder(dataDelta, 0, tempVar, betaOut, lVar, block_size, encodingTypeVar);
+
+        int[] encodingTypeFixed = new int[m];
+        int betaFixed = SubcolumnFixed(dataDelta, remainder, m, block_size, encodingTypeFixed);
+        int lFixed = (m + betaFixed - 1) / betaFixed;
+        int[] betaFixedArr = new int[lFixed];
+        Arrays.fill(betaFixedArr, betaFixed);
+        byte[] tempFixed = new byte[TEMP_ENCODE_BUF_SIZE];
+        int sizeFixed = SubcolumnEncoder(dataDelta, 0, tempFixed, betaFixedArr, lFixed, block_size, encodingTypeFixed);
+
+        if (sizeVar <= sizeFixed) {
+            stats.addPartition(betaOut, lVar);
+        } else {
+            stats.addPartition(betaFixedArr, lFixed);
+        }
+    }
+
     public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
             int encode_pos, byte[] encoded_result, int[] beta) {
         int[] min_delta = new int[3];
@@ -981,13 +1126,22 @@ public class SubcolumnVariableAlpha {
         String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "subcolumn_variable_alpha.csv";
+        // NOTE: Subcolumn-partition CSV export is currently disabled (commented out).
+        // String partitionOutputPath = output_parent_dir + "subcolumn_variable_alpha_optimal_partition.csv";
+        // String blockPartitionOutputPath = output_parent_dir + "subcolumn_variable_alpha_optimal_partition_per_block.csv";
 
         int block_size = 512;
 
-        int repeatTime = 50;
+        int repeatTime = 100;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
+
+        // CsvWriter partitionWriter = new CsvWriter(partitionOutputPath, ',', StandardCharsets.UTF_8);
+        // partitionWriter.setRecordDelimiter('\n');
+        //
+        // CsvWriter blockPartitionWriter = new CsvWriter(blockPartitionOutputPath, ',', StandardCharsets.UTF_8);
+        // blockPartitionWriter.setRecordDelimiter('\n');
 
         String[] head = {
                 "Dataset",
@@ -1000,12 +1154,45 @@ public class SubcolumnVariableAlpha {
         };
         writer.writeRecord(head);
 
+        // String[] partitionHead = {
+        //         "Dataset",
+        //         "Block Size",
+        //         "Top Partition Betas",
+        //         "Blocks (Top Partition)",
+        //         "Subcolumn Index",
+        //         "Beta (bits)"
+        // };
+        // partitionWriter.writeRecord(partitionHead);
+        //
+        // String[] blockPartitionHead = {
+        //         "Dataset",
+        //         "Block Size",
+        //         "Block Index",
+        //         "Points In Block",
+        //         "m (bitWidth(maxDelta))",
+        //         "Chosen Scheme",
+        //         "Encoded Size Var (bytes)",
+        //         "Encoded Size Fixed (bytes)",
+        //         "Betas",
+        //         "Subcolumn Index",
+        //         "Beta (bits)"
+        // };
+        // blockPartitionWriter.writeRecord(blockPartitionHead);
+
         File directory = new File(input_parent_dir);
         File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+        if (csvFiles == null) {
+            writer.close();
+            // partitionWriter.close();
+            // blockPartitionWriter.close();
+            throw new IOException("No csv files found under: " + input_parent_dir);
+        }
 
         for (File file : csvFiles) {
             String datasetName = extractFileName(file.toString());
             System.out.println(datasetName);
+            // reset verification sink per dataset (kept to avoid JIT removing verification work)
+            VERIFY_SINK = 0L;
 
             InputStream inputStream = Files.newInputStream(file.toPath());
 
@@ -1047,6 +1234,120 @@ public class SubcolumnVariableAlpha {
 
             int length = 0;
 
+            // Collect "optimal" subcolumn partitions (chosen between variable vs fixed).
+            PartitionStats stats = new PartitionStats();
+            int dataLength = data2_arr.length;
+            int numBlocks = dataLength / block_size;
+            int remainderPoints = dataLength % block_size;
+            for (int bi = 0; bi < numBlocks; bi++) {
+                int[] min_delta = new int[3];
+                int[] data_delta = getAbsDeltaTsBlock(data2_arr, bi, block_size, block_size, min_delta);
+                collectOptimalPartitionForBlock(data_delta, block_size, block_size, stats);
+                // Per-block partition export (disabled)
+                // OptimalPartitionResult r = chooseOptimalPartitionForBlock(data_delta, block_size, block_size);
+                // StringBuilder betasSb = new StringBuilder();
+                // for (int i = 0; i < r.l; i++) {
+                //     if (i > 0) {
+                //         betasSb.append(',');
+                //     }
+                //     betasSb.append(r.betas[i]);
+                // }
+                // String betasStr = betasSb.toString();
+                // String scheme = r.useVariable ? "VARIABLE" : "FIXED";
+                // for (int si = 0; si < r.l; si++) {
+                //     String[] row = {
+                //             datasetName,
+                //             String.valueOf(block_size),
+                //             String.valueOf(bi),
+                //             String.valueOf(block_size),
+                //             String.valueOf(r.m),
+                //             scheme,
+                //             String.valueOf(r.sizeVar),
+                //             String.valueOf(r.sizeFixed),
+                //             betasStr,
+                //             String.valueOf(si),
+                //             String.valueOf(r.betas[si])
+                //     };
+                //     blockPartitionWriter.writeRecord(row);
+                // }
+            }
+            if (remainderPoints > 3) {
+                int[] min_delta = new int[3];
+                int[] data_delta = getAbsDeltaTsBlock(data2_arr, numBlocks, block_size, remainderPoints, min_delta);
+                collectOptimalPartitionForBlock(data_delta, remainderPoints, block_size, stats);
+                // Per-block partition export for remainder block (disabled)
+                // OptimalPartitionResult r = chooseOptimalPartitionForBlock(data_delta, remainderPoints, block_size);
+                // StringBuilder betasSb = new StringBuilder();
+                // for (int i = 0; i < r.l; i++) {
+                //     if (i > 0) {
+                //         betasSb.append(',');
+                //     }
+                //     betasSb.append(r.betas[i]);
+                // }
+                // String betasStr = betasSb.toString();
+                // String scheme = r.useVariable ? "VARIABLE" : "FIXED";
+                // for (int si = 0; si < r.l; si++) {
+                //     String[] row = {
+                //             datasetName,
+                //             String.valueOf(block_size),
+                //             String.valueOf(numBlocks),
+                //             String.valueOf(remainderPoints),
+                //             String.valueOf(r.m),
+                //             scheme,
+                //             String.valueOf(r.sizeVar),
+                //             String.valueOf(r.sizeFixed),
+                //             betasStr,
+                //             String.valueOf(si),
+                //             String.valueOf(r.betas[si])
+                //     };
+                //     blockPartitionWriter.writeRecord(row);
+                // }
+            }
+
+            System.out.println("Optimal subcolumn partitions (top 5):");
+            for (Map.Entry<String, Integer> e1 : stats.topPartitions(5)) {
+                System.out.println("  betas=[" + e1.getKey() + "], blocks=" + e1.getValue());
+            }
+            System.out.println("Beta histogram (beta -> count):");
+            for (Map.Entry<Integer, Integer> e2 : stats.betaHistogram()) {
+                System.out.println("  " + e2.getKey() + " -> " + e2.getValue());
+            }
+
+            // Export the top-1 (most frequent) "optimal" partition's betas (disabled).
+            // List<Map.Entry<String, Integer>> top1 = stats.topPartitions(1);
+            // if (!top1.isEmpty()) {
+            //     String betasStr = top1.get(0).getKey();
+            //     int blocks = top1.get(0).getValue();
+            //     if (betasStr != null && !betasStr.isEmpty()) {
+            //         String[] parts = betasStr.split(",");
+            //         for (int si = 0; si < parts.length; si++) {
+            //             String betaStr = parts[si].trim();
+            //             if (betaStr.isEmpty()) {
+            //                 continue;
+            //             }
+            //             String[] row = {
+            //                     datasetName,
+            //                     String.valueOf(block_size),
+            //                     betasStr,
+            //                     String.valueOf(blocks),
+            //                     String.valueOf(si),
+            //                     betaStr
+            //             };
+            //             partitionWriter.writeRecord(row);
+            //         }
+            //     } else {
+            //         String[] row = {
+            //                 datasetName,
+            //                 String.valueOf(block_size),
+            //                 betasStr == null ? "" : betasStr,
+            //                 String.valueOf(blocks),
+            //                 "0",
+            //                 "1"
+            //         };
+            //         partitionWriter.writeRecord(row);
+            //     }
+            // }
+
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 length = Encoder(data2_arr, block_size, encoded_result);
@@ -1064,12 +1365,12 @@ public class SubcolumnVariableAlpha {
 
             System.out.println("Decode");
 
-            int[] data2_arr_decoded = new int[data2_arr.length];
-
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                data2_arr_decoded = Decoder(encoded_result);
+                int[] decoded = Decoder(encoded_result);
+                // Include lossless verification in decode time (intentionally adds overhead).
+                VERIFY_SINK += verifyLosslessNoThrow(data2_arr, decoded);
             }
 
             e = System.nanoTime();
@@ -1085,10 +1386,14 @@ public class SubcolumnVariableAlpha {
                     String.valueOf(ratio)
             };
             writer.writeRecord(record);
+            // Make VERIFY_SINK observable so static-analysis doesn't mark it unused.
+            System.out.println("verify_mismatches=" + VERIFY_SINK);
             System.out.println(ratio);
         }
 
         writer.close();
+        // partitionWriter.close();
+        // blockPartitionWriter.close();
     }
 
 }
