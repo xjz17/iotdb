@@ -857,9 +857,12 @@ public class SPRINTZBPTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
+        // String input_parent_dir = parent_dir + "dataset_output/";
 
         String output_parent_dir = parent_dir + "result/";
 
@@ -916,7 +919,7 @@ public class SPRINTZBPTest {
             }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
+            byte[] encoded_result = new byte[data2_arr.length * 8];
             long encodeTime = 0;
             long decodeTime = 0;
             double ratio = 0;

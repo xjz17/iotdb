@@ -577,7 +577,8 @@ public class RLEBPLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -585,7 +586,7 @@ public class RLEBPLongTest {
 
         String outputPath = output_parent_dir + "rle_long.csv";
 
-        int block_size = 1024;
+        int block_size = 256;
 
         int repeatTime = 500;
 

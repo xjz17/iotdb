@@ -244,13 +244,14 @@ public class SPRINTZSubcolumnTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "sprintz_subcolumn.csv";
+        String outputPath = output_parent_dir + "sprintz_subcolumn2.csv";
 
         int block_size = 512;
 
@@ -303,7 +304,7 @@ public class SPRINTZSubcolumnTest {
             }
 
             System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
+            byte[] encoded_result = new byte[data2_arr.length * 8];
 
             long encodeTime = 0;
             long decodeTime = 0;

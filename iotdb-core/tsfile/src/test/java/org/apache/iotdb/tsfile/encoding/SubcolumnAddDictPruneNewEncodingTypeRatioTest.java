@@ -900,9 +900,9 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
 
     @Test
     public void test0() throws IOException {
-        // String parentDir = "D://github/xjz17/subcolumn/";
-        String parentDir = "D:/github/xjz17/subcolumn/";
-        String inputParentDir = parentDir + "dataset_new/";
+        String parentDir = "D://github/xjz17/subcolumn/";
+        String inputParentDir = parentDir + "dataset/";
+
         String outputParentDir = parentDir + "result/";
         // String outputParentDir = "D://encoding-subcolumn/result/";
         // String outputPath = outputParentDir + "subcolumn_encoding_type_ratio.csv";

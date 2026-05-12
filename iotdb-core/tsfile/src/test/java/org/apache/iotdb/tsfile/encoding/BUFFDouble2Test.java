@@ -178,12 +178,10 @@ public class BUFFDouble2Test {
         return value;
     }
 
-    // 不同精度下小数部分所需的位数
     public static int[] bits_needed = { 0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35,
         38, 41, 45, 48, 51, 55, 58
     };
 
-    // 块编码器
     public static int BlockEncoder(double[] data, int block_index, int block_size, int remainder, int max_decimal,
             int encode_pos, byte[] encoded_result) {
 

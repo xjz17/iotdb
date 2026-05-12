@@ -199,7 +199,8 @@ public class SubcolumnBetaTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
         
@@ -267,7 +268,7 @@ public class SubcolumnBetaTest {
                 }
 
                 System.out.println(max_decimal);
-                byte[] encoded_result = new byte[data2_arr.length * 4];
+                byte[] encoded_result = new byte[data2_arr.length * 8];
 
                 long encodeTime = 0;
                 long decodeTime = 0;

@@ -164,7 +164,9 @@ public class BUFFTest {
         return (decode_pos + 7) / 8;
     }
 
-    public static int[] bits_needed = { 0, 5, 8, 11, 15, 18, 21, 25 };
+    public static int[] bits_needed = { 0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35,
+            38, 41, 45, 48, 51, 55, 58
+    };
 
     public static int BlockEncoder(float[] data, int block_index, int block_size, int remainder, int max_decimal,
             int encode_pos, byte[] encoded_result) {
@@ -409,7 +411,8 @@ public class BUFFTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
@@ -419,7 +422,7 @@ public class BUFFTest {
 
         int block_size = 1024;
 
-        int repeatTime = 500;
+        int repeatTime = 100;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
@@ -458,6 +461,11 @@ public class BUFFTest {
                     max_decimal = cur_decimal;
                 data1.add(Float.valueOf(f_str));
             }
+
+            if (max_decimal > 8) {
+                max_decimal = 8;
+            }
+
             inputStream.close();
             float[] data2_arr = new float[data1.size()];
 

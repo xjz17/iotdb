@@ -136,7 +136,8 @@ public class FastPFORCompressionBenchmarkTest {
 
   @Test
   public void testCsvDatasetsIfPresent() throws IOException {
-    String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+    // String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+    String parentDir = "D:/github/xjz17/subcolumn/";
     String inputParentDir = parentDir + "dataset/";
     File directory = new File(inputParentDir);
     Assume.assumeTrue(
