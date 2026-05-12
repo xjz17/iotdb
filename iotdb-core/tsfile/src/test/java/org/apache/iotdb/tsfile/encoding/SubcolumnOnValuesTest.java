@@ -24,6 +24,17 @@ public class SubcolumnOnValuesTest {
         return 32 - Integer.numberOfLeadingZeros(value);
     }
 
+    /**
+     * Bit width for one signed int in a block: non-negative values use leading-zero
+     * trimmed width; negative values use full 32 bits (two's complement).
+     */
+    public static int valueBitWidth(int value) {
+        if (value < 0) {
+            return 32;
+        }
+        return bitWidth(value);
+    }
+
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
         int cnt = pos & 0x07;
         int index = pos >> 3;
@@ -411,14 +422,13 @@ public class SubcolumnOnValuesTest {
 
     public static int SubcolumnEncoder(int[] list, int encode_pos, byte[] encoded_result, int[] beta, int block_size) {
         int list_length = list.length;
-        int maxValue = 0;
+        int m = 1;
         for (int k : list) {
-            if (k > maxValue) {
-                maxValue = k;
+            int w = valueBitWidth(k);
+            if (w > m) {
+                m = w;
             }
         }
-
-        int m = bitWidth(maxValue);
 
         intByte2Bytes(m, encode_pos, encoded_result);
         encode_pos += 1;
@@ -697,13 +707,13 @@ public class SubcolumnOnValuesTest {
         }
 
         if (block_index == 0) {
-            int maxValue = 0;
+            int m = 1;
             for (int j = 0; j < remainder; j++) {
-                if (data_block[j] > maxValue) {
-                    maxValue = data_block[j];
+                int w = valueBitWidth(data_block[j]);
+                if (w > m) {
+                    m = w;
                 }
             }
-            int m = bitWidth(maxValue);
 
             beta[0] = Subcolumn(data_block, remainder, m, block_size);
         }
