@@ -23,14 +23,27 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
             this.totalBlockCount = totalBlockCount;
         }
 
-        private void recordEncodingType(int[] encodingType, int length) {
+        /**
+         * Omits Bit Packing rows where the grouped subcolumn needs the full {@code beta} bits
+         * (effective max width equals {@code beta}: no redundant leading-zero MSBs to strip). Those
+         * are excluded from Bit Packing counts and from the subcolumn denominator; BP rows with
+         * {@code bitWidthList[i] < beta} still count.
+         */
+        private void recordEncodingType(
+                int[] encodingType, int length, int beta, int[] bitWidthList) {
             if (length <= 0) {
                 return;
             }
 
-            totalSubcolumnCount += length;
             for (int i = 0; i < length; i++) {
                 int currentType = encodingType[i];
+                if (currentType == 0
+                        && bitWidthList != null
+                        && i < bitWidthList.length
+                        && bitWidthList[i] == beta) {
+                    continue;
+                }
+                totalSubcolumnCount++;
                 if (currentType >= 0 && currentType < encodingTypeCounts.length) {
                     encodingTypeCounts[currentType]++;
                 }
@@ -99,6 +112,32 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
+    }
+
+    /**
+     * Per grouped-subcolumn max value bit width; must match {@link #SubcolumnEncoder} {@code
+     * bitWidthList} computation for statistics filtering.
+     */
+    private static int[] computeGroupedMaxBitWidths(
+            int[] dataDelta, int remainder, int m, int betaValue) {
+        if (m <= 0 || betaValue <= 0) {
+            return new int[0];
+        }
+        int l = (m + betaValue - 1) / betaValue;
+        int[] bitWidthList = new int[l];
+        int mask = (1 << betaValue) - 1;
+        for (int i = 0; i < l; i++) {
+            int shiftAmount = i * betaValue;
+            int maxValuePart = 0;
+            for (int j = 0; j < remainder; j++) {
+                int current = (dataDelta[j] >> shiftAmount) & mask;
+                if (current > maxValuePart) {
+                    maxValuePart = current;
+                }
+            }
+            bitWidthList[i] = bitWidth(maxValuePart);
+        }
+        return bitWidthList;
     }
 
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
@@ -735,8 +774,10 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
         int[] encodingType = new int[m];
         beta[0] = Subcolumn(dataDelta, remainder, m, blockSize, encodingType);
         if (stats != null) {
-            int length = m == 0 ? 0 : (m + beta[0] - 1) / beta[0];
-            stats.recordEncodingType(encodingType, length);
+            int betaValue = beta[0];
+            int length = m == 0 ? 0 : (m + betaValue - 1) / betaValue;
+            int[] bitWidthList = computeGroupedMaxBitWidths(dataDelta, remainder, m, betaValue);
+            stats.recordEncodingType(encodingType, length, betaValue, bitWidthList);
         }
 
         return SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize,
@@ -859,16 +900,19 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
 
     @Test
     public void test0() throws IOException {
-        String parentDir = "D://github/xjz17/subcolumn/";
-        String inputParentDir = parentDir + "dataset/";
+        // String parentDir = "D://github/xjz17/subcolumn/";
+        String parentDir = "D:/github/xjz17/subcolumn/";
+        String inputParentDir = parentDir + "dataset_new/";
         String outputParentDir = parentDir + "result/";
-        String outputPath = outputParentDir + "subcolumn_encoding_type_ratio.csv";
+        // String outputParentDir = "D://encoding-subcolumn/result/";
+        // String outputPath = outputParentDir + "subcolumn_encoding_type_ratio.csv";
+        String outputPath = outputParentDir + "subcolumn_encoding_type_ratio_2_32.csv";
 
         int blockSize = 512;
         blockSize = 32;
 
         int repeatTime = 500;
-        repeatTime = 100;
+        repeatTime = 20;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');

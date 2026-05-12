@@ -7,10 +7,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Random;
 
 /**
- * 按数据点比例（10%～100%）选取更新点，比较两种块级更新策略：
+ * 按数据点比例（0%～100%）选取更新点，比较两种块级更新策略：
  *
  * <p>1) 固定策略：不重算最优 beta / 编码类型，复用原块 beta 与原编码类型模板重编码；
  *
@@ -18,7 +17,8 @@ import java.util.Random;
  */
 public class SubcolumnAddDictPruneNewUpdateRatioTest {
 
-  private static final int[] UPDATE_RATIOS = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+  // private static final int[] UPDATE_RATIOS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+  private static final int[] UPDATE_RATIOS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20};
 
   private static final int STATS_UPDATED_LENGTH = 0;
   private static final int STATS_BETA_CHANGED = 1;
@@ -210,7 +210,6 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
     writer.close();
   }
 
-  /** 全序列上按比例取点；新值为“随机且不超过所在块最大值”。 */
   private static int[] buildUpdatedValues(int[] origin, int ratio, int blockSize) {
     int[] updated = Arrays.copyOf(origin, origin.length);
     if (origin.length == 0) {
@@ -233,8 +232,8 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       }
     }
 
-    Random random = new Random();
-    int targetUpdateCount = Math.max(1, (int) Math.ceil(origin.length * (ratio / 100.0)));
+    // Random random = new Random();
+    int targetUpdateCount = (int) Math.ceil(origin.length * (ratio / 100.0));
     boolean[] used = new boolean[origin.length];
     for (int i = 0; i < targetUpdateCount; i++) {
       int index = (int) (((long) i * origin.length) / targetUpdateCount);
@@ -249,6 +248,12 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       }
       used[index] = true;
 
+      int prevValue = (index > 0) ? origin[index - 1] : origin[index];
+      int nextValue = (index < origin.length - 1) ? origin[index + 1] : origin[index];
+      updated[index] = (prevValue + nextValue) / 2;
+      // updated[index] = nextValue;
+
+      /*
       int blockIndex = index / blockSize;
       int minValue = blockMin[blockIndex];
       int maxValue = blockMax[blockIndex];
@@ -268,10 +273,12 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
         candidate = (oldValue == maxValue) ? oldValue - 1 : oldValue + 1;
       }
       updated[index] = candidate;
+      */
     }
     return updated;
   }
 
+  /*
   private static long nextLongBounded(Random random, long bound) {
     if (bound <= 0L) {
       throw new IllegalArgumentException("bound must be positive");
@@ -286,6 +293,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
     }
     return u % bound;
   }
+  */
 
   private static boolean[] markAffectedBlocks(
       int[] origin, int[] updated, int blockSize, int blockCount) {

@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 public class SubcolumnFullTest {
 
     public static int bitWidth(int value) {
-        if (value == 0)
-            return 1;
+        // if (value == 0)
+        //     return 1;
         return 32 - Integer.numberOfLeadingZeros(value);
     }
 
@@ -768,15 +768,17 @@ public class SubcolumnFullTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_full.csv";
+        String outputPath = output_parent_dir + "subcolumn_full_128.csv";
 
         int block_size = 512;
+        block_size = 128;
 
         int repeatTime = 500;
 

@@ -13,6 +13,8 @@ import java.util.ArrayList;
 
 public class SubcolumnAddDictQuerySortTest {
 
+  private static final int[] BLOCK_SIZES = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+
   private static class BlockSortResult {
     int nextEncodePos;
     int[] sortedIndices;
@@ -367,10 +369,9 @@ public class SubcolumnAddDictQuerySortTest {
     String parentDir = "D://github/xjz17/subcolumn/";
     String inputParentDir = parentDir + "dataset/";
 
-    int blockSize = 512;
     int repeatTime = 100;
     System.out.println("Output: " + outputPath);
-    System.out.println("Block size: " + blockSize);
+    System.out.println("Block sizes: " + java.util.Arrays.toString(BLOCK_SIZES));
     System.out.println("Repeat time: " + repeatTime);
 
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
@@ -379,6 +380,7 @@ public class SubcolumnAddDictQuerySortTest {
         new String[] {
           "Dataset",
           "Encoding Algorithm",
+          "Block Size",
           "Encoding Time",
           "Decoding Time",
           "Points",
@@ -425,37 +427,44 @@ public class SubcolumnAddDictQuerySortTest {
         dataArr[i] = (int) (data.get(i) * maxMul);
       }
 
-      byte[] encodedResult = new byte[dataArr.length * 8];
-      int length = 0;
+      for (int blockSize : BLOCK_SIZES) {
+        byte[] encodedResult = new byte[dataArr.length * 8];
+        int length = 0;
 
-      long start = System.nanoTime();
-      for (int repeat = 0; repeat < repeatTime; repeat++) {
-        length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
-      }
-      long end = System.nanoTime();
-      long encodeTime = (end - start) / repeatTime;
+        long start = System.nanoTime();
+        for (int repeat = 0; repeat < repeatTime; repeat++) {
+          length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
+        }
+        long end = System.nanoTime();
+        long encodeTime = (end - start) / repeatTime;
 
-      int blockId = 0;
-      int[] sortedIndex = null;
-      start = System.nanoTime();
-      for (int repeat = 0; repeat < repeatTime; repeat++) {
-        sortedIndex = runner.run(encodedResult, blockId);
+        int blockId = 0;
+        int[] sortedIndex = null;
+        start = System.nanoTime();
+        for (int repeat = 0; repeat < repeatTime; repeat++) {
+          sortedIndex = runner.run(encodedResult, blockId);
+        }
+        end = System.nanoTime();
+        long querySortTime = (end - start) / repeatTime;
+        System.out.println(
+            "blockSize="
+                + blockSize
+                + ", blockPoints: "
+                + (sortedIndex == null ? 0 : sortedIndex.length));
+        double compressionRatio = length / (double) (data.size() * Long.BYTES);
+        writer.writeRecord(
+            new String[] {
+              datasetName,
+              algorithmName,
+              String.valueOf(blockSize),
+              String.valueOf(encodeTime),
+              String.valueOf(querySortTime),
+              String.valueOf(data.size()),
+              String.valueOf(length),
+              String.valueOf(compressionRatio)
+            });
+        System.out.println("compressionRatio: " + compressionRatio);
       }
-      end = System.nanoTime();
-      long querySortTime = (end - start) / repeatTime;
-      System.out.println("blockPoints: " + (sortedIndex == null ? 0 : sortedIndex.length));
-      double compressionRatio = length / (double) (data.size() * Long.BYTES);
-      writer.writeRecord(
-          new String[] {
-            datasetName,
-            algorithmName,
-            String.valueOf(encodeTime),
-            String.valueOf(querySortTime),
-            String.valueOf(data.size()),
-            String.valueOf(length),
-            String.valueOf(compressionRatio)
-          });
-      System.out.println("compressionRatio: " + compressionRatio);
     }
 
     writer.close();

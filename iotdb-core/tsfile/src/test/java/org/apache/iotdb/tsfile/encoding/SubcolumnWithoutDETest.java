@@ -360,7 +360,8 @@ public class SubcolumnWithoutDETest {
         int[] encodingType = new int[l];
 
         int preTypePos = encode_pos;
-        encode_pos += (l + 7) / 8;
+        // encode_pos += (l + 7) / 8;
+        encode_pos += (l + 3) / 4;
 
         for (int i = l - 1; i >= 0; i--) {
             int bpCost = bitWidthList[i] * list_length;
@@ -425,7 +426,8 @@ public class SubcolumnWithoutDETest {
 
         }
 
-        preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
+        // preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
+        preTypePos = bitPacking(encodingType, 2, preTypePos, encoded_result, l);
 
         return encode_pos;
     }
@@ -456,7 +458,8 @@ public class SubcolumnWithoutDETest {
 
         int[] encodingType = new int[l];
 
-        encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        // encode_pos = decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
+        encode_pos = decodeBitPacking(encoded_result, encode_pos, 2, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
@@ -674,15 +677,17 @@ public class SubcolumnWithoutDETest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_without_de.csv";
+        String outputPath = output_parent_dir + "subcolumn_without_de_128.csv";
 
         int block_size = 512;
+        // block_size = 128;
 
         int repeatTime = 500;
 

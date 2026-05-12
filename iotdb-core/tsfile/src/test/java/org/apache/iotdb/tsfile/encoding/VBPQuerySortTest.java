@@ -13,6 +13,8 @@ import java.util.ArrayList;
 
 public class VBPQuerySortTest {
 
+  private static final int[] BLOCK_SIZES = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+
   public static int[] querySortSingleBlockByDecode(
       byte[] encodedResult, ArrayList<VBPIndexLong> indexList, int targetBlockId) {
     long[] decoded = VBPIndexLongTest.Decoder(encodedResult, indexList);
@@ -55,7 +57,6 @@ public class VBPQuerySortTest {
     String outputParentDir = parentDir + "result/";
     String outputPath = outputParentDir + "vbp_query_sort_decode.csv";
 
-    int blockSize = 512;
     int repeatTime = 100;
     int targetBlockId = 0;
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
@@ -64,6 +65,7 @@ public class VBPQuerySortTest {
         new String[] {
           "Dataset",
           "Encoding Algorithm",
+          "Block Size",
           "Encoding Time",
           "Decoding Time",
           "Points",
@@ -105,38 +107,45 @@ public class VBPQuerySortTest {
         dataArr[i] = (long) (data.get(i) * maxMul);
       }
 
-      byte[] encodedResult = new byte[Math.max(16, dataArr.length * 12)];
-      int length = 0;
-      long start = System.nanoTime();
-      for (int repeat = 0; repeat < repeatTime; repeat++) {
-        ArrayList<VBPIndexLong> tmpIndexList = new ArrayList<>();
-        length = VBPIndexLongTest.Encoder(dataArr, blockSize, tmpIndexList, encodedResult);
-      }
-      long end = System.nanoTime();
-      long encodeTime = (end - start) / repeatTime;
-      ArrayList<VBPIndexLong> indexList = new ArrayList<>();
-      length = VBPIndexLongTest.Encoder(dataArr, blockSize, indexList, encodedResult);
+      for (int blockSize : BLOCK_SIZES) {
+        byte[] encodedResult = new byte[Math.max(16, dataArr.length * 12)];
+        int length = 0;
+        long start = System.nanoTime();
+        for (int repeat = 0; repeat < repeatTime; repeat++) {
+          ArrayList<VBPIndexLong> tmpIndexList = new ArrayList<>();
+          length = VBPIndexLongTest.Encoder(dataArr, blockSize, tmpIndexList, encodedResult);
+        }
+        long end = System.nanoTime();
+        long encodeTime = (end - start) / repeatTime;
+        ArrayList<VBPIndexLong> indexList = new ArrayList<>();
+        length = VBPIndexLongTest.Encoder(dataArr, blockSize, indexList, encodedResult);
 
-      int[] sortedIndices = null;
-      start = System.nanoTime();
-      for (int repeat = 0; repeat < repeatTime; repeat++) {
-        sortedIndices = querySortSingleBlockByDecode(encodedResult, indexList, targetBlockId);
-      }
-      end = System.nanoTime();
-      long queryTime = (end - start) / repeatTime;
-      System.out.println("sortedCount: " + (sortedIndices == null ? 0 : sortedIndices.length));
+        int[] sortedIndices = null;
+        start = System.nanoTime();
+        for (int repeat = 0; repeat < repeatTime; repeat++) {
+          sortedIndices = querySortSingleBlockByDecode(encodedResult, indexList, targetBlockId);
+        }
+        end = System.nanoTime();
+        long queryTime = (end - start) / repeatTime;
+        System.out.println(
+            "blockSize="
+                + blockSize
+                + ", sortedCount: "
+                + (sortedIndices == null ? 0 : sortedIndices.length));
 
-      double compressionRatio = length / (double) (Math.max(1, data.size()) * Long.BYTES);
-      writer.writeRecord(
-          new String[] {
-            datasetName,
-            "VBP",
-            String.valueOf(encodeTime),
-            String.valueOf(queryTime),
-            String.valueOf(data.size()),
-            String.valueOf(length),
-            String.valueOf(compressionRatio)
-          });
+        double compressionRatio = length / (double) (Math.max(1, data.size()) * Long.BYTES);
+        writer.writeRecord(
+            new String[] {
+              datasetName,
+              "VBP",
+              String.valueOf(blockSize),
+              String.valueOf(encodeTime),
+              String.valueOf(queryTime),
+              String.valueOf(data.size()),
+              String.valueOf(length),
+              String.valueOf(compressionRatio)
+            });
+      }
     }
     writer.close();
   }

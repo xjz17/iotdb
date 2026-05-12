@@ -13,6 +13,8 @@ import java.util.ArrayList;
 
 public class SubcolumnAddDictQueryGroupTest {
 
+  private static final int[] BLOCK_SIZES = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+
   private static class BlockMeta {
     int minDelta;
     int m;
@@ -219,16 +221,14 @@ public class SubcolumnAddDictQueryGroupTest {
         int pos = meta.segmentPos[level] + 2;
         int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
         int[] dictKey = new int[cardinality];
-        int[] dictIndex = new int[localEnd];
-        pos =
+        int dictIndexPos =
             SubcolumnAddDictPruneNewTest.decodeBitPacking(
                 encodedResult, pos, currentBitWidth, cardinality, dictKey);
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
-            encodedResult, pos, dictBitWidth, localEnd, dictIndex);
 
         for (int j = 0; j < candidateLength; j++) {
           int index = candidate[j];
-          int value = dictKey[dictIndex[index]];
+          int dictIndex = bitPackedValueAt(encodedResult, dictIndexPos, dictBitWidth, index);
+          int value = dictKey[dictIndex];
           if (value > maxPart) {
             maxPart = value;
             nextLen = 0;
@@ -286,17 +286,21 @@ public class SubcolumnAddDictQueryGroupTest {
         int pos = meta.segmentPos[level] + 2;
         int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
         int[] dictKey = new int[cardinality];
-        int[] dictIndex = new int[rowCount];
-        pos =
+        int dictIndexPos =
             SubcolumnAddDictPruneNewTest.decodeBitPacking(
                 encodedResult, pos, currentBitWidth, cardinality, dictKey);
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
-            encodedResult, pos, dictBitWidth, rowCount, dictIndex);
-        part = dictKey[dictIndex[localIndex]];
+        int dictIndex = bitPackedValueAt(encodedResult, dictIndexPos, dictBitWidth, localIndex);
+        part = dictKey[dictIndex];
       }
       value |= (part << (level * meta.beta));
     }
     return value + meta.minDelta;
+  }
+
+  private static int bitPackedValueAt(
+      byte[] encodedResult, int bitPackedStartBytePos, int bitWidth, int index) {
+    long bitPos = ((long) bitPackedStartBytePos) * 8L + (long) index * bitWidth;
+    return SubcolumnAddDictPruneNewTest.bytesToInt(encodedResult, (int) bitPos, bitWidth);
   }
 
   public static int getDecimalPrecision(String str) {
@@ -327,11 +331,10 @@ public class SubcolumnAddDictQueryGroupTest {
     String outputParentDir = parentDir + "result/";
     String outputPath = outputParentDir + "subcolumn_adddict_prunenew_query_group_max.csv";
 
-    int blockSize = 512;
     int repeatTime = 100;
-    int windowSize = 200;
+    int windowSize = 60;
     System.out.println("Output: " + outputPath);
-    System.out.println("Block size: " + blockSize);
+    System.out.println("Block sizes: " + java.util.Arrays.toString(BLOCK_SIZES));
     System.out.println("Repeat time: " + repeatTime);
     System.out.println("Window size: " + windowSize);
 
@@ -341,6 +344,7 @@ public class SubcolumnAddDictQueryGroupTest {
         new String[] {
           "Dataset",
           "Encoding Algorithm",
+          "Block Size",
           "Encoding Time",
           "Decoding Time",
           "Points",
@@ -388,38 +392,45 @@ public class SubcolumnAddDictQueryGroupTest {
         dataArr[i] = (int) (data.get(i) * maxMul);
       }
 
-      byte[] encodedResult = new byte[dataArr.length * 8];
-      int length = 0;
+      for (int blockSize : BLOCK_SIZES) {
+        byte[] encodedResult = new byte[dataArr.length * 8];
+        int length = 0;
 
-      long start = System.nanoTime();
-      for (int repeat = 0; repeat < repeatTime; repeat++) {
-        length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
+        long start = System.nanoTime();
+        for (int repeat = 0; repeat < repeatTime; repeat++) {
+          length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
+        }
+        long end = System.nanoTime();
+        long encodeTime = (end - start) / repeatTime;
+
+        System.out.println("GroupMaxQuery");
+        int[] groupMaxIndices = null;
+        start = System.nanoTime();
+        for (int repeat = 0; repeat < repeatTime; repeat++) {
+          groupMaxIndices = QueryGroupMaxIndex(encodedResult, windowSize);
+        }
+        end = System.nanoTime();
+        long queryTime = (end - start) / repeatTime;
+
+        System.out.println(
+            "blockSize="
+                + blockSize
+                + ", groupCount: "
+                + (groupMaxIndices == null ? 0 : groupMaxIndices.length));
+        double compressionRatio = length / (double) (data.size() * Long.BYTES);
+        writer.writeRecord(
+            new String[] {
+              datasetName,
+              "SubcolumnAddDictPruneNew",
+              String.valueOf(blockSize),
+              String.valueOf(encodeTime),
+              String.valueOf(queryTime),
+              String.valueOf(data.size()),
+              String.valueOf(length),
+              String.valueOf(compressionRatio)
+            });
+        System.out.println("compressionRatio: " + compressionRatio);
       }
-      long end = System.nanoTime();
-      long encodeTime = (end - start) / repeatTime;
-
-      System.out.println("GroupMaxQuery");
-      int[] groupMaxIndices = null;
-      start = System.nanoTime();
-      for (int repeat = 0; repeat < repeatTime; repeat++) {
-        groupMaxIndices = QueryGroupMaxIndex(encodedResult, windowSize);
-      }
-      end = System.nanoTime();
-      long queryTime = (end - start) / repeatTime;
-
-      System.out.println("groupCount: " + (groupMaxIndices == null ? 0 : groupMaxIndices.length));
-      double compressionRatio = length / (double) (data.size() * Long.BYTES);
-      writer.writeRecord(
-          new String[] {
-            datasetName,
-            "SubcolumnAddDictPruneNew",
-            String.valueOf(encodeTime),
-            String.valueOf(queryTime),
-            String.valueOf(data.size()),
-            String.valueOf(length),
-            String.valueOf(compressionRatio)
-          });
-      System.out.println("compressionRatio: " + compressionRatio);
     }
 
     writer.close();
