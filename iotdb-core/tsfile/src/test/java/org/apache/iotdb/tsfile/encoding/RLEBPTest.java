@@ -1005,17 +1005,20 @@ public class RLEBPTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "D:/encoding-subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
+        // String input_parent_dir = parent_dir + "dataset_output/";
 
         String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "rle.csv";
 
-        int block_size = 1024;
+        int block_size = 512;
 
-        int repeatTime = 500;
+        int repeatTime = 200;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');

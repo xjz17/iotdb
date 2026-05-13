@@ -10,10 +10,12 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class SubcolumnAddDictQueryGroupTest {
 
   private static final int[] BLOCK_SIZES = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+  private static final int TARGET_GROUP_COUNT = 20;
 
   private static class BlockMeta {
     int minDelta;
@@ -25,10 +27,22 @@ public class SubcolumnAddDictQueryGroupTest {
     int[] segmentPos;
     int[] runCountList;
     int[] cardinalityList;
+    int[][] rleRunEndList;
+    int[][] rleValueList;
+    int[][] dictKeyList;
+    int[] dictBitWidthList;
+    int[] dictIndexPosList;
     int nextPos;
   }
 
-  public static int[] QueryGroupMaxIndex(byte[] encodedResult, int windowSize) {
+  private static class RangeGroupConfig {
+    int start;
+    int width;
+    int groupCount;
+  }
+
+  public static int[] queryGroupCountByValueRange(
+      byte[] encodedResult, int rangeStart, int rangeWidth, int bucketCount) {
     int encodePos = 0;
     int dataLength = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
@@ -37,11 +51,11 @@ public class SubcolumnAddDictQueryGroupTest {
 
     int numBlocks = dataLength / blockSize;
     int remainder = dataLength % blockSize;
-    int totalBlocks = numBlocks + (remainder > 0 ? 1 : 0);
+    int encodedBlocks = numBlocks + (remainder > 3 ? 1 : 0);
 
-    BlockMeta[] metas = new BlockMeta[totalBlocks];
-    int[] blockRowCount = new int[totalBlocks];
-    for (int i = 0; i < totalBlocks; i++) {
+    BlockMeta[] metas = new BlockMeta[encodedBlocks];
+    int[] blockRowCount = new int[encodedBlocks];
+    for (int i = 0; i < encodedBlocks; i++) {
       int rowCount = (i < numBlocks) ? blockSize : remainder;
       if (rowCount == 0) {
         break;
@@ -52,41 +66,236 @@ public class SubcolumnAddDictQueryGroupTest {
       encodePos = meta.nextPos;
     }
 
-    int groupCount = (dataLength + windowSize - 1) / windowSize;
-    int[] maxIndices = new int[groupCount];
-
-    for (int g = 0; g < groupCount; g++) {
-      int globalStart = g * windowSize;
-      int globalEnd = Math.min(dataLength, globalStart + windowSize);
-
-      int bestIndex = -1;
-      int bestValue = Integer.MIN_VALUE;
-
-      int startBlock = globalStart / blockSize;
-      int endBlock = (globalEnd - 1) / blockSize;
-      for (int b = startBlock; b <= endBlock; b++) {
-        int rowCount = blockRowCount[b];
-        int blockStart = b * blockSize;
-        int localStart = Math.max(0, globalStart - blockStart);
-        int localEnd = Math.min(rowCount, globalEnd - blockStart);
-        if (localStart >= localEnd) {
-          continue;
-        }
-
-        int localIndex = blockWindowMaxIndex(encodedResult, metas[b], blockSize, localStart, localEnd);
-        int value = decodeValueAtLocalIndex(encodedResult, metas[b], blockSize, rowCount, localIndex);
-        int globalIndex = blockStart + localIndex;
-        if (value > bestValue || (value == bestValue && globalIndex < bestIndex)) {
-          bestValue = value;
-          bestIndex = globalIndex;
-        }
-      }
-
-      maxIndices[g] = bestIndex;
+    int[] groupCounts = new int[bucketCount];
+    long rangeEnd = rangeStart + (long) rangeWidth * bucketCount;
+    for (int b = 0; b < encodedBlocks; b++) {
+      accumulateBlockRangeCounts(
+          encodedResult,
+          metas[b],
+          blockRowCount[b],
+          rangeStart,
+          rangeWidth,
+          bucketCount,
+          rangeEnd,
+          groupCounts);
     }
 
-    return maxIndices;
+    if (remainder > 0 && remainder <= 3) {
+      for (int i = 0; i < remainder; i++) {
+        int value = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+        encodePos += 4;
+        int bucket = bucketIndex(value, rangeStart, rangeWidth, bucketCount);
+        if (bucket >= 0) {
+          groupCounts[bucket]++;
+        }
+      }
+    }
+
+    return groupCounts;
   }
+
+  private static void accumulateBlockRangeCounts(
+      byte[] encodedResult,
+      BlockMeta meta,
+      int rowCount,
+      int rangeStart,
+      int rangeWidth,
+      int bucketCount,
+      long rangeEnd,
+      int[] groupCounts) {
+    if (rowCount <= 0) {
+      return;
+    }
+    if (meta.m == 0) {
+      int bucket = bucketIndex(meta.minDelta, rangeStart, rangeWidth, bucketCount);
+      if (bucket >= 0) {
+        groupCounts[bucket] += rowCount;
+      }
+      return;
+    }
+
+    int[] candidates = new int[rowCount];
+    for (int i = 0; i < rowCount; i++) {
+      candidates[i] = i;
+    }
+
+    accumulateRangeByPrefix(
+        encodedResult,
+        meta,
+        rangeStart,
+        rangeWidth,
+        bucketCount,
+        rangeEnd,
+        groupCounts,
+        candidates,
+        rowCount,
+        meta.l - 1,
+        0L);
+  }
+
+  private static void accumulateRangeByPrefix(
+      byte[] encodedResult,
+      BlockMeta meta,
+      int rangeStart,
+      int rangeWidth,
+      int bucketCount,
+      long rangeEnd,
+      int[] groupCounts,
+      int[] candidates,
+      int candidateLength,
+      int level,
+      long prefix) {
+    if (candidateLength <= 0) {
+      return;
+    }
+
+    int remainingBits = Math.max(0, level * meta.beta);
+    long prefixBase = prefix << remainingBits;
+    long suffixMax = (remainingBits == 0) ? 0L : ((1L << remainingBits) - 1L);
+    long lowValue = meta.minDelta + prefixBase;
+    long highValue = meta.minDelta + prefixBase + suffixMax;
+
+    if (highValue < rangeStart || lowValue >= rangeEnd) {
+      return;
+    }
+
+    int startBucket = (int) Math.floorDiv(lowValue - (long) rangeStart, rangeWidth);
+    int endBucket = (int) Math.floorDiv(highValue - (long) rangeStart, rangeWidth);
+    if (startBucket == endBucket && startBucket >= 0 && startBucket < bucketCount) {
+      groupCounts[startBucket] += candidateLength;
+      return;
+    }
+
+    if (level < 0) {
+      int bucket = bucketIndex(lowValue, rangeStart, rangeWidth, bucketCount);
+      if (bucket >= 0) {
+        groupCounts[bucket] += candidateLength;
+      }
+      return;
+    }
+
+    int radix = 1 << meta.beta;
+    int[] partCounts = new int[radix];
+    int[] partsPerCandidate = new int[candidateLength];
+    for (int i = 0; i < candidateLength; i++) {
+      int part = partValueAtIndex(encodedResult, meta, level, candidates[i]);
+      partsPerCandidate[i] = part;
+      partCounts[part]++;
+    }
+
+    int[][] partCandidates = new int[radix][];
+    for (int part = 0; part < radix; part++) {
+      if (partCounts[part] > 0) {
+        partCandidates[part] = new int[partCounts[part]];
+      }
+    }
+
+    int[] offsets = new int[radix];
+    for (int i = 0; i < candidateLength; i++) {
+      int part = partsPerCandidate[i];
+      partCandidates[part][offsets[part]++] = candidates[i];
+    }
+
+    for (int part = 0; part < radix; part++) {
+      int length = partCounts[part];
+      if (length == 0) {
+        continue;
+      }
+      long childPrefix = (prefix << meta.beta) | part;
+      accumulateRangeByPrefix(
+          encodedResult,
+          meta,
+          rangeStart,
+          rangeWidth,
+          bucketCount,
+          rangeEnd,
+          groupCounts,
+          partCandidates[part],
+          length,
+          level - 1,
+          childPrefix);
+    }
+  }
+
+  private static int partValueAtIndex(
+      byte[] encodedResult, BlockMeta meta, int level, int localIndex) {
+    int type = meta.encodingType[level];
+    int currentBitWidth = meta.bitWidthList[level];
+    if (type == 0) {
+      long bitStart = ((long) meta.segmentPos[level]) * 8L;
+      return SubcolumnAddDictPruneNewTest.bytesToInt(
+          encodedResult, (int) (bitStart + (long) localIndex * currentBitWidth), currentBitWidth);
+    }
+    if (type == 1) {
+      int[] runEnd = meta.rleRunEndList[level];
+      int[] rleValues = meta.rleValueList[level];
+      int runIndex = Arrays.binarySearch(runEnd, localIndex + 1);
+      if (runIndex < 0) {
+        runIndex = -runIndex - 1;
+      }
+      if (runIndex < 0 || runIndex >= rleValues.length) {
+        return 0;
+      }
+      return rleValues[runIndex];
+    }
+    int dictIndex =
+        bitPackedValueAt(
+            encodedResult, meta.dictIndexPosList[level], meta.dictBitWidthList[level], localIndex);
+    return meta.dictKeyList[level][dictIndex];
+  }
+
+  private static int bucketIndex(long value, int rangeStart, int rangeWidth, int bucketCount) {
+    long idx = Math.floorDiv(value - (long) rangeStart, rangeWidth);
+    if (idx < 0 || idx >= bucketCount) {
+      return -1;
+    }
+    return (int) idx;
+  }
+
+  private static RangeGroupConfig buildRangeGroupConfig(int[] dataArr) {
+    int min = Integer.MAX_VALUE;
+    int max = Integer.MIN_VALUE;
+    for (int value : dataArr) {
+      if (value < min) {
+        min = value;
+      }
+      if (value > max) {
+        max = value;
+      }
+    }
+
+    long range = (long) max - min + 1L;
+    int width = (int) Math.max(1L, (range + TARGET_GROUP_COUNT - 1L) / TARGET_GROUP_COUNT);
+    // int nice = niceWidth(width);
+    // Keep bucket count as close as possible to TARGET_GROUP_COUNT.
+    int groupCount = TARGET_GROUP_COUNT;
+
+    RangeGroupConfig config = new RangeGroupConfig();
+    config.start = min;
+    config.width = width;
+    config.groupCount = groupCount;
+    return config;
+  }
+
+  /*
+  private static int niceWidth(int rawWidth) {
+    int scale = 1;
+    while (rawWidth >= 10) {
+      rawWidth = (rawWidth + 9) / 10;
+      scale *= 10;
+    }
+    if (rawWidth <= 1) {
+      return scale;
+    }
+    if (rawWidth <= 2) {
+      return 2 * scale;
+    }
+    if (rawWidth <= 5) {
+      return 5 * scale;
+    }
+    return 10 * scale;
+  }
+  */
 
   private static BlockMeta parseBlockMeta(byte[] encodedResult, int encodePos, int blockSize, int rowCount) {
     BlockMeta meta = new BlockMeta();
@@ -117,6 +326,11 @@ public class SubcolumnAddDictQueryGroupTest {
     meta.segmentPos = new int[meta.l];
     meta.runCountList = new int[meta.l];
     meta.cardinalityList = new int[meta.l];
+    meta.rleRunEndList = new int[meta.l][];
+    meta.rleValueList = new int[meta.l][];
+    meta.dictKeyList = new int[meta.l][];
+    meta.dictBitWidthList = new int[meta.l];
+    meta.dictIndexPosList = new int[meta.l];
     int scanPos = encodePos;
 
     for (int i = 0; i < meta.l; i++) {
@@ -130,171 +344,33 @@ public class SubcolumnAddDictQueryGroupTest {
         int runCount = ((encodedResult[scanPos] & 0xFF) << 8) | (encodedResult[scanPos + 1] & 0xFF);
         meta.runCountList[i] = runCount;
         scanPos += 2;
-        long bitPos = ((long) scanPos) * 8L + (long) runCount * bw;
-        scanPos = (int) ((bitPos + 7L) / 8L);
-        bitPos = ((long) scanPos) * 8L + (long) runCount * currentBitWidth;
-        scanPos = (int) ((bitPos + 7L) / 8L);
+        int[] runEnd = new int[runCount];
+        scanPos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, scanPos, bw, runCount, runEnd);
+        int[] rleValues = new int[runCount];
+        scanPos =
+            SubcolumnAddDictPruneNewTest.decodeBitPacking(
+                encodedResult, scanPos, currentBitWidth, runCount, rleValues);
+        meta.rleRunEndList[i] = runEnd;
+        meta.rleValueList[i] = rleValues;
       } else {
         int cardinality = ((encodedResult[scanPos] & 0xFF) << 8) | (encodedResult[scanPos + 1] & 0xFF);
         meta.cardinalityList[i] = cardinality;
         scanPos += 2;
+        int[] dictKey = new int[cardinality];
+        int dictIndexPos =
+            SubcolumnAddDictPruneNewTest.decodeBitPacking(
+                encodedResult, scanPos, currentBitWidth, cardinality, dictKey);
         int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
-        long bitPos = ((long) scanPos) * 8L + (long) cardinality * currentBitWidth;
+        long bitPos = ((long) dictIndexPos) * 8L + (long) rowCount * dictBitWidth;
         scanPos = (int) ((bitPos + 7L) / 8L);
-        bitPos = ((long) scanPos) * 8L + (long) rowCount * dictBitWidth;
-        scanPos = (int) ((bitPos + 7L) / 8L);
+        meta.dictKeyList[i] = dictKey;
+        meta.dictBitWidthList[i] = dictBitWidth;
+        meta.dictIndexPosList[i] = dictIndexPos;
       }
     }
 
     meta.nextPos = scanPos;
     return meta;
-  }
-
-  private static int blockWindowMaxIndex(
-      byte[] encodedResult, BlockMeta meta, int blockSize, int localStart, int localEnd) {
-    if (meta.m == 0) {
-      return localStart;
-    }
-
-    int[] candidate = new int[localEnd - localStart];
-    int candidateLength = 0;
-    for (int i = localStart; i < localEnd; i++) {
-      candidate[candidateLength++] = i;
-    }
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
-
-    for (int level = meta.l - 1; level >= 0; level--) {
-      if (candidateLength <= 1) {
-        break;
-      }
-
-      int type = meta.encodingType[level];
-      int currentBitWidth = meta.bitWidthList[level];
-      int maxPart = Integer.MIN_VALUE;
-      int[] next = new int[candidateLength];
-      int nextLen = 0;
-
-      if (type == 0) {
-        long bitStart = ((long) meta.segmentPos[level]) * 8L;
-        for (int j = 0; j < candidateLength; j++) {
-          int index = candidate[j];
-          int value =
-              SubcolumnAddDictPruneNewTest.bytesToInt(
-                  encodedResult, (int) (bitStart + (long) index * currentBitWidth), currentBitWidth);
-          if (value > maxPart) {
-            maxPart = value;
-            nextLen = 0;
-            next[nextLen++] = index;
-          } else if (value == maxPart) {
-            next[nextLen++] = index;
-          }
-        }
-      } else if (type == 1) {
-        int runCount = meta.runCountList[level];
-        int pos = meta.segmentPos[level] + 2;
-        int[] runEnd = new int[runCount];
-        int[] rleValues = new int[runCount];
-        pos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, pos, bw, runCount, runEnd);
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
-            encodedResult, pos, currentBitWidth, runCount, rleValues);
-
-        int runIdx = 0;
-        for (int j = 0; j < candidateLength; j++) {
-          int index = candidate[j];
-          while (runIdx < runCount && runEnd[runIdx] <= index) {
-            runIdx++;
-          }
-          if (runIdx >= runCount) {
-            break;
-          }
-          int value = rleValues[runIdx];
-          if (value > maxPart) {
-            maxPart = value;
-            nextLen = 0;
-            next[nextLen++] = index;
-          } else if (value == maxPart) {
-            next[nextLen++] = index;
-          }
-        }
-      } else {
-        int cardinality = meta.cardinalityList[level];
-        int pos = meta.segmentPos[level] + 2;
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
-        int[] dictKey = new int[cardinality];
-        int dictIndexPos =
-            SubcolumnAddDictPruneNewTest.decodeBitPacking(
-                encodedResult, pos, currentBitWidth, cardinality, dictKey);
-
-        for (int j = 0; j < candidateLength; j++) {
-          int index = candidate[j];
-          int dictIndex = bitPackedValueAt(encodedResult, dictIndexPos, dictBitWidth, index);
-          int value = dictKey[dictIndex];
-          if (value > maxPart) {
-            maxPart = value;
-            nextLen = 0;
-            next[nextLen++] = index;
-          } else if (value == maxPart) {
-            next[nextLen++] = index;
-          }
-        }
-      }
-
-      candidate = next;
-      candidateLength = nextLen;
-    }
-
-    int best = candidate[0];
-    for (int i = 1; i < candidateLength; i++) {
-      if (candidate[i] < best) {
-        best = candidate[i];
-      }
-    }
-    return best;
-  }
-
-  private static int decodeValueAtLocalIndex(
-      byte[] encodedResult, BlockMeta meta, int blockSize, int rowCount, int localIndex) {
-    if (meta.m == 0) {
-      return meta.minDelta;
-    }
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
-    int value = 0;
-    for (int level = 0; level < meta.l; level++) {
-      int type = meta.encodingType[level];
-      int currentBitWidth = meta.bitWidthList[level];
-      int part;
-      if (type == 0) {
-        long bitStart = ((long) meta.segmentPos[level]) * 8L;
-        part =
-            SubcolumnAddDictPruneNewTest.bytesToInt(
-                encodedResult, (int) (bitStart + (long) localIndex * currentBitWidth), currentBitWidth);
-      } else if (type == 1) {
-        int runCount = meta.runCountList[level];
-        int pos = meta.segmentPos[level] + 2;
-        int[] runEnd = new int[runCount];
-        int[] rleValues = new int[runCount];
-        pos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, pos, bw, runCount, runEnd);
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
-            encodedResult, pos, currentBitWidth, runCount, rleValues);
-        int runIdx = 0;
-        while (runIdx < runCount && runEnd[runIdx] <= localIndex) {
-          runIdx++;
-        }
-        part = (runIdx < runCount) ? rleValues[runIdx] : 0;
-      } else {
-        int cardinality = meta.cardinalityList[level];
-        int pos = meta.segmentPos[level] + 2;
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
-        int[] dictKey = new int[cardinality];
-        int dictIndexPos =
-            SubcolumnAddDictPruneNewTest.decodeBitPacking(
-                encodedResult, pos, currentBitWidth, cardinality, dictKey);
-        int dictIndex = bitPackedValueAt(encodedResult, dictIndexPos, dictBitWidth, localIndex);
-        part = dictKey[dictIndex];
-      }
-      value |= (part << (level * meta.beta));
-    }
-    return value + meta.minDelta;
   }
 
   private static int bitPackedValueAt(
@@ -329,14 +405,13 @@ public class SubcolumnAddDictQueryGroupTest {
     String parentDir = "D://github/xjz17/subcolumn/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/";
-    String outputPath = outputParentDir + "subcolumn_adddict_prunenew_query_group_max.csv";
+    String outputPath = outputParentDir + "subcolumn_adddict_prunenew_query_group_range_count.csv";
 
     int repeatTime = 100;
-    int windowSize = 60;
     System.out.println("Output: " + outputPath);
     System.out.println("Block sizes: " + java.util.Arrays.toString(BLOCK_SIZES));
     System.out.println("Repeat time: " + repeatTime);
-    System.out.println("Window size: " + windowSize);
+    System.out.println("Target group count: " + TARGET_GROUP_COUNT);
 
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
     writer.setRecordDelimiter('\n');
@@ -391,6 +466,14 @@ public class SubcolumnAddDictQueryGroupTest {
       for (int i = 0; i < data.size(); i++) {
         dataArr[i] = (int) (data.get(i) * maxMul);
       }
+      RangeGroupConfig groupConfig = buildRangeGroupConfig(dataArr);
+      System.out.println(
+          "group range config: start="
+              + groupConfig.start
+              + ", width="
+              + groupConfig.width
+              + ", groupCount="
+              + groupConfig.groupCount);
 
       for (int blockSize : BLOCK_SIZES) {
         byte[] encodedResult = new byte[dataArr.length * 8];
@@ -403,11 +486,13 @@ public class SubcolumnAddDictQueryGroupTest {
         long end = System.nanoTime();
         long encodeTime = (end - start) / repeatTime;
 
-        System.out.println("GroupMaxQuery");
-        int[] groupMaxIndices = null;
+        System.out.println("RangeGroupCountQuery");
+        int[] groupCounts = null;
         start = System.nanoTime();
         for (int repeat = 0; repeat < repeatTime; repeat++) {
-          groupMaxIndices = QueryGroupMaxIndex(encodedResult, windowSize);
+          groupCounts =
+              queryGroupCountByValueRange(
+                  encodedResult, groupConfig.start, groupConfig.width, groupConfig.groupCount);
         }
         end = System.nanoTime();
         long queryTime = (end - start) / repeatTime;
@@ -416,7 +501,7 @@ public class SubcolumnAddDictQueryGroupTest {
             "blockSize="
                 + blockSize
                 + ", groupCount: "
-                + (groupMaxIndices == null ? 0 : groupMaxIndices.length));
+                + (groupCounts == null ? 0 : groupCounts.length));
         double compressionRatio = length / (double) (data.size() * Long.BYTES);
         writer.writeRecord(
             new String[] {

@@ -14,37 +14,84 @@ import java.util.ArrayList;
 public class VBPQueryGroupTest {
 
   private static final int[] BLOCK_SIZES = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
+  private static final int TARGET_GROUP_COUNT = 20;
 
-  public static int[] queryGroupMaxIndexByDecode(
-      byte[] encodedResult, ArrayList<VBPIndexLong> indexList, int windowSize) {
+  private static class RangeGroupConfig {
+    long start;
+    long width;
+    int groupCount;
+  }
+
+  public static int[] queryGroupCountByValueRangeByDecode(
+      byte[] encodedResult,
+      ArrayList<VBPIndexLong> indexList,
+      long rangeStart,
+      long rangeWidth,
+      int bucketCount) {
     long[] decoded = VBPIndexLongTest.Decoder(encodedResult, indexList);
-    int groupCount = (decoded.length + windowSize - 1) / windowSize;
-    int[] result = new int[groupCount];
-    for (int g = 0; g < groupCount; g++) {
-      int start = g * windowSize;
-      int end = Math.min(decoded.length, start + windowSize);
-      int bestIndex = start;
-      long bestValue = decoded[start];
-      for (int i = start + 1; i < end; i++) {
-        if (decoded[i] > bestValue) {
-          bestValue = decoded[i];
-          bestIndex = i;
-        }
+    int[] result = new int[bucketCount];
+    for (long value : decoded) {
+      long bucket = Math.floorDiv(value - rangeStart, rangeWidth);
+      if (bucket >= 0 && bucket < bucketCount) {
+        result[(int) bucket]++;
       }
-      result[g] = bestIndex;
     }
     return result;
   }
+
+  private static RangeGroupConfig buildRangeGroupConfig(long[] dataArr) {
+    long min = Long.MAX_VALUE;
+    long max = Long.MIN_VALUE;
+    for (long value : dataArr) {
+      if (value < min) {
+        min = value;
+      }
+      if (value > max) {
+        max = value;
+      }
+    }
+
+    long span = max - min + 1L;
+    long width = Math.max(1L, (span + TARGET_GROUP_COUNT - 1L) / TARGET_GROUP_COUNT);
+    // long nice = niceWidth(width);
+    // Keep bucket count as close as possible to TARGET_GROUP_COUNT.
+    int groupCount = TARGET_GROUP_COUNT;
+
+    RangeGroupConfig config = new RangeGroupConfig();
+    config.start = min;
+    config.width = width;
+    config.groupCount = groupCount;
+    return config;
+  }
+
+  /*
+  private static long niceWidth(long rawWidth) {
+    long scale = 1L;
+    while (rawWidth >= 10L) {
+      rawWidth = (rawWidth + 9L) / 10L;
+      scale *= 10L;
+    }
+    if (rawWidth <= 1L) {
+      return scale;
+    }
+    if (rawWidth <= 2L) {
+      return 2L * scale;
+    }
+    if (rawWidth <= 5L) {
+      return 5L * scale;
+    }
+    return 10L * scale;
+  }
+  */
 
   @Test
   public void test0() throws IOException {
     String parentDir = "D://github/xjz17/subcolumn/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/";
-    String outputPath = outputParentDir + "vbp_query_group_max.csv";
+    String outputPath = outputParentDir + "vbp_query_group_range_count.csv";
 
     int repeatTime = 100;
-    int windowSize = 20;
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
     writer.setRecordDelimiter('\n');
     writer.writeRecord(
@@ -92,6 +139,14 @@ public class VBPQueryGroupTest {
       for (int i = 0; i < data.size(); i++) {
         dataArr[i] = (long) (data.get(i) * maxMul);
       }
+      RangeGroupConfig groupConfig = buildRangeGroupConfig(dataArr);
+      System.out.println(
+          "group range config: start="
+              + groupConfig.start
+              + ", width="
+              + groupConfig.width
+              + ", groupCount="
+              + groupConfig.groupCount);
 
       for (int blockSize : BLOCK_SIZES) {
         byte[] encodedResult = new byte[Math.max(16, dataArr.length * 12)];
@@ -109,7 +164,13 @@ public class VBPQueryGroupTest {
         int[] groupResult = null;
         start = System.nanoTime();
         for (int repeat = 0; repeat < repeatTime; repeat++) {
-          groupResult = queryGroupMaxIndexByDecode(encodedResult, indexList, windowSize);
+          groupResult =
+              queryGroupCountByValueRangeByDecode(
+                  encodedResult,
+                  indexList,
+                  groupConfig.start,
+                  groupConfig.width,
+                  groupConfig.groupCount);
         }
         end = System.nanoTime();
         long queryTime = (end - start) / repeatTime;
