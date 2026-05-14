@@ -1132,7 +1132,7 @@ public class SubcolumnVariableAlpha {
 
         int block_size = 512;
 
-        int repeatTime = 100;
+        int repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
