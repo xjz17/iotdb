@@ -33,7 +33,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
     String outputPath = outputParentDir + "subcolumn_adddict_prunenew_update_ratio.csv";
 
     int blockSize = 512;
-    int repeatTime = 100;
+    int repeatTime = 500;
 
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
     writer.setRecordDelimiter('\n');
