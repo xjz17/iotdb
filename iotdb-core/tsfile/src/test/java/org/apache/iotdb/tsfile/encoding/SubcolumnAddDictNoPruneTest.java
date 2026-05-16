@@ -262,10 +262,12 @@ public class SubcolumnAddDictNoPruneTest {
 
         int cMin = cost1;
 
-        int[] beta_list = new int[m - 1];
-        for (int i = 0; i < m - 1; i++) {
-            beta_list[i] = i + 2;
-        }
+        // int[] beta_list = new int[m - 1];
+        // for (int i = 0; i < m - 1; i++) {
+        //     beta_list[i] = i + 2;
+        // }
+
+        int[] beta_list = { 2, 3, 4 };
 
         // int bw = bitWidth(block_size);
 
