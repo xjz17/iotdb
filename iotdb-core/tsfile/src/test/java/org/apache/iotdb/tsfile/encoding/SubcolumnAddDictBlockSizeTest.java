@@ -63,18 +63,18 @@ public class SubcolumnAddDictBlockSizeTest {
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
-        int repeatTime = 200;
+        int repeatTime = 100;
         // repeatTime = 500;
 
         List<String> datasetList = new ArrayList<>();
-        datasetList.add("Arade4");
+        // datasetList.add("Arade4");
         datasetList.add("Bird-migration");
         datasetList.add("Bitcoin-price");
         datasetList.add("City-temp");
         datasetList.add("Dewpoint-temp");
         datasetList.add("EPM-Education");
         datasetList.add("Gov10");
-        datasetList.add("POI-lat");
+        // datasetList.add("POI-lat");
         datasetList.add("IR-bio-temp");
         datasetList.add("PM10-dust");
         datasetList.add("Stocks-DE");
@@ -215,16 +215,17 @@ public class SubcolumnAddDictBlockSizeTest {
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         int repeatTime = 500;
+        repeatTime = 100;
 
         List<String> datasetList = new ArrayList<>();
-        datasetList.add("Arade4");
+        // datasetList.add("Arade4");
         datasetList.add("Bird-migration");
         datasetList.add("Bitcoin-price");
         datasetList.add("City-temp");
         datasetList.add("Dewpoint-temp");
         datasetList.add("EPM-Education");
         datasetList.add("Gov10");
-        datasetList.add("POI-lat");
+        // datasetList.add("POI-lat");
         datasetList.add("IR-bio-temp");
         datasetList.add("PM10-dust");
         datasetList.add("Stocks-DE");
