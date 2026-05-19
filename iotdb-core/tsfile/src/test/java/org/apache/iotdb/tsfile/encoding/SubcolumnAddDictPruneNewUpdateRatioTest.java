@@ -20,6 +20,14 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
   // private static final int[] UPDATE_RATIOS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
   private static final int[] UPDATE_RATIOS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20};
 
+  /**
+   * If true, updated indices form one contiguous window (centered). At low ratios only a few
+   * blocks are dirty, so compression-vs-update-ratio curves (especially re-optimizing α) change
+   * gradually from 0% to 1%. If false, legacy uniform spread: ~1% point updates still touch almost
+   * every block, which produces a sharp 0–1% drop in plots.
+   */
+  private static final boolean CLUSTER_UPDATES_IN_CONTIGUOUS_WINDOW = true;
+
   private static final int STATS_UPDATED_LENGTH = 0;
   private static final int STATS_BETA_CHANGED = 1;
   private static final int STATS_REENCODED_BLOCKS = 2;
@@ -27,13 +35,13 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/update/";
     String outputPath = outputParentDir + "subcolumn_adddict_prunenew_update_ratio.csv";
 
     int blockSize = 512;
-    int repeatTime = 500;
+    int repeatTime = 1000;
 
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
     writer.setRecordDelimiter('\n');
@@ -216,6 +224,23 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       return updated;
     }
 
+    int targetUpdateCount = (int) Math.ceil(origin.length * (ratio / 100.0));
+    if (targetUpdateCount <= 0) {
+      return updated;
+    }
+
+    if (CLUSTER_UPDATES_IN_CONTIGUOUS_WINDOW) {
+      int window = Math.min(targetUpdateCount, origin.length);
+      int start = Math.max(0, (origin.length - window) / 2);
+      for (int i = 0; i < window; i++) {
+        int index = start + i;
+        int prevValue = (index > 0) ? origin[index - 1] : origin[index];
+        int nextValue = (index < origin.length - 1) ? origin[index + 1] : origin[index];
+        updated[index] = (prevValue + nextValue) / 2;
+      }
+      return updated;
+    }
+
     int blockCount = (origin.length + blockSize - 1) / blockSize;
     int[] blockMin = new int[blockCount];
     int[] blockMax = new int[blockCount];
@@ -233,7 +258,6 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
     }
 
     // Random random = new Random();
-    int targetUpdateCount = (int) Math.ceil(origin.length * (ratio / 100.0));
     boolean[] used = new boolean[origin.length];
     for (int i = 0; i < targetUpdateCount; i++) {
       int index = (int) (((long) i * origin.length) / targetUpdateCount);
