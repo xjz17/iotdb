@@ -9,86 +9,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
-public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
-
-    private static class EncodingTypeStats {
-        private int totalBlockCount;
-        private int totalSubcolumnCount;
-        private final int[] encodingTypeCounts = new int[3];
-
-        private void setTotalBlockCount(int totalBlockCount) {
-            this.totalBlockCount = totalBlockCount;
-        }
-
-        /**
-         * Omits Bit Packing rows where the grouped subcolumn needs the full {@code beta} bits
-         * (effective max width equals {@code beta}: no redundant leading-zero MSBs to strip). Those
-         * are excluded from Bit Packing counts and from the subcolumn denominator; BP rows with
-         * {@code bitWidthList[i] < beta} still count.
-         */
-        private void recordEncodingType(
-                int[] encodingType, int length, int beta, int[] bitWidthList) {
-            if (length <= 0) {
-                return;
-            }
-
-            for (int i = 0; i < length; i++) {
-                int currentType = encodingType[i];
-                if (currentType == 0
-                        && bitWidthList != null
-                        && i < bitWidthList.length
-                        && bitWidthList[i] == beta) {
-                    continue;
-                }
-                totalSubcolumnCount++;
-                if (currentType >= 0 && currentType < encodingTypeCounts.length) {
-                    encodingTypeCounts[currentType]++;
-                }
-            }
-        }
-
-        private int getTotalBlockCount() {
-            return totalBlockCount;
-        }
-
-        private int getTotalSubcolumnCount() {
-            return totalSubcolumnCount;
-        }
-
-        private int getBitPackingSubcolumnCount() {
-            return encodingTypeCounts[0];
-        }
-
-        private int getRleSubcolumnCount() {
-            return encodingTypeCounts[1];
-        }
-
-        private int getDictionarySubcolumnCount() {
-            return encodingTypeCounts[2];
-        }
-
-        private double getBitPackingRatio() {
-            return getEncodingTypeRatio(0);
-        }
-
-        private double getRleRatio() {
-            return getEncodingTypeRatio(1);
-        }
-
-        private double getDictionaryRatio() {
-            return getEncodingTypeRatio(2);
-        }
-
-        private double getEncodingTypeRatio(int type) {
-            if (totalSubcolumnCount == 0) {
-                return 0;
-            }
-            return encodingTypeCounts[type] / (double) totalSubcolumnCount;
-        }
-    }
+public class SubcolumnPruneNewTest {
 
     private static final int[] DEFAULT_THRESHOLD =
             {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};
@@ -112,32 +36,6 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
-    }
-
-    /**
-     * Per grouped-subcolumn max value bit width; must match {@link #SubcolumnEncoder} {@code
-     * bitWidthList} computation for statistics filtering.
-     */
-    private static int[] computeGroupedMaxBitWidths(
-            int[] dataDelta, int remainder, int m, int betaValue) {
-        if (m <= 0 || betaValue <= 0) {
-            return new int[0];
-        }
-        int l = (m + betaValue - 1) / betaValue;
-        int[] bitWidthList = new int[l];
-        int mask = (1 << betaValue) - 1;
-        for (int i = 0; i < l; i++) {
-            int shiftAmount = i * betaValue;
-            int maxValuePart = 0;
-            for (int j = 0; j < remainder; j++) {
-                int current = (dataDelta[j] >> shiftAmount) & mask;
-                if (current > maxValuePart) {
-                    maxValuePart = current;
-                }
-            }
-            bitWidthList[i] = bitWidth(maxValuePart);
-        }
-        return bitWidthList;
     }
 
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
@@ -751,12 +649,6 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
 
     public static int BlockEncoder(int[] data, int blockIndex, int blockSize, int remainder,
             int encodePos, byte[] encodedResult, int[] beta) {
-        return BlockEncoder(data, blockIndex, blockSize, remainder, encodePos, encodedResult,
-                beta, null);
-    }
-
-    public static int BlockEncoder(int[] data, int blockIndex, int blockSize, int remainder,
-            int encodePos, byte[] encodedResult, int[] beta, EncodingTypeStats stats) {
         int[] minDelta = new int[1];
         int[] dataDelta = getAbsDeltaTsBlock(data, blockIndex, blockSize, remainder, minDelta);
 
@@ -773,12 +665,6 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
         int m = bitWidth(maxValue);
         int[] encodingType = new int[m];
         beta[0] = Subcolumn(dataDelta, remainder, m, blockSize, encodingType);
-        if (stats != null) {
-            int betaValue = beta[0];
-            int length = m == 0 ? 0 : (m + betaValue - 1) / betaValue;
-            int[] bitWidthList = computeGroupedMaxBitWidths(dataDelta, remainder, m, betaValue);
-            stats.recordEncodingType(encodingType, length, betaValue, bitWidthList);
-        }
 
         return SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize,
                 encodingType);
@@ -801,11 +687,6 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
     }
 
     public static int Encoder(int[] data, int blockSize, byte[] encodedResult) {
-        return Encoder(data, blockSize, encodedResult, null);
-    }
-
-    public static int Encoder(int[] data, int blockSize, byte[] encodedResult,
-            EncodingTypeStats stats) {
         int dataLength = data.length;
         int encodePos = 0;
 
@@ -818,13 +699,10 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
         int numBlocks = dataLength / blockSize;
         int remainder = dataLength % blockSize;
         int[] beta = new int[] {2};
-        if (stats != null) {
-            stats.setTotalBlockCount(numBlocks + (remainder > 0 ? 1 : 0));
-        }
 
         for (int i = 0; i < numBlocks; i++) {
             encodePos = BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult,
-                    beta, stats);
+                    beta);
         }
 
         if (remainder <= 3) {
@@ -835,7 +713,7 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
             }
         } else {
             encodePos = BlockEncoder(data, numBlocks, blockSize, remainder, encodePos,
-                    encodedResult, beta, stats);
+                    encodedResult, beta);
         }
 
         return encodePos;
@@ -896,139 +774,6 @@ public class SubcolumnAddDictPruneNewEncodingTypeRatioTest {
         }
 
         return fileName.substring(0, dotIndex);
-    }
-
-    @Test
-    public void test0() throws IOException {
-        String parentDir = "D://github/xjz17/subcolumn/";
-        String inputParentDir = parentDir + "dataset/";
-
-        String outputParentDir = parentDir + "result/";
-        // String outputParentDir = "D://encoding-subcolumn/result/";
-        // String outputPath = outputParentDir + "subcolumn_encoding_type_ratio.csv";
-        String outputPath = outputParentDir + "subcolumn_encoding_type_ratio_2_32.csv";
-
-        int blockSize = 512;
-        blockSize = 32;
-
-        int repeatTime = 500;
-        repeatTime = 20;
-
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
-        writer.setRecordDelimiter('\n');
-
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio",
-                "Block Count",
-                "Subcolumn Count",
-                "Bit Packing Subcolumn Count",
-                "Bit Packing Ratio",
-                "RLE Subcolumn Count",
-                "RLE Ratio",
-                "Dictionary Subcolumn Count",
-                "Dictionary Ratio"
-        };
-        writer.writeRecord(head);
-
-        File directory = new File(inputParentDir);
-        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
-        if (csvFiles == null) {
-            writer.close();
-            return;
-        }
-
-        for (File file : csvFiles) {
-            String datasetName = extractFileName(file.toString());
-            System.out.println(datasetName);
-
-            InputStream inputStream = Files.newInputStream(file.toPath());
-            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
-
-            int maxDecimal = 0;
-            while (loader.readRecord()) {
-                String fStr = loader.getValues()[0];
-                if (fStr.isEmpty()) {
-                    continue;
-                }
-                int currentDecimal = getDecimalPrecision(fStr);
-                if (currentDecimal > maxDecimal) {
-                    maxDecimal = currentDecimal;
-                }
-                data1.add(Float.valueOf(fStr));
-            }
-            inputStream.close();
-
-            if (maxDecimal > 8) {
-                maxDecimal = 8;
-            }
-
-            int[] data2Arr = new int[data1.size()];
-            int maxMul = (int) Math.pow(10, maxDecimal);
-            for (int i = 0; i < data1.size(); i++) {
-                data2Arr[i] = (int) (data1.get(i) * maxMul);
-            }
-
-            System.out.println(maxDecimal);
-            byte[] encodedResult = new byte[data2Arr.length * 8];
-
-            long encodeTime = 0;
-            long decodeTime = 0;
-            double ratio = 0;
-            double compressedSize = 0;
-            int length = 0;
-            EncodingTypeStats stats = new EncodingTypeStats();
-
-            long start = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                stats = new EncodingTypeStats();
-                length = Encoder(data2Arr, blockSize, encodedResult, stats);
-            }
-            long end = System.nanoTime();
-
-            encodeTime += ((end - start) / repeatTime);
-            compressedSize += length;
-
-            double ratioTmp = compressedSize / (double) (data1.size() * Long.BYTES);
-            ratio += ratioTmp;
-
-            System.out.println("Decode");
-
-            start = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Decoder(encodedResult);
-            }
-            end = System.nanoTime();
-            decodeTime += ((end - start) / repeatTime);
-
-            String[] record = {
-                    datasetName,
-                    "Sub-column",
-                    String.valueOf(encodeTime),
-                    String.valueOf(decodeTime),
-                    String.valueOf(data1.size()),
-                    String.valueOf(compressedSize),
-                    String.valueOf(ratio),
-                    String.valueOf(stats.getTotalBlockCount()),
-                    String.valueOf(stats.getTotalSubcolumnCount()),
-                    String.valueOf(stats.getBitPackingSubcolumnCount()),
-                    String.valueOf(stats.getBitPackingRatio()),
-                    String.valueOf(stats.getRleSubcolumnCount()),
-                    String.valueOf(stats.getRleRatio()),
-                    String.valueOf(stats.getDictionarySubcolumnCount()),
-                    String.valueOf(stats.getDictionaryRatio())
-            };
-            writer.writeRecord(record);
-            System.out.println(ratio);
-        }
-
-        writer.close();
     }
 
 }

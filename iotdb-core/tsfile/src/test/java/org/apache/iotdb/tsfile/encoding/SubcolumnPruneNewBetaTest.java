@@ -1,8 +1,19 @@
 package org.apache.iotdb.tsfile.encoding;
 
-import java.io.File;
+import com.csvreader.CsvReader;
+import com.csvreader.CsvWriter;
+import org.junit.Test;
 
-public class SubcolumnAddDictPrune2NewTest {
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class SubcolumnPruneNewBetaTest {
 
     private static final int[] DEFAULT_THRESHOLD =
             {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};
@@ -82,6 +93,7 @@ public class SubcolumnAddDictPrune2NewTest {
     public static boolean bytesToBool(byte[] result, int pos) {
         int byteIndex = pos >> 3;
         int bitOffset = pos & 0x07;
+
         return (result[byteIndex] & (1 << (7 - bitOffset))) != 0;
     }
 
@@ -207,6 +219,7 @@ public class SubcolumnAddDictPrune2NewTest {
 
     public static int bytes2Integer(byte[] encoded, int start, int num) {
         int value = 0;
+
         for (int i = 0; i < num; i++) {
             value <<= 8;
             int b = encoded[i + start] & 0xFF;
@@ -280,16 +293,18 @@ public class SubcolumnAddDictPrune2NewTest {
         return distinctCount;
     }
 
-    public static int Subcolumn(int[] x, int xLength, int m, int blockSize) {
+    public static int Subcolumn(int[] x, int xLength, int m, int blockSize, int[] encodingType) {
 
         if (m == 0) {
             return 1;
         }
 
         int betaBest = 1;
+
         int[] bpeCostSingle = new int[m];
         int[] rleCostSingle = new int[m];
         int[] deCostSingle = new int[m];
+
         int[] threshold = thresholdForBlockSize(blockSize);
         int lengthBitWidth = bitWidth(xLength);
         int cost1 = 0;
@@ -317,10 +332,13 @@ public class SubcolumnAddDictPrune2NewTest {
             deCostSingle[i] = changed ? xLength * 2 + 2 : xLength + 2;
 
             if (bpeCostSingle[i] <= rleCostSingle[i] && bpeCostSingle[i] <= deCostSingle[i]) {
+                encodingType[i] = 0;
                 cost1 += bpeCostSingle[i];
             } else if (rleCostSingle[i] < bpeCostSingle[i] && rleCostSingle[i] <= deCostSingle[i]) {
+                encodingType[i] = 1;
                 cost1 += rleCostSingle[i];
             } else {
+                encodingType[i] = 2;
                 cost1 += deCostSingle[i];
             }
         }
@@ -334,6 +352,7 @@ public class SubcolumnAddDictPrune2NewTest {
 
             int l = (m + beta - 1) / beta;
             int cost = 0;
+            int[] encodingTypeTemp = new int[l];
             int mask = (1 << beta) - 1;
 
             for (int i = 0; i < l; i++) {
@@ -359,10 +378,11 @@ public class SubcolumnAddDictPrune2NewTest {
                 }
 
                 if (rleCostMax < currentCost) {
-                    int rleCost = countGroupedRuns(x, xLength, groupStart, mask)
-                            * (beta + lengthBitWidth);
+                    int runCount = countGroupedRuns(x, xLength, groupStart, mask);
+                    int rleCost = runCount * (beta + lengthBitWidth);
                     if (rleCost < currentCost) {
                         currentCost = rleCost;
+                        encodingTypeTemp[i] = 1;
                     }
                 }
 
@@ -380,6 +400,7 @@ public class SubcolumnAddDictPrune2NewTest {
                         int deCost = xLength * bitWidth(distinctCount) + distinctCount * beta;
                         if (deCost < currentCost) {
                             currentCost = deCost;
+                            encodingTypeTemp[i] = 2;
                         }
                     }
                 }
@@ -390,14 +411,115 @@ public class SubcolumnAddDictPrune2NewTest {
             if (cost < cMin) {
                 cMin = cost;
                 betaBest = beta;
+                System.arraycopy(encodingTypeTemp, 0, encodingType, 0, l);
             }
         }
 
         return betaBest;
     }
 
+    /**
+     * Pick per-group encoding types (BPE/RLE/DE) for a fixed beta, using the same prune rules as
+     * {@link #Subcolumn} but without searching {@link #BETA_LIST}.
+     */
+    public static void fillEncodingTypeForFixedBeta(
+            int[] x,
+            int xLength,
+            int m,
+            int blockSize,
+            int beta,
+            int[] encodingType) {
+        if (m == 0 || beta > m) {
+            return;
+        }
+
+        int[] bpeCostSingle = new int[m];
+        int[] rleCostSingle = new int[m];
+        int[] deCostSingle = new int[m];
+
+        int[] threshold = thresholdForBlockSize(blockSize);
+        int lengthBitWidth = bitWidth(xLength);
+
+        for (int i = 0; i < m; i++) {
+            int currentValue = (x[0] >> i) & 1;
+            boolean hasOne = currentValue == 1;
+            int runCount = 1;
+            boolean changed = false;
+
+            for (int j = 1; j < xLength; j++) {
+                int subcolumnValue = (x[j] >> i) & 1;
+                if (subcolumnValue == 1) {
+                    hasOne = true;
+                }
+                if (subcolumnValue != currentValue) {
+                    runCount++;
+                    currentValue = subcolumnValue;
+                    changed = true;
+                }
+            }
+
+            bpeCostSingle[i] = hasOne ? xLength : 0;
+            rleCostSingle[i] = runCount * (1 + lengthBitWidth);
+            deCostSingle[i] = changed ? xLength * 2 + 2 : xLength + 2;
+        }
+
+        int l = (m + beta - 1) / beta;
+        int mask = (1 << beta) - 1;
+
+        for (int i = 0; i < l; i++) {
+            int groupStart = i * beta;
+            int groupEnd = Math.min(m, groupStart + beta);
+            int betaStart = groupEnd - 1;
+
+            while (betaStart >= groupStart && bpeCostSingle[betaStart] == 0) {
+                betaStart--;
+            }
+
+            if (betaStart < groupStart) {
+                betaStart = groupStart;
+            }
+
+            int currentCost = bpeCostSingle[betaStart] * (betaStart - groupStart + 1);
+            encodingType[i] = 0;
+
+            int rleCostMax = 0;
+            for (int j = groupStart; j < groupEnd; j++) {
+                if (rleCostSingle[j] > rleCostMax) {
+                    rleCostMax = rleCostSingle[j];
+                }
+            }
+
+            if (rleCostMax < currentCost) {
+                int runCount = countGroupedRuns(x, xLength, groupStart, mask);
+                int rleCost = runCount * (beta + lengthBitWidth);
+                if (rleCost < currentCost) {
+                    currentCost = rleCost;
+                    encodingType[i] = 1;
+                }
+            }
+
+            int deCostMax = 0;
+            for (int j = groupStart; j < groupEnd; j++) {
+                if (deCostSingle[j] > deCostMax) {
+                    deCostMax = deCostSingle[j];
+                }
+            }
+
+            if (deCostMax < currentCost) {
+                int distinctCount =
+                        countDistinctValuesUntilLimit(x, xLength, groupStart, mask, threshold[beta - 1]);
+                if (distinctCount < threshold[beta - 1]) {
+                    int deCost = xLength * bitWidth(distinctCount) + distinctCount * beta;
+                    if (deCost < currentCost) {
+                        encodingType[i] = 2;
+                    }
+                }
+            }
+        }
+    }
+
     public static int SubcolumnEncoder(int[] list, int encodePos, byte[] encodedResult,
-            int[] beta, int blockSize) {
+            int[] beta, int blockSize, int[] encodingType) {
         int listLength = list.length;
         int maxValue = 0;
         for (int value : list) {
@@ -407,6 +529,7 @@ public class SubcolumnAddDictPrune2NewTest {
         }
 
         int m = bitWidth(maxValue);
+
         intByte2Bytes(m, encodePos, encodedResult);
         encodePos += 1;
 
@@ -417,7 +540,6 @@ public class SubcolumnAddDictPrune2NewTest {
         int betaValue = beta[0];
         int l = (m + betaValue - 1) / betaValue;
         int[] bitWidthList = new int[l];
-        int[] encodingType = new int[l];
 
         intByte2Bytes(betaValue, encodePos, encodedResult);
         encodePos += 1;
@@ -455,39 +577,18 @@ public class SubcolumnAddDictPrune2NewTest {
                 subcolumnBuffer[j] = (list[j] >> shiftAmount) & mask;
             }
 
-            int bpCost = bitWidthList[i] * listLength;
-            int previous = subcolumnBuffer[0];
-            int runCount = 0;
-
-            for (int j = 1; j < listLength; j++) {
-                int current = subcolumnBuffer[j];
-                if (current != previous) {
-                    runCount++;
-                    previous = current;
+            if (encodingType[i] == 2) {
+                Arrays.fill(seenValues, false);
+                int cardinality = 0;
+                for (int j = 0; j < listLength; j++) {
+                    int current = subcolumnBuffer[j];
+                    if (!seenValues[current]) {
+                        seenValues[current] = true;
+                        cardinality++;
+                    }
                 }
-            }
 
-            runCount++;
-            int rleCost = bw * runCount + betaValue * runCount;
-
-            int cardinality = 0;
-            for (int value = 0; value <= mask; value++) {
-                seenValues[value] = false;
-            }
-            for (int j = 0; j < listLength; j++) {
-                int current = subcolumnBuffer[j];
-                if (!seenValues[current]) {
-                    seenValues[current] = true;
-                    cardinality++;
-                }
-            }
-
-            int dictBitWidth = bitWidth(cardinality);
-            int dictCost = dictBitWidth * listLength
-                    + cardinality * (bitWidthList[i] + dictBitWidth);
-
-            if (dictCost < rleCost && dictCost < bpCost) {
-                encodingType[i] = 2;
+                int dictBitWidth = bitWidth(cardinality);
                 int dictSize = 0;
                 for (int value = 0; value <= mask; value++) {
                     if (seenValues[value]) {
@@ -513,35 +614,35 @@ public class SubcolumnAddDictPrune2NewTest {
                 continue;
             }
 
-            if (bpCost <= rleCost) {
-                encodingType[i] = 0;
+            if (encodingType[i] == 0) {
                 encodePos = bitPacking(subcolumnBuffer, bitWidthList[i], encodePos, encodedResult,
                         listLength);
             } else {
-                encodingType[i] = 1;
+                int previous = subcolumnBuffer[0];
+                int runCount = 0;
+
+                for (int j = 1; j < listLength; j++) {
+                    int current = subcolumnBuffer[j];
+                    if (current != previous) {
+                        runLength[runCount] = j;
+                        rleValues[runCount] = previous;
+                        runCount++;
+                        previous = current;
+                    }
+                }
+
+                runLength[runCount] = listLength;
+                rleValues[runCount] = previous;
+                runCount++;
+
                 encodedResult[encodePos] = (byte) (runCount >> 8);
                 encodePos += 1;
                 encodedResult[encodePos] = (byte) (runCount & 0xFF);
                 encodePos += 1;
 
-                int index = 0;
-                previous = subcolumnBuffer[0];
-                for (int j = 1; j < listLength; j++) {
-                    int current = subcolumnBuffer[j];
-                    if (current != previous) {
-                        runLength[index] = j;
-                        rleValues[index] = previous;
-                        index++;
-                        previous = current;
-                    }
-                }
-                runLength[index] = listLength;
-                rleValues[index] = previous;
-                index++;
-
-                encodePos = bitPacking(runLength, bw, encodePos, encodedResult, index);
+                encodePos = bitPacking(runLength, bw, encodePos, encodedResult, runCount);
                 encodePos = bitPacking(rleValues, bitWidthList[i], encodePos, encodedResult,
-                        index);
+                        runCount);
             }
         }
 
@@ -603,6 +704,7 @@ public class SubcolumnAddDictPrune2NewTest {
                 int cardinality = ((encodedResult[encodePos] & 0xFF) << 8)
                         | (encodedResult[encodePos + 1] & 0xFF);
                 encodePos += 2;
+
                 int dictBitWidth = bitWidth(cardinality);
                 int[] dictKeyList = new int[cardinality];
                 encodePos = decodeBitPacking(encodedResult, encodePos, currentBitWidth,
@@ -654,17 +756,21 @@ public class SubcolumnAddDictPrune2NewTest {
         int2Bytes(minDelta[0], encodePos, encodedResult);
         encodePos += 4;
 
-        if (blockIndex == 0) {
-            int maxValue = 0;
-            for (int j = 0; j < remainder; j++) {
-                if (dataDelta[j] > maxValue) {
-                    maxValue = dataDelta[j];
-                }
+        int maxValue = 0;
+        for (int j = 0; j < remainder; j++) {
+            if (dataDelta[j] > maxValue) {
+                maxValue = dataDelta[j];
             }
-            beta[0] = Subcolumn(dataDelta, remainder, bitWidth(maxValue), blockSize);
         }
 
-        return SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize);
+        int m = bitWidth(maxValue);
+        int betaValue = beta[0];
+        int l = (m + betaValue - 1) / betaValue;
+        int[] encodingType = new int[l];
+        fillEncodingTypeForFixedBeta(dataDelta, remainder, m, blockSize, betaValue, encodingType);
+
+        return SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize,
+                encodingType);
     }
 
     public static int BlockDecoder(byte[] encodedResult, int blockIndex, int blockSize,
@@ -684,6 +790,10 @@ public class SubcolumnAddDictPrune2NewTest {
     }
 
     public static int Encoder(int[] data, int blockSize, byte[] encodedResult) {
+        return Encoder(data, blockSize, encodedResult, 2);
+    }
+
+    public static int Encoder(int[] data, int blockSize, byte[] encodedResult, int betaValue) {
         int dataLength = data.length;
         int encodePos = 0;
 
@@ -695,11 +805,11 @@ public class SubcolumnAddDictPrune2NewTest {
 
         int numBlocks = dataLength / blockSize;
         int remainder = dataLength % blockSize;
-        int[] beta = new int[] {2};
+        int[] beta = new int[] {betaValue};
 
         for (int i = 0; i < numBlocks; i++) {
-            encodePos = BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult,
-                    beta);
+            encodePos =
+                    BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult, beta);
         }
 
         if (remainder <= 3) {
@@ -709,8 +819,8 @@ public class SubcolumnAddDictPrune2NewTest {
                 encodePos += 4;
             }
         } else {
-            encodePos = BlockEncoder(data, numBlocks, blockSize, remainder, encodePos,
-                    encodedResult, beta);
+            encodePos =
+                    BlockEncoder(data, numBlocks, blockSize, remainder, encodePos, encodedResult, beta);
         }
 
         return encodePos;
@@ -749,10 +859,12 @@ public class SubcolumnAddDictPrune2NewTest {
 
     public static int getDecimalPrecision(String str) {
         int decimalIndex = str.indexOf('.');
+
         if (decimalIndex == -1) {
             return 0;
         }
-        return str.substring(decimalIndex + 1).length();
+
+        return str.length() - decimalIndex - 1;
     }
 
     public static String extractFileName(String path) {
@@ -769,5 +881,147 @@ public class SubcolumnAddDictPrune2NewTest {
         }
 
         return fileName.substring(0, dotIndex);
+    }
+
+    @Test
+    public void testCompressionVsBeta() throws IOException {
+        // String parentDir = "path/to/your/directory/";
+        String parentDir = "D:/github/xjz17/subcolumn/";
+
+        String inputParentDir = parentDir + "dataset/";
+
+        String outputParentDir = parentDir + "result/compression_vs_beta_prune/";
+
+        File outputDir = new File(outputParentDir);
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        }
+
+        int[] betaList = {
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31
+        };
+
+        int blockSize = 1024;
+        int repeatTime = 200;
+
+        List<String> datasetList = new ArrayList<>();
+        datasetList.add("Arade4");
+        datasetList.add("Bird-migration");
+        datasetList.add("Bitcoin-price");
+        datasetList.add("Census-Population");
+        datasetList.add("City-temp");
+        datasetList.add("Dewpoint-temp");
+        datasetList.add("EPM-Education");
+        datasetList.add("Gov10");
+        datasetList.add("MeteoNet-Weather");
+        // datasetList.add("POI-lat");
+        datasetList.add("IR-bio-temp");
+        datasetList.add("PM10-dust");
+        datasetList.add("Stocks-DE");
+        datasetList.add("Stocks-UK");
+        datasetList.add("Stocks-USA");
+        datasetList.add("Wind-Speed");
+        datasetList.add("Wine-Tasting");
+
+        for (int beta : betaList) {
+            String outputPath = outputParentDir + "subcolumn_beta_" + beta + ".csv";
+
+            CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+            writer.setRecordDelimiter('\n');
+
+            String[] head = {
+                "Dataset",
+                "Encoding Algorithm",
+                "Encoding Time",
+                "Decoding Time",
+                "Points",
+                "Compressed Size",
+                "Compression Ratio"
+            };
+            writer.writeRecord(head);
+
+            for (String datasetName : datasetList) {
+                String filePath = inputParentDir + datasetName + ".csv";
+                File file = new File(filePath);
+
+                if (!file.exists()) {
+                    System.out.println("File not found: " + filePath);
+                    continue;
+                }
+
+                System.out.println(datasetName);
+
+                InputStream inputStream = Files.newInputStream(file.toPath());
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Double> data1 = new ArrayList<>();
+
+                int maxDecimal = 0;
+                while (loader.readRecord()) {
+                    String fStr = loader.getValues()[0];
+                    if (fStr.isEmpty()) {
+                        continue;
+                    }
+                    int curDecimal = getDecimalPrecision(fStr);
+                    if (curDecimal > maxDecimal) {
+                        maxDecimal = curDecimal;
+                    }
+                    data1.add(Double.valueOf(fStr));
+                }
+                inputStream.close();
+
+                if (maxDecimal > 8) {
+                    maxDecimal = 8;
+                }
+
+                int[] data2Arr = new int[data1.size()];
+                long maxMul = (long) Math.pow(10, maxDecimal);
+                for (int i = 0; i < data1.size(); i++) {
+                    data2Arr[i] = (int) (data1.get(i) * maxMul);
+                }
+
+                byte[] encodedResult = new byte[data2Arr.length * 13];
+
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressedSize = 0;
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime; repeat++) {
+                    length = Encoder(data2Arr, blockSize, encodedResult, beta);
+                }
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime);
+                compressedSize += length;
+
+                ratio += compressedSize / (double) (data1.size() * Long.BYTES);
+
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime; repeat++) {
+                    Decoder(encodedResult);
+                }
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime);
+
+                String[] record = {
+                    datasetName,
+                    "Sub-columns",
+                    String.valueOf(encodeTime),
+                    String.valueOf(decodeTime),
+                    String.valueOf(data1.size()),
+                    String.valueOf(compressedSize),
+                    String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+
+                System.out.println("beta: " + beta);
+                System.out.println(ratio);
+            }
+
+            writer.close();
+        }
     }
 }

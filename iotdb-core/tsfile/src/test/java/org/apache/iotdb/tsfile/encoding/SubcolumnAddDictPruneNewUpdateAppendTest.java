@@ -63,11 +63,11 @@ public class SubcolumnAddDictPruneNewUpdateAppendTest {
 
       long start = System.nanoTime();
       for (int repeat = 0; repeat < repeatTime; repeat++) {
-        encodedLength = SubcolumnAddDictPruneNewTest.Encoder(origin, blockSize, encodedResult);
+        encodedLength = SubcolumnPruneNewTest.Encoder(origin, blockSize, encodedResult);
       }
       long end = System.nanoTime();
       long encodeTime = (end - start) / repeatTime;
-      encodedLength = SubcolumnAddDictPruneNewTest.Encoder(origin, blockSize, encodedResult);
+      encodedLength = SubcolumnPruneNewTest.Encoder(origin, blockSize, encodedResult);
 
       SubcolumnAddDictPruneNewUpdateTestUtil.TailInfo tailInfo =
           SubcolumnAddDictPruneNewUpdateTestUtil.locateTailInfo(encodedResult, encodedLength);
@@ -86,12 +86,12 @@ public class SubcolumnAddDictPruneNewUpdateAppendTest {
         if (newRemainder <= 3) {
           int base = numBlocks * blockSize;
           for (int i = 0; i < newRemainder; i++) {
-            SubcolumnAddDictPruneNewTest.int2Bytes(appended[base + i], encodePos, encodedResult);
+            SubcolumnPruneNewTest.int2Bytes(appended[base + i], encodePos, encodedResult);
             encodePos += 4;
           }
         } else {
           encodePos =
-              SubcolumnAddDictPruneNewTest.BlockEncoder(
+              SubcolumnPruneNewTest.BlockEncoder(
                   appended, numBlocks, blockSize, newRemainder, encodePos, encodedResult, beta);
         }
         appendedLength = encodePos;
@@ -103,7 +103,7 @@ public class SubcolumnAddDictPruneNewUpdateAppendTest {
       writer.writeRecord(
           new String[] {
             datasetName,
-            "SubcolumnAddDictPruneNew",
+            "SubcolumnPruneNew",
             String.valueOf(encodeTime),
             String.valueOf(appendCompressTime),
             String.valueOf(origin.length),

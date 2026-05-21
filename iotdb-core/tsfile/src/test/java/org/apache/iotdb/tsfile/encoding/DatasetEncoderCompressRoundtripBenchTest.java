@@ -74,7 +74,7 @@ import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.StdCallLibrary;
 import com.sun.jna.win32.W32APIOptions;
 
-public class DatasetEncoderCompressBinRoundtripBenchTest {
+public class DatasetEncoderCompressRoundtripBenchTest {
 
   private interface Kernel32PointerRead extends StdCallLibrary {
     Kernel32PointerRead INSTANCE =
@@ -105,32 +105,32 @@ public class DatasetEncoderCompressBinRoundtripBenchTest {
 
   private static final int SUBCOLUMN_BLOCK_SIZE = 512;
 
-  // --- Paths: keep in sync with dataset_encoder_compress_bin_roundtrip_test.cc (active constexpr)
+  // --- Paths: keep in sync with dataset_encode_compress_roundtrip_test.cc (active constexpr)
 
-  // private static final String kDatasetDir = "E:/xjz/dataset_big_combined";
-  private static final String kDatasetDir = "D:/github/xjz17/subcolumn/dataset_big_combined";
+  private static final String kDatasetDir = "E:/xjz/dataset_big_combined";
+  // private static final String kDatasetDir = "D:/github/xjz17/subcolumn/dataset_big_combined";
 
-  // private static final String kBinOutputDir = "E:/xjz/encoder_compress_bin/bins_combined_java";
-  private static final String kBinOutputDir = "D:/github/xjz17/subcolumn/result/encoder_compress_bin/bins_combined_java";
+  private static final String kBinOutputDir = "E:/xjz/encode_compress/bins_combined_s1";
+  // private static final String kBinOutputDir = "D:/github/xjz17/subcolumn/result/encode_compress/bins_combined_s1";
 
   private static final String kWriteMetricsCsvPath =
-      "D:/github/xjz17/subcolumn/result/encoder_compress_bin/"
-          // + "encoder_compress_roundtrip_write_metrics_combined_java.csv";
-          + "encoder_compress_roundtrip_write_metrics_combined_java2.csv";
+      "D:/github/xjz17/subcolumn/result/encode_compress/"
+          + "encoder_compress_roundtrip_write_metrics_combined_s1.csv";
+          // + "encoder_compress_roundtrip_write_metrics_combined_s2.csv";
 
   private static final String kReadMetricsCsvPath =
-      "D:/github/xjz17/subcolumn/result/encoder_compress_bin/"
-          // + "encoder_compress_roundtrip_read_metrics_combined_java.csv";
-          + "encoder_compress_roundtrip_read_metrics_combined_java2.csv";
+      "D:/github/xjz17/subcolumn/result/encode_compress/"
+          + "encoder_compress_roundtrip_read_metrics_combined_s1.csv";
+          // + "encoder_compress_roundtrip_read_metrics_combined_s2.csv";
 
 
   private static final String kCompressManifestCsvPath =
-      "D:/github/xjz17/subcolumn/result/encoder_compress_bin/"
-          // + "encoder_compress_roundtrip_compress_manifest_combined_java.csv";
-          + "encoder_compress_roundtrip_compress_manifest_combined_java2.csv";
+      "D:/github/xjz17/subcolumn/result/encode_compress/"
+          + "encoder_compress_roundtrip_compress_manifest_combined_s1.csv";
+          // + "encoder_compress_roundtrip_compress_manifest_combined_s2.csv";
 
-  // private static final String kDecodedCsvDir = "E:/xjz/encoder_compress_bin/decoded_csv_combined_java";
-  private static final String kDecodedCsvDir = "D:/github/xjz17/subcolumn/result/encoder_compress_bin/decoded_csv_combined_java";
+  private static final String kDecodedCsvDir = "E:/xjz/encode_compress/decoded_csv_combined_s1";
+  // private static final String kDecodedCsvDir = "D:/github/xjz17/subcolumn/result/encode_compress/decoded_csv_combined_s1";
 
   private static final String ALGO_LZMA_CSV = "LZMA";
   private static final String SUFFIX_PLAIN_LZMA = "plain_lzma";
@@ -728,6 +728,15 @@ public class DatasetEncoderCompressBinRoundtripBenchTest {
     System.out.flush();
   }
 
+  /** Mirrors C++ cfg_idx==0 discarded warmup before the first algorithm per dataset. */
+  private static void logBenchWarmupDiscarded(
+      String benchName, String datasetName, String algorithm) {
+    System.err.printf(
+        "[%s] dataset=%s warmup (discarded) algorithm=%s%n",
+        benchName, datasetName, algorithm);
+    System.err.flush();
+  }
+
   private static boolean isWindowsHost() {
     return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
   }
@@ -986,20 +995,6 @@ public class DatasetEncoderCompressBinRoundtripBenchTest {
     long sumCmp = 0;
     long sumBw = 0;
     byte[] lastCompressed = compressed0;
-
-    // Warmup (discarded): compress → bin write — mirrors C++ cfg_idx==0 warmup for first algorithm.
-    {
-      lastCompressed = compressLzma2BenchPreset(rawPayload);
-      try (OutputStream binStream =
-          Files.newOutputStream(
-              binPath,
-              StandardOpenOption.CREATE,
-              StandardOpenOption.WRITE,
-              StandardOpenOption.TRUNCATE_EXISTING)) {
-        binStream.write(lastCompressed);
-        binStream.flush();
-      }
-    }
 
     for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
       long t0 = System.nanoTime();
@@ -1923,6 +1918,8 @@ public class DatasetEncoderCompressBinRoundtripBenchTest {
         logBenchDatasetHeader("encode", datasetName, f, dValues.length);
 
         Path binLzma = binsDir.resolve(datasetName + "_" + SUFFIX_PLAIN_LZMA + ".bin");
+        logBenchWarmupDiscarded("EncodeCompressWriteBinCsv", datasetName, ALGO_LZMA_CSV);
+        benchmarkRawDoubleLzmaWritePath(dValues, binLzma);
         logBenchProgress("encode", datasetName, ALGO_LZMA_CSV, dValues.length, binLzma);
         WritePathTimings wLz = benchmarkRawDoubleLzmaWritePath(dValues, binLzma);
         wLz.avgDatasetReadNs = avgReadFullCsvNs;
@@ -2156,6 +2153,8 @@ public class DatasetEncoderCompressBinRoundtripBenchTest {
         Path binLzma = binsDir.resolve(datasetName + "_" + SUFFIX_PLAIN_LZMA + ".bin");
         Assert.assertTrue("Missing bin: " + binLzma, Files.isRegularFile(binLzma));
         Path decodedLzma = decodedRoot.resolve(datasetName + "_" + SUFFIX_PLAIN_LZMA + "_decoded.csv");
+        logBenchWarmupDiscarded("DecodeBinWriteDecodedCsv", datasetName, ALGO_LZMA_CSV);
+        benchmarkRawDoubleLzmaReadPath(f, expectedDoubles, binLzma, decodedLzma);
         logBenchProgress("decode", datasetName, ALGO_LZMA_CSV, expectedDoubles.length, binLzma);
         ReadPathTimings rLz =
             benchmarkRawDoubleLzmaReadPath(f, expectedDoubles, binLzma, decodedLzma);

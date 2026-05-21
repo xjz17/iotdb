@@ -579,7 +579,7 @@ public class ALPTest {
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "alp_long.csv";
+        String outputPath = output_parent_dir + "alp.csv";
 
         int block_size = 1024;
 

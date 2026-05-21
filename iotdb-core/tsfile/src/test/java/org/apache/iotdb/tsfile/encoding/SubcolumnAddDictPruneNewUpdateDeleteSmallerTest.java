@@ -58,11 +58,11 @@ public class SubcolumnAddDictPruneNewUpdateDeleteSmallerTest {
       long start = System.nanoTime();
       int encodedLength = 0;
       for (int repeat = 0; repeat < repeatTime; repeat++) {
-        encodedLength = SubcolumnAddDictPruneNewTest.Encoder(origin, blockSize, encodedResult);
+        encodedLength = SubcolumnPruneNewTest.Encoder(origin, blockSize, encodedResult);
       }
       long end = System.nanoTime();
       long encodeTime = (end - start) / repeatTime;
-      encodedLength = SubcolumnAddDictPruneNewTest.Encoder(origin, blockSize, encodedResult);
+      encodedLength = SubcolumnPruneNewTest.Encoder(origin, blockSize, encodedResult);
 
       SubcolumnAddDictPruneNewUpdateTestUtil.TailInfo tailInfo =
           SubcolumnAddDictPruneNewUpdateTestUtil.locateTailInfo(encodedResult, encodedLength);
@@ -87,12 +87,12 @@ public class SubcolumnAddDictPruneNewUpdateDeleteSmallerTest {
         if (newRemainder <= 3) {
           int base = tailInfo.numBlocks * blockSize;
           for (int i = 0; i < newRemainder; i++) {
-            SubcolumnAddDictPruneNewTest.int2Bytes(deleted[base + i], encodePos, encodedResult);
+            SubcolumnPruneNewTest.int2Bytes(deleted[base + i], encodePos, encodedResult);
             encodePos += 4;
           }
         } else {
           encodePos =
-              SubcolumnAddDictPruneNewTest.BlockEncoder(
+              SubcolumnPruneNewTest.BlockEncoder(
                   deleted,
                   tailInfo.numBlocks,
                   blockSize,

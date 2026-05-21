@@ -107,11 +107,11 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       int encodedLength = 0;
       long start = System.nanoTime();
       for (int repeat = 0; repeat < repeatTime; repeat++) {
-        encodedLength = SubcolumnAddDictPruneNewTest.Encoder(origin, blockSize, encodedOrigin);
+        encodedLength = SubcolumnPruneNewTest.Encoder(origin, blockSize, encodedOrigin);
       }
       long end = System.nanoTime();
       long encodeTime = (end - start) / repeatTime;
-      encodedLength = SubcolumnAddDictPruneNewTest.Encoder(origin, blockSize, encodedOrigin);
+      encodedLength = SubcolumnPruneNewTest.Encoder(origin, blockSize, encodedOrigin);
 
       parseBlockMetas(
           encodedOrigin,
@@ -369,8 +369,8 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       boolean[] affected,
       byte[] outputBuffer,
       int[] mergeStats) {
-    SubcolumnAddDictPruneNewTest.int2Bytes(updated.length, 0, outputBuffer);
-    SubcolumnAddDictPruneNewTest.int2Bytes(blockSize, 4, outputBuffer);
+    SubcolumnPruneNewTest.int2Bytes(updated.length, 0, outputBuffer);
+    SubcolumnPruneNewTest.int2Bytes(blockSize, 4, outputBuffer);
 
     int encodePos = 8;
     int reencodedBlocks = 0;
@@ -391,7 +391,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
         int encIdx = encoderBlockIndex(i, numBlocks, remainder);
         int base = encIdx * blockSize;
         for (int k = 0; k < metaRowCount[i]; k++) {
-          SubcolumnAddDictPruneNewTest.int2Bytes(updated[base + k], encodePos, outputBuffer);
+          SubcolumnPruneNewTest.int2Bytes(updated[base + k], encodePos, outputBuffer);
           encodePos += 4;
         }
         continue;
@@ -432,8 +432,8 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       boolean[] affected,
       byte[] outputBuffer,
       int[] mergeStats) {
-    SubcolumnAddDictPruneNewTest.int2Bytes(updated.length, 0, outputBuffer);
-    SubcolumnAddDictPruneNewTest.int2Bytes(blockSize, 4, outputBuffer);
+    SubcolumnPruneNewTest.int2Bytes(updated.length, 0, outputBuffer);
+    SubcolumnPruneNewTest.int2Bytes(blockSize, 4, outputBuffer);
 
     int encodePos = 8;
     int betaChangedBlocks = 0;
@@ -455,7 +455,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
         int encIdx = encoderBlockIndex(i, numBlocks, remainder);
         int base = encIdx * blockSize;
         for (int k = 0; k < metaRowCount[i]; k++) {
-          SubcolumnAddDictPruneNewTest.int2Bytes(updated[base + k], encodePos, outputBuffer);
+          SubcolumnPruneNewTest.int2Bytes(updated[base + k], encodePos, outputBuffer);
           encodePos += 4;
         }
         continue;
@@ -464,7 +464,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       int[] beta = new int[] {2};
       int encIdx = encoderBlockIndex(i, numBlocks, remainder);
       int newPos =
-          SubcolumnAddDictPruneNewTest.BlockEncoder(
+          SubcolumnPruneNewTest.BlockEncoder(
               updated, encIdx, blockSize, metaRowCount[i], encodePos, outputBuffer, beta);
       if (metaBeta[i] > 0 && beta[0] != metaBeta[i]) {
         betaChangedBlocks++;
@@ -489,9 +489,9 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       int[] originalEncodingType) {
     int[] minDelta = new int[1];
     int[] dataDelta =
-        SubcolumnAddDictPruneNewTest.getAbsDeltaTsBlock(data, blockIndex, blockSize, rowCount, minDelta);
+        SubcolumnPruneNewTest.getAbsDeltaTsBlock(data, blockIndex, blockSize, rowCount, minDelta);
 
-    SubcolumnAddDictPruneNewTest.int2Bytes(minDelta[0], encodePos, encodedResult);
+    SubcolumnPruneNewTest.int2Bytes(minDelta[0], encodePos, encodedResult);
     encodePos += 4;
 
     int maxValue = 0;
@@ -501,11 +501,11 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       }
     }
 
-    int m = SubcolumnAddDictPruneNewTest.bitWidth(maxValue);
+    int m = SubcolumnPruneNewTest.bitWidth(maxValue);
     int betaValue = fixedBeta > 0 ? fixedBeta : 2;
     int[] beta = new int[] {betaValue};
     int[] encodingType = adaptEncodingType(originalEncodingType, m, betaValue);
-    return SubcolumnAddDictPruneNewTest.SubcolumnEncoder(
+    return SubcolumnPruneNewTest.SubcolumnEncoder(
         dataDelta, encodePos, encodedResult, beta, blockSize, encodingType);
   }
 
@@ -543,8 +543,8 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       int[] metaBeta,
       boolean[] metaSubcolumn,
       int[][] metaEncodingType) {
-    int dataLength = SubcolumnAddDictPruneNewTest.bytes2Integer(encoded, 0, 4);
-    int parsedBlockSize = SubcolumnAddDictPruneNewTest.bytes2Integer(encoded, 4, 4);
+    int dataLength = SubcolumnPruneNewTest.bytes2Integer(encoded, 0, 4);
+    int parsedBlockSize = SubcolumnPruneNewTest.bytes2Integer(encoded, 4, 4);
     if (parsedBlockSize != expectedBlockSize) {
       throw new IllegalStateException("blockSize mismatch header vs test.");
     }
@@ -606,7 +606,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       int[][] metaEncodingType,
       int blockSlot) {
     encodePos += 4;
-    int m = SubcolumnAddDictPruneNewTest.bytes2Integer(encoded, encodePos, 1);
+    int m = SubcolumnPruneNewTest.bytes2Integer(encoded, encodePos, 1);
     encodePos += 1;
     if (m == 0) {
       betaOut[0] = 1;
@@ -614,19 +614,19 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       return encodePos;
     }
 
-    int beta = SubcolumnAddDictPruneNewTest.bytes2Integer(encoded, encodePos, 1);
+    int beta = SubcolumnPruneNewTest.bytes2Integer(encoded, encodePos, 1);
     betaOut[0] = beta;
     encodePos += 1;
     int l = (m + beta - 1) / beta;
 
     int[] bitWidthList = new int[l];
-    encodePos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encoded, encodePos, 8, l, bitWidthList);
+    encodePos = SubcolumnPruneNewTest.decodeBitPacking(encoded, encodePos, 8, l, bitWidthList);
 
     int[] encodingType = new int[l];
-    encodePos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encoded, encodePos, 2, l, encodingType);
+    encodePos = SubcolumnPruneNewTest.decodeBitPacking(encoded, encodePos, 2, l, encodingType);
     metaEncodingType[blockSlot] = Arrays.copyOf(encodingType, l);
 
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
+    int bw = SubcolumnPruneNewTest.bitWidth(blockSize);
     int scanPos = encodePos;
     for (int i = 0; i < l; i++) {
       int type = encodingType[i];
@@ -644,7 +644,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
       } else {
         int cardinality = ((encoded[scanPos] & 0xFF) << 8) | (encoded[scanPos + 1] & 0xFF);
         scanPos += 2;
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+        int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
         long bitPos = ((long) scanPos) * 8L + (long) cardinality * bitWidth;
         scanPos = (int) ((bitPos + 7L) / 8L);
         bitPos = ((long) scanPos) * 8L + (long) rowCount * dictBitWidth;

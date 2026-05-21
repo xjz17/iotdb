@@ -92,25 +92,25 @@ class SubcolumnAddDictPruneNewUpdateTestUtil {
 
   private static int skipBlock(byte[] encodedResult, int encodePos, int blockSize, int rowCount) {
     encodePos += 4;
-    int m = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    int m = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
     if (m == 0) {
       return encodePos;
     }
 
-    int beta = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    int beta = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
     int l = (m + beta - 1) / beta;
 
     int[] bitWidthList = new int[l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
+        SubcolumnPruneNewTest.decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
 
     int[] encodingType = new int[l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
+        SubcolumnPruneNewTest.decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
 
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
+    int bw = SubcolumnPruneNewTest.bitWidth(blockSize);
     int scanPos = encodePos;
     for (int i = 0; i < l; i++) {
       int type = encodingType[i];
@@ -129,7 +129,7 @@ class SubcolumnAddDictPruneNewUpdateTestUtil {
         int cardinality =
             ((encodedResult[scanPos] & 0xFF) << 8) | (encodedResult[scanPos + 1] & 0xFF);
         scanPos += 2;
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+        int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
         long bitPos = ((long) scanPos) * 8L + (long) cardinality * bitWidth;
         scanPos = (int) ((bitPos + 7L) / 8L);
         bitPos = ((long) scanPos) * 8L + (long) rowCount * dictBitWidth;
@@ -142,9 +142,9 @@ class SubcolumnAddDictPruneNewUpdateTestUtil {
   static TailInfo locateTailInfo(byte[] encodedResult, int encodedLength) {
     TailInfo info = new TailInfo();
     int encodePos = 0;
-    int dataLength = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int dataLength = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
-    int blockSize = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int blockSize = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
 
     int numBlocks = dataLength / blockSize;

@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-public class SubcolumnAddDictPrune2NewTimeTest {
+public class SubcolumnPrune2NewTimeTest {
 
     private static final int[] DEFAULT_THRESHOLD =
             {2, 3, 5, 8, 9, 11, 14, 16, 17, 17, 18, 19, 20, 21, 22, 22, 23, 24, 24, 24, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27};

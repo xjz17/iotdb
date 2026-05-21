@@ -14,7 +14,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Stream;
 
-public class SubcolumnAddDictPrune2Test {
+public class SubcolumnPrune2Test {
 
     public static int bitWidth(int value) {
         // if(value==0) return 1;
