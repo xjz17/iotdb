@@ -288,10 +288,10 @@ public class SubcolumnPruneFastTest {
             int[] beta) {
         int[] minDelta = new int[1];
         int[] dataDelta =
-                SubcolumnAddDictPruneNewTest.getAbsDeltaTsBlock(
+                SubcolumnPruneNewTest.getAbsDeltaTsBlock(
                         data, blockIndex, blockSize, remainder, minDelta);
 
-        SubcolumnAddDictPruneNewTest.int2Bytes(minDelta[0], encodePos, encodedResult);
+        SubcolumnPruneNewTest.int2Bytes(minDelta[0], encodePos, encodedResult);
         encodePos += 4;
 
         int maxValue = 0;
@@ -301,11 +301,11 @@ public class SubcolumnPruneFastTest {
             }
         }
 
-        int m = SubcolumnAddDictPruneNewTest.bitWidth(maxValue);
+        int m = SubcolumnPruneNewTest.bitWidth(maxValue);
         int[] encodingType = new int[m];
         beta[0] = subcolumnPrune(ws, dataDelta, remainder, m, blockSize, encodingType);
 
-        return SubcolumnAddDictPruneNewTest.SubcolumnEncoder(
+        return SubcolumnPruneNewTest.SubcolumnEncoder(
                 dataDelta, encodePos, encodedResult, beta, blockSize, encodingType);
     }
 
@@ -313,10 +313,10 @@ public class SubcolumnPruneFastTest {
         int dataLength = data.length;
         int encodePos = 0;
 
-        SubcolumnAddDictPruneNewTest.int2Bytes(dataLength, encodePos, encodedResult);
+        SubcolumnPruneNewTest.int2Bytes(dataLength, encodePos, encodedResult);
         encodePos += 4;
 
-        SubcolumnAddDictPruneNewTest.int2Bytes(blockSize, encodePos, encodedResult);
+        SubcolumnPruneNewTest.int2Bytes(blockSize, encodePos, encodedResult);
         encodePos += 4;
 
         int numBlocks = dataLength / blockSize;
@@ -333,7 +333,7 @@ public class SubcolumnPruneFastTest {
         if (remainder <= 3) {
             int base = numBlocks * blockSize;
             for (int i = 0; i < remainder; i++) {
-                SubcolumnAddDictPruneNewTest.int2Bytes(data[base + i], encodePos, encodedResult);
+                SubcolumnPruneNewTest.int2Bytes(data[base + i], encodePos, encodedResult);
                 encodePos += 4;
             }
         } else {
@@ -397,7 +397,7 @@ public class SubcolumnPruneFastTest {
         }
         byte[] ref = new byte[data.length * 13];
         byte[] fast = new byte[data.length * 13];
-        int refLen = SubcolumnAddDictPruneNewTest.Encoder(data, blockSize, ref);
+        int refLen = SubcolumnPruneNewTest.Encoder(data, blockSize, ref);
         int fastLen = Encoder(data, blockSize, fast);
         if (refLen != fastLen || !Arrays.equals(Arrays.copyOf(ref, refLen), Arrays.copyOf(fast, fastLen))) {
             System.out.println(
@@ -405,12 +405,7 @@ public class SubcolumnPruneFastTest {
         }
     }
 
-    /**
-     * Block-size sweep (same layout as {@link SubcolumnAddDictBlockSizeTest#test0}).
-     * Writes to result/compression_vs_block_prune_fast/.
-     * For the first block size only, each dataset runs encode/decode {@code repeatTime}
-     * warmup iterations (not recorded) before the timed {@code repeatTime} iterations.
-     */
+
     @Test
     public void testBlockSizeBenchmark() throws IOException {
         String parentDir = "D:/github/xjz17/subcolumn/";

@@ -17,10 +17,10 @@ public class SubcolumnAddDictQueryGreaterTest {
   public static void Query(byte[] encodedResult, int lowerBound) {
     int encodePos = 0;
 
-    int dataLength = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int dataLength = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
 
-    int blockSize = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int blockSize = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
 
     int numBlocks = dataLength / blockSize;
@@ -37,7 +37,7 @@ public class SubcolumnAddDictQueryGreaterTest {
     if (remainder <= 3) {
       int base = numBlocks * blockSize;
       for (int i = 0; i < remainder; i++) {
-        int value = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+        int value = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
         if (value > lowerBound) {
           result[resultLength[0]++] = base + i;
         }
@@ -66,12 +66,12 @@ public class SubcolumnAddDictQueryGreaterTest {
       int lowerBound,
       int[] result,
       int[] resultLength) {
-    int minDelta = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int minDelta = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
     int adjustedLower = lowerBound - minDelta;
     int base = blockIndex * blockSize;
 
-    int m = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    int m = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
     if (m == 0) {
       if (adjustedLower < 0) {
@@ -82,18 +82,18 @@ public class SubcolumnAddDictQueryGreaterTest {
       return encodePos;
     }
 
-    int beta = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    int beta = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
     int l = (m + beta - 1) / beta;
 
     int[] bitWidthList = new int[l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
+        SubcolumnPruneNewTest.decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
     int[] encodingType = new int[l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
+        SubcolumnPruneNewTest.decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
 
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
+    int bw = SubcolumnPruneNewTest.bitWidth(blockSize);
 
     int[] segmentPos = new int[l];
     int[] runCountList = new int[l];
@@ -125,7 +125,7 @@ public class SubcolumnAddDictQueryGreaterTest {
         cardinalityList[i] = cardinality;
         scanPos += 2;
 
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+        int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
         long bitPos = ((long) scanPos) * 8L + (long) cardinality * currentBitWidth;
         scanPos = (int) ((bitPos + 7L) / 8L);
         bitPos = ((long) scanPos) * 8L + (long) remainder * dictBitWidth;
@@ -160,7 +160,7 @@ public class SubcolumnAddDictQueryGreaterTest {
         for (int j = 0; j < candidateLength; j++) {
           int index = candidateIndices[j];
           int current =
-              SubcolumnAddDictPruneNewTest.bytesToInt(
+              SubcolumnPruneNewTest.bytesToInt(
                   encodedResult, (int) (bitStart + (long) index * currentBitWidth), currentBitWidth);
           if (current > boundPart) {
             result[resultLength[0]++] = base + index;
@@ -176,8 +176,8 @@ public class SubcolumnAddDictQueryGreaterTest {
 
         int[] runEnd = new int[runCount];
         int[] rleValues = new int[runCount];
-        pos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, pos, bw, runCount, runEnd);
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
+        pos = SubcolumnPruneNewTest.decodeBitPacking(encodedResult, pos, bw, runCount, runEnd);
+        SubcolumnPruneNewTest.decodeBitPacking(
             encodedResult, pos, currentBitWidth, runCount, rleValues);
 
         int newLength = 0;
@@ -202,14 +202,14 @@ public class SubcolumnAddDictQueryGreaterTest {
         int pos = segmentPos[i];
         int cardinality = cardinalityList[i];
         pos += 2;
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+        int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
 
         int[] dictKeyList = new int[cardinality];
         int[] dictIndexes = new int[remainder];
         pos =
-            SubcolumnAddDictPruneNewTest.decodeBitPacking(
+            SubcolumnPruneNewTest.decodeBitPacking(
                 encodedResult, pos, currentBitWidth, cardinality, dictKeyList);
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
+        SubcolumnPruneNewTest.decodeBitPacking(
             encodedResult, pos, dictBitWidth, remainder, dictIndexes);
 
         int newLength = 0;
@@ -340,7 +340,7 @@ public class SubcolumnAddDictQueryGreaterTest {
 
       long start = System.nanoTime();
       for (int repeat = 0; repeat < repeatTime; repeat++) {
-        length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
+        length = SubcolumnPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
       }
       long end = System.nanoTime();
       encodeTime = (end - start) / repeatTime;

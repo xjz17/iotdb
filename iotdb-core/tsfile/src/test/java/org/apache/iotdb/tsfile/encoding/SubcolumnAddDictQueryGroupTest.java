@@ -44,9 +44,9 @@ public class SubcolumnAddDictQueryGroupTest {
   public static int[] queryGroupCountByValueRange(
       byte[] encodedResult, int rangeStart, int rangeWidth, int bucketCount) {
     int encodePos = 0;
-    int dataLength = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int dataLength = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
-    int blockSize = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int blockSize = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
 
     int numBlocks = dataLength / blockSize;
@@ -82,7 +82,7 @@ public class SubcolumnAddDictQueryGroupTest {
 
     if (remainder > 0 && remainder <= 3) {
       for (int i = 0; i < remainder; i++) {
-        int value = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+        int value = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
         encodePos += 4;
         int bucket = bucketIndex(value, rangeStart, rangeWidth, bucketCount);
         if (bucket >= 0) {
@@ -223,7 +223,7 @@ public class SubcolumnAddDictQueryGroupTest {
     int currentBitWidth = meta.bitWidthList[level];
     if (type == 0) {
       long bitStart = ((long) meta.segmentPos[level]) * 8L;
-      return SubcolumnAddDictPruneNewTest.bytesToInt(
+      return SubcolumnPruneNewTest.bytesToInt(
           encodedResult, (int) (bitStart + (long) localIndex * currentBitWidth), currentBitWidth);
     }
     if (type == 1) {
@@ -299,9 +299,9 @@ public class SubcolumnAddDictQueryGroupTest {
 
   private static BlockMeta parseBlockMeta(byte[] encodedResult, int encodePos, int blockSize, int rowCount) {
     BlockMeta meta = new BlockMeta();
-    meta.minDelta = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    meta.minDelta = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
-    meta.m = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    meta.m = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
 
     if (meta.m == 0) {
@@ -309,20 +309,20 @@ public class SubcolumnAddDictQueryGroupTest {
       return meta;
     }
 
-    meta.beta = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    meta.beta = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
     meta.l = (meta.m + meta.beta - 1) / meta.beta;
 
     meta.bitWidthList = new int[meta.l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
+        SubcolumnPruneNewTest.decodeBitPacking(
             encodedResult, encodePos, 8, meta.l, meta.bitWidthList);
     meta.encodingType = new int[meta.l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
+        SubcolumnPruneNewTest.decodeBitPacking(
             encodedResult, encodePos, 2, meta.l, meta.encodingType);
 
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
+    int bw = SubcolumnPruneNewTest.bitWidth(blockSize);
     meta.segmentPos = new int[meta.l];
     meta.runCountList = new int[meta.l];
     meta.cardinalityList = new int[meta.l];
@@ -345,10 +345,10 @@ public class SubcolumnAddDictQueryGroupTest {
         meta.runCountList[i] = runCount;
         scanPos += 2;
         int[] runEnd = new int[runCount];
-        scanPos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, scanPos, bw, runCount, runEnd);
+        scanPos = SubcolumnPruneNewTest.decodeBitPacking(encodedResult, scanPos, bw, runCount, runEnd);
         int[] rleValues = new int[runCount];
         scanPos =
-            SubcolumnAddDictPruneNewTest.decodeBitPacking(
+            SubcolumnPruneNewTest.decodeBitPacking(
                 encodedResult, scanPos, currentBitWidth, runCount, rleValues);
         meta.rleRunEndList[i] = runEnd;
         meta.rleValueList[i] = rleValues;
@@ -358,9 +358,9 @@ public class SubcolumnAddDictQueryGroupTest {
         scanPos += 2;
         int[] dictKey = new int[cardinality];
         int dictIndexPos =
-            SubcolumnAddDictPruneNewTest.decodeBitPacking(
+            SubcolumnPruneNewTest.decodeBitPacking(
                 encodedResult, scanPos, currentBitWidth, cardinality, dictKey);
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+        int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
         long bitPos = ((long) dictIndexPos) * 8L + (long) rowCount * dictBitWidth;
         scanPos = (int) ((bitPos + 7L) / 8L);
         meta.dictKeyList[i] = dictKey;
@@ -376,7 +376,7 @@ public class SubcolumnAddDictQueryGroupTest {
   private static int bitPackedValueAt(
       byte[] encodedResult, int bitPackedStartBytePos, int bitWidth, int index) {
     long bitPos = ((long) bitPackedStartBytePos) * 8L + (long) index * bitWidth;
-    return SubcolumnAddDictPruneNewTest.bytesToInt(encodedResult, (int) bitPos, bitWidth);
+    return SubcolumnPruneNewTest.bytesToInt(encodedResult, (int) bitPos, bitWidth);
   }
 
   public static int getDecimalPrecision(String str) {
@@ -481,7 +481,7 @@ public class SubcolumnAddDictQueryGroupTest {
 
         long start = System.nanoTime();
         for (int repeat = 0; repeat < repeatTime; repeat++) {
-          length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
+          length = SubcolumnPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
         }
         long end = System.nanoTime();
         long encodeTime = (end - start) / repeatTime;

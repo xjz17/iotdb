@@ -33,9 +33,9 @@ public class SubcolumnQuerySortTest {
   // Sort indices inside one block only.
   public static int[] QuerySortSingleBlock(byte[] encodedResult, int targetBlockId) {
     int encodePos = 0;
-    int dataLength = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int dataLength = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
-    int blockSize = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    int blockSize = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
 
     int numBlocks = dataLength / blockSize;
@@ -60,7 +60,7 @@ public class SubcolumnQuerySortTest {
         int[] indices = new int[remainder];
         int[] values = new int[remainder];
         for (int i = 0; i < remainder; i++) {
-          values[i] = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+          values[i] = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
           indices[i] = base + i;
           encodePos += 4;
         }
@@ -82,9 +82,9 @@ public class SubcolumnQuerySortTest {
 
   // Baseline: fully decode all values, then sort one block by value and index.
   public static int[] QuerySortByDecodeSingleBlock(byte[] encodedResult, int targetBlockId) {
-    int[] decoded = SubcolumnAddDictPruneNewTest.Decoder(encodedResult);
+    int[] decoded = SubcolumnPruneNewTest.Decoder(encodedResult);
     int dataLength = decoded.length;
-    int blockSize = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, 4, 4);
+    int blockSize = SubcolumnPruneNewTest.bytes2Integer(encodedResult, 4, 4);
     int numBlocks = dataLength / blockSize;
     int remainder = dataLength % blockSize;
     int totalBlocks = numBlocks + (remainder > 0 ? 1 : 0);
@@ -106,9 +106,9 @@ public class SubcolumnQuerySortTest {
       byte[] encodedResult, int encodePos, int blockId, int blockSize, int rowCount) {
     BlockSortResult result = new BlockSortResult();
 
-    SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
+    SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 4);
     encodePos += 4;
-    int m = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    int m = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
 
     int[] order = new int[rowCount];
@@ -128,18 +128,18 @@ public class SubcolumnQuerySortTest {
       return result;
     }
 
-    int beta = SubcolumnAddDictPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
+    int beta = SubcolumnPruneNewTest.bytes2Integer(encodedResult, encodePos, 1);
     encodePos += 1;
     int l = (m + beta - 1) / beta;
 
     int[] bitWidthList = new int[l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
+        SubcolumnPruneNewTest.decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
     int[] encodingType = new int[l];
     encodePos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
+        SubcolumnPruneNewTest.decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
 
-    int bw = SubcolumnAddDictPruneNewTest.bitWidth(blockSize);
+    int bw = SubcolumnPruneNewTest.bitWidth(blockSize);
     int[] segmentPos = new int[l];
     int[] runCountList = new int[l];
     int[] cardinalityList = new int[l];
@@ -164,7 +164,7 @@ public class SubcolumnQuerySortTest {
         int cardinality = ((encodedResult[scanPos] & 0xFF) << 8) | (encodedResult[scanPos + 1] & 0xFF);
         cardinalityList[i] = cardinality;
         scanPos += 2;
-        int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+        int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
         long bitPos = ((long) scanPos) * 8L + (long) cardinality * currentBitWidth;
         scanPos = (int) ((bitPos + 7L) / 8L);
         bitPos = ((long) scanPos) * 8L + (long) rowCount * dictBitWidth;
@@ -262,7 +262,7 @@ public class SubcolumnQuerySortTest {
       long bitStart = ((long) segmentPos) * 8L;
       for (int i = 0; i < rowCount; i++) {
         result[i] =
-            SubcolumnAddDictPruneNewTest.bytesToInt(
+            SubcolumnPruneNewTest.bytesToInt(
                 encodedResult, (int) (bitStart + (long) i * currentBitWidth), currentBitWidth);
       }
       return result;
@@ -272,8 +272,8 @@ public class SubcolumnQuerySortTest {
     if (type == 1) {
       int[] runEnd = new int[runCount];
       int[] rleValues = new int[runCount];
-      pos = SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, pos, bw, runCount, runEnd);
-      SubcolumnAddDictPruneNewTest.decodeBitPacking(
+      pos = SubcolumnPruneNewTest.decodeBitPacking(encodedResult, pos, bw, runCount, runEnd);
+      SubcolumnPruneNewTest.decodeBitPacking(
           encodedResult, pos, currentBitWidth, runCount, rleValues);
 
       int begin = 0;
@@ -287,13 +287,13 @@ public class SubcolumnQuerySortTest {
       return result;
     }
 
-    int dictBitWidth = SubcolumnAddDictPruneNewTest.bitWidth(cardinality);
+    int dictBitWidth = SubcolumnPruneNewTest.bitWidth(cardinality);
     int[] dictKeyList = new int[cardinality];
     int[] dictIndexes = new int[rowCount];
     pos =
-        SubcolumnAddDictPruneNewTest.decodeBitPacking(
+        SubcolumnPruneNewTest.decodeBitPacking(
             encodedResult, pos, currentBitWidth, cardinality, dictKeyList);
-    SubcolumnAddDictPruneNewTest.decodeBitPacking(encodedResult, pos, dictBitWidth, rowCount, dictIndexes);
+    SubcolumnPruneNewTest.decodeBitPacking(encodedResult, pos, dictBitWidth, rowCount, dictIndexes);
 
     for (int i = 0; i < rowCount; i++) {
       result[i] = dictKeyList[dictIndexes[i]];
@@ -433,7 +433,7 @@ public class SubcolumnQuerySortTest {
 
         long start = System.nanoTime();
         for (int repeat = 0; repeat < repeatTime; repeat++) {
-          length = SubcolumnAddDictPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
+          length = SubcolumnPruneNewTest.Encoder(dataArr, blockSize, encodedResult);
         }
         long end = System.nanoTime();
         long encodeTime = (end - start) / repeatTime;
@@ -477,7 +477,7 @@ public class SubcolumnQuerySortTest {
     runSingleBlockSortBenchmark(
         outputPath,
         "SubcolumnAddDictPruneNew",
-        SubcolumnAddDictQuerySortTest::QuerySortSingleBlock);
+        SubcolumnQuerySortTest::QuerySortSingleBlock);
   }
 
   @Test
@@ -487,6 +487,6 @@ public class SubcolumnQuerySortTest {
     runSingleBlockSortBenchmark(
         outputPath,
         "SubcolumnAddDictPruneNew",
-        SubcolumnAddDictQuerySortTest::QuerySortByDecodeSingleBlock);
+        SubcolumnQuerySortTest::QuerySortByDecodeSingleBlock);
   }
 }

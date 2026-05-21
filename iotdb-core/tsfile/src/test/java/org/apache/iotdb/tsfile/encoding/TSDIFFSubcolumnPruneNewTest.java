@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-public class SPRINTZSubcolumnAddDictPruneNewTest {
+public class TSDIFFSubcolumnPruneNewTest {
 
   public static int Encoder(int[] data, int blockSize, byte[] encodedResult) {
     int dataLength = data.length;
@@ -31,7 +31,7 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
 
     int numBlocks = dataLength / blockSize;
     int remainder = dataLength % blockSize;
-    int[] beta = new int[] {2};
+    int[] beta = new int[] {3};
 
     for (int i = 0; i < numBlocks; i++) {
       encodePos = BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult, beta);
@@ -55,6 +55,7 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
 
   public static int[] Decoder(byte[] encodedResult) {
     int encodePos = 0;
+
     int dataLength =
         ((encodedResult[encodePos] & 0xFF) << 24)
             | ((encodedResult[encodePos + 1] & 0xFF) << 16)
@@ -71,6 +72,7 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
 
     int numBlocks = dataLength / blockSize;
     int[] data = new int[dataLength];
+
     for (int i = 0; i < numBlocks; i++) {
       encodePos = BlockDecoder(encodedResult, i, blockSize, blockSize, encodePos, data);
     }
@@ -92,38 +94,35 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
     return data;
   }
 
-  public static int zigzag(int num) {
-    return num < 0 ? ((-num) << 1) - 1 : num << 1;
-  }
-
-  public static int deZigzag(int num) {
-    return (num % 2 == 0) ? (num >> 1) : -((num + 1) >> 1);
-  }
-
   public static int[] getAbsDeltaTsBlock(
       int[] tsBlock, int blockIndex, int blockSize, int remaining, int[] minDelta) {
     int[] tsBlockDelta = new int[remaining - 1];
-    int base = blockIndex * blockSize + 1;
-    int end = blockIndex * blockSize + remaining;
-    minDelta[0] = tsBlock[base - 1];
     int valueDeltaMin = Integer.MAX_VALUE;
     int valueDeltaMax = Integer.MIN_VALUE;
+    int base = blockIndex * blockSize + 1;
+    int end = blockIndex * blockSize + remaining;
 
-    for (int j = base; j < end; j++) {
-      int epsilon = tsBlock[j] - tsBlock[j - 1];
-      epsilon = zigzag(epsilon);
+    int prev = tsBlock[base - 1];
+    minDelta[0] = prev;
+    int j = base;
+    while (j < end) {
+      int cur = tsBlock[j];
+      int epsilon = cur - prev;
+      tsBlockDelta[j - base] = epsilon;
       if (epsilon < valueDeltaMin) {
         valueDeltaMin = epsilon;
       }
       if (epsilon > valueDeltaMax) {
         valueDeltaMax = epsilon;
       }
-      tsBlockDelta[j - base] = epsilon;
+      prev = cur;
+      j++;
     }
 
-    for (int j = 0; j < remaining - 1; j++) {
+    for (j = 0; j < remaining - 1; j++) {
       tsBlockDelta[j] = tsBlockDelta[j] - valueDeltaMin;
     }
+
     minDelta[1] = valueDeltaMin;
     minDelta[2] = valueDeltaMax - valueDeltaMin;
     return tsBlockDelta;
@@ -158,11 +157,11 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
         maxValue = v;
       }
     }
-    int m = SubcolumnAddDictPruneNewTest.bitWidth(maxValue);
+    int m = SubcolumnPruneNewTest.bitWidth(maxValue);
     int[] encodingType = new int[Math.max(0, m)];
-    beta[0] = SubcolumnAddDictPruneNewTest.Subcolumn(dataDelta, remainder - 1, m, blockSize, encodingType);
+    beta[0] = SubcolumnPruneNewTest.Subcolumn(dataDelta, remainder - 1, m, blockSize, encodingType);
     encodePos =
-        SubcolumnAddDictPruneNewTest.SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize, encodingType);
+        SubcolumnPruneNewTest.SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize, encodingType);
 
     return encodePos;
   }
@@ -191,18 +190,16 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
     encodePos += 4;
 
     int[] dataDelta = new int[remainder - 1];
-    encodePos = SubcolumnAddDictPruneNewTest.SubcolumnDecoder(encodedResult, encodePos, dataDelta, blockSize);
+    encodePos = SubcolumnPruneNewTest.SubcolumnDecoder(encodedResult, encodePos, dataDelta, blockSize);
 
     for (int i = 0; i < remainder - 1; i++) {
       dataDelta[i] = dataDelta[i] + minDelta[1];
-      dataDelta[i] = deZigzag(dataDelta[i]);
     }
 
     data[blockIndex * blockSize] = minDelta[0];
     for (int i = 0; i < remainder - 1; i++) {
       data[blockIndex * blockSize + i + 1] = data[blockIndex * blockSize + i] + dataDelta[i];
     }
-
     return encodePos;
   }
 
@@ -236,13 +233,14 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
     // String inputParentDir = parentDir + "dataset_output/";
 
     String outputParentDir = parentDir + "result/";
-    String outputPath = outputParentDir + "sprintz_subcolumn_adddict_prunenew.csv";
+    String outputPath = outputParentDir + "ts2diff_subcolumn_adddict_prunenew.csv";
 
     int blockSize = 512;
     int repeatTime = 100;
 
     CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
     writer.setRecordDelimiter('\n');
+
     writer.writeRecord(
         new String[] {
           "Dataset",
@@ -289,7 +287,7 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
         data2Arr[i] = (int) (data1.get(i) * maxMul);
       }
 
-      byte[] encodedResult = new byte[Math.max(16, data2Arr.length * 8)];
+      byte[] encodedResult = new byte[data2Arr.length * 8];
       long encodeTime = 0;
       long decodeTime = 0;
       double compressedSize = 0;
@@ -314,7 +312,7 @@ public class SPRINTZSubcolumnAddDictPruneNewTest {
       writer.writeRecord(
           new String[] {
             datasetName,
-            "SPRINTZ+Sub-columns(AddDictPruneNew)",
+            "TS2DIFF+Sub-columns(AddDictPruneNew)",
             String.valueOf(encodeTime),
             String.valueOf(decodeTime),
             String.valueOf(data1.size()),

@@ -596,7 +596,7 @@ public class SubcolumnPruneNewBlockSizeTest {
                 }
                 byte[] ref = new byte[data.length * 13];
                 byte[] plain = new byte[data.length * 13];
-                int refLen = SubcolumnAddDictPruneFastTest.Encoder(data, blockSize, ref);
+                int refLen = SubcolumnPruneFastTest.Encoder(data, blockSize, ref);
                 int plainLen = Encoder(data, blockSize, plain);
                 Assert.assertEquals("length mismatch blockSize=" + blockSize, refLen, plainLen);
                 Assert.assertArrayEquals(
@@ -691,7 +691,7 @@ public class SubcolumnPruneNewBlockSizeTest {
                 byte[] encodedRef = new byte[data2Arr.length * 13];
 
                 int length =
-                        SubcolumnAddDictPruneFastTest.Encoder(data2Arr, blockSize, encodedRef);
+                        SubcolumnPruneFastTest.Encoder(data2Arr, blockSize, encodedRef);
 
                 if (warmupBeforeTiming) {
                     for (int r = 0; r < repeatTime; r++) {
