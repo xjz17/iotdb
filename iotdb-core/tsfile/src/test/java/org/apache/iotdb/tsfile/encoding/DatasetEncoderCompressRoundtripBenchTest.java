@@ -105,28 +105,38 @@ public class DatasetEncoderCompressRoundtripBenchTest {
 
   private static final int SUBCOLUMN_BLOCK_SIZE = 512;
 
-  // --- Paths: keep in sync with dataset_encode_compress_roundtrip_test.cc (active constexpr)
-
   private static final String kBaseDir = "path/to/your/directory/";
 
-  private static final String kDatasetDir = kBaseDir + "dataset_big_combined";
+  private static final String kDatasetDir = kBaseDir + "dataset";
+  // private static final String kDatasetDir = "path/to/your/ssd/dataset";
 
-  private static final String kBinOutputDir = kBaseDir + "result/encode_compress/bins_combined_s1";
-
+  private static final String kBinOutputDir =
+      kBaseDir + "result/encoder_compress/bins_combined_s1";
   private static final String kWriteMetricsCsvPath =
-      kBaseDir + "result/encode_compress/encoder_compress_roundtrip_write_metrics_combined_s1.csv";
-          // + "encoder_compress_roundtrip_write_metrics_combined_s2.csv";
-
+      kBaseDir
+          + "result/encoder_compress/encoder_compress_roundtrip_write_metrics_combined_s1.csv";
   private static final String kReadMetricsCsvPath =
-      kBaseDir + "result/encode_compress/encoder_compress_roundtrip_read_metrics_combined_s1.csv";
-          // + "encoder_compress_roundtrip_read_metrics_combined_s2.csv";
-
-
+      kBaseDir
+          + "result/encoder_compress/encoder_compress_roundtrip_read_metrics_combined_s1.csv";
   private static final String kCompressManifestCsvPath =
-      kBaseDir + "result/encode_compress/encoder_compress_roundtrip_compress_manifest_combined_s1.csv";
-          // + "encoder_compress_roundtrip_compress_manifest_combined_s2.csv";
+      kBaseDir
+          + "result/encoder_compress/encoder_compress_roundtrip_compress_manifest_combined_s1.csv";
+  private static final String kDecodedCsvDir =
+      kBaseDir + "result/encoder_compress/decoded_csv_combined_s1";
 
-  private static final String kDecodedCsvDir = kBaseDir + "result/encode_compress/decoded_csv_combined_s1";
+  // private static final String kBinOutputDir =
+  //     "path/to/your/ssd/encoder_compress/bins_combined_s2";
+  // private static final String kWriteMetricsCsvPath =
+  //     kBaseDir
+  //         + "result/encoder_compress/encoder_compress_roundtrip_write_metrics_combined_s2.csv";
+  // private static final String kReadMetricsCsvPath =
+  //     kBaseDir
+  //         + "result/encoder_compress/encoder_compress_roundtrip_read_metrics_combined_s2.csv";
+  // private static final String kCompressManifestCsvPath =
+  //     kBaseDir
+  //         + "result/encoder_compress/encoder_compress_roundtrip_compress_manifest_combined_s2.csv";
+  // private static final String kDecodedCsvDir =
+  //     "path/to/your/ssd/encoder_compress/decoded_csv_combined_s2";
 
   private static final String ALGO_LZMA_CSV = "LZMA";
   private static final String SUFFIX_PLAIN_LZMA = "plain_lzma";
@@ -706,6 +716,58 @@ public class DatasetEncoderCompressRoundtripBenchTest {
 
   private static void ensureDirectory(Path dir) throws IOException {
     Files.createDirectories(dir);
+  }
+
+  private static String parentDirectory(String path) {
+    String normalized = path.replace('\\', '/');
+    while (normalized.endsWith("/")) {
+      normalized = normalized.substring(0, normalized.length() - 1);
+    }
+    int pos = normalized.lastIndexOf('/');
+    return pos < 0 ? "" : normalized.substring(0, pos);
+  }
+
+  private static File mergeSourceCsvsIntoCombined(String sourceDatasetDir) throws IOException {
+    File sourceDir = new File(sourceDatasetDir);
+    File[] sources = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
+    if (sources == null || sources.length == 0) {
+      throw new IOException("No CSV files in " + sourceDatasetDir);
+    }
+    Arrays.sort(sources, Comparator.comparing(File::getName));
+
+    String parent =
+        parentDirectory(sourceDir.getAbsolutePath().replace('\\', '/'));
+    File combinedDir =
+        parent.isEmpty() ? new File("dataset_big_combined") : new File(parent, "dataset_big_combined");
+    ensureDirectory(combinedDir.toPath());
+    File combinedCsv = new File(combinedDir, "combined.csv");
+
+    try (BufferedWriter out =
+        Files.newBufferedWriter(
+            combinedCsv.toPath(),
+            StandardCharsets.UTF_8,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.WRITE)) {
+      for (File src : sources) {
+        try (java.io.BufferedReader in =
+            Files.newBufferedReader(src.toPath(), StandardCharsets.UTF_8)) {
+          String line;
+          while ((line = in.readLine()) != null) {
+            if (!line.isEmpty() && line.charAt(line.length() - 1) == '\r') {
+              line = line.substring(0, line.length() - 1);
+            }
+            out.write(line);
+            out.newLine();
+          }
+        }
+      }
+    }
+    return combinedCsv;
+  }
+
+  private static File prepareCombinedBenchmarkDataset() throws IOException {
+    return mergeSourceCsvsIntoCombined(kDatasetDir);
   }
 
   /** Progress log for encode/decode bench (stdout, flushed). */
@@ -1849,10 +1911,14 @@ public class DatasetEncoderCompressRoundtripBenchTest {
 
   @Test
   public void testEncodeCompressWriteBinCsvIfPresent() throws IOException {
-    File directory = new File(kDatasetDir);
-    Assume.assumeTrue("Skip when CSV dir missing: " + kDatasetDir, directory.isDirectory());
-    File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
-    Assume.assumeTrue(csvFiles != null && csvFiles.length > 0);
+    File sourceDir = new File(kDatasetDir);
+    Assume.assumeTrue("Skip when CSV dir missing: " + kDatasetDir, sourceDir.isDirectory());
+    File[] sourceCsvs = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
+    Assume.assumeTrue(sourceCsvs != null && sourceCsvs.length > 0);
+
+    File combinedCsv = prepareCombinedBenchmarkDataset();
+    Assume.assumeTrue("Skip when combined CSV missing: " + combinedCsv, combinedCsv.isFile());
+    File[] csvFiles = new File[] {combinedCsv};
 
     Path binsDir = Paths.get(kBinOutputDir);
     Path decodedRoot = Paths.get(kDecodedCsvDir);
@@ -1889,11 +1955,10 @@ public class DatasetEncoderCompressRoundtripBenchTest {
               + "Uncompressed Bytes,Raw Plain Codec\n");
 
       System.out.printf(
-          "[DatasetEncoderCompressBinBench] encode-start | datasets=%d | binsDir=%s%n",
-          csvFiles.length, binsDir.toAbsolutePath());
+          "[DatasetEncoderCompressBinBench] encode-start | sourceDir=%s | combined=%s | binsDir=%s%n",
+          sourceDir.getAbsolutePath(), combinedCsv.getAbsolutePath(), binsDir.toAbsolutePath());
       System.out.flush();
 
-      Arrays.sort(csvFiles, Comparator.comparing(File::getName));
       for (File f : csvFiles) {
         List<String> tokens = readFirstColumnTokens(f);
         Assume.assumeFalse(tokens.isEmpty());
@@ -2088,10 +2153,14 @@ public class DatasetEncoderCompressRoundtripBenchTest {
 
   @Test
   public void testDecodeBinWriteDecodedCsvIfPresent() throws IOException {
-    File directory = new File(kDatasetDir);
-    Assume.assumeTrue("Skip when CSV dir missing: " + kDatasetDir, directory.isDirectory());
-    File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
-    Assume.assumeTrue(csvFiles != null && csvFiles.length > 0);
+    File sourceDir = new File(kDatasetDir);
+    Assume.assumeTrue("Skip when CSV dir missing: " + kDatasetDir, sourceDir.isDirectory());
+    File[] sourceCsvs = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
+    Assume.assumeTrue(sourceCsvs != null && sourceCsvs.length > 0);
+
+    File combinedCsv = prepareCombinedBenchmarkDataset();
+    Assume.assumeTrue("Skip when combined CSV missing: " + combinedCsv, combinedCsv.isFile());
+    File[] csvFiles = new File[] {combinedCsv};
 
     Path binsDir = Paths.get(kBinOutputDir);
     Path decodedRoot = Paths.get(kDecodedCsvDir);
@@ -2118,11 +2187,10 @@ public class DatasetEncoderCompressRoundtripBenchTest {
               + "TsFile Size Bytes\n");
 
       System.out.printf(
-          "[DatasetEncoderCompressBinBench] decode-start | datasets=%d | binsDir=%s%n",
-          csvFiles.length, binsDir.toAbsolutePath());
+          "[DatasetEncoderCompressBinBench] decode-start | sourceDir=%s | combined=%s | binsDir=%s%n",
+          sourceDir.getAbsolutePath(), combinedCsv.getAbsolutePath(), binsDir.toAbsolutePath());
       System.out.flush();
 
-      Arrays.sort(csvFiles, Comparator.comparing(File::getName));
       for (File f : csvFiles) {
         List<String> tokens = readFirstColumnTokens(f);
         Assume.assumeFalse(tokens.isEmpty());
