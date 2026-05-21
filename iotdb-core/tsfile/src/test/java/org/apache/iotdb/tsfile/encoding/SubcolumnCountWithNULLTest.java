@@ -248,19 +248,19 @@ public class SubcolumnCountWithNULLTest {
 
     @Test
     public void testQueryBeta() throws IOException {
-//        String parent_dir = "D:/github/xjz17/subcolumn/";
+//        String parent_dir = "path/to/your/directory/";
 //
 //        String input_parent_dir = parent_dir + "dataset/";
 //
-//        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_beta/";
+//        String output_parent_dir = "path/to/your/directory/result/query_vs_beta/";
 //        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; //"D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/"; //"path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/query_count_null/"; //""D:/encoding-subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/query_count_null/"; //""path/to/your/directory/result/";
 
 
 

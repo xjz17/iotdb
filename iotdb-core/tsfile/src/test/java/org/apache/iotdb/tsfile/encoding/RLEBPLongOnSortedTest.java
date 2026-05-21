@@ -642,22 +642,22 @@ public class RLEBPLongOnSortedTest {
 
     @Test
     public void testSubcolumn() throws IOException {
-//        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+//        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
 //        String input_parent_dir = parent_dir + "dataset/";
 
-//        String output_parent_dir = "D:/encoding-subcolumn/result/";
+//        String output_parent_dir = "path/to/your/directory/result/";
         // String output_parent_dir = parent_dir + "result/";
 
 //        String outputPath = output_parent_dir + "rle_long.csv";
 
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/"; //"D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/"; //"path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/"; //""D:/encoding-subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/"; //""path/to/your/directory/result/";
 
 
         String outputPath = output_parent_dir + "rle_long_on_sorted.csv";

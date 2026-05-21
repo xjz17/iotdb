@@ -47,19 +47,19 @@ public class VBPQueryMain {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/vbp_query/";
+        String output_parent_dir = "path/to/your/directory/result/vbp_query/";
 
         // String output_parent_dir = parent_dir + "result/";
         // String outputPath = output_parent_dir + "vbp_query.csv";
 
-        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
-        // //"D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        // String parent_dir = "path/to/your/directory/";
+        // //"path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         // String input_parent_dir = parent_dir + "dataset/";
 
@@ -252,17 +252,17 @@ public class VBPQueryMain {
 
     @Test
     public void testParts() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
+        // // String parent_dir = "path/to/your/directory/";
         //
         String input_parent_dir = parent_dir + "dataset/";
         //
-        String output_parent_dir = "D:/encoding-subcolumn/result/vbp_query/";
+        String output_parent_dir = "path/to/your/directory/result/vbp_query/";
         // // String output_parent_dir = parent_dir + "result/vbp_query/";
 
-        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
-        // //"D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        // String parent_dir = "path/to/your/directory/";
+        // //"path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         // String input_parent_dir = parent_dir + "dataset/";
 
@@ -434,12 +434,12 @@ public class VBPQueryMain {
 
     @Test
     public void testMaterialize() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
+        // // String parent_dir = "path/to/your/directory/";
         //
         String input_parent_dir = parent_dir + "dataset/";
         //
-        String output_parent_dir = "D:/encoding-subcolumn/result/materialization/";
+        String output_parent_dir = "path/to/your/directory/result/materialization/";
 
         String outputPath = output_parent_dir + "bitweaving_materialization.csv";
 

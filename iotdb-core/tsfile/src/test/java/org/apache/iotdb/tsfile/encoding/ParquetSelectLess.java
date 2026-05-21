@@ -197,7 +197,7 @@ public class ParquetSelectLess {
     // -----------------------
     @Test
     public void testQuery() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/query_parquetproto/";
 

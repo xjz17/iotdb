@@ -901,11 +901,11 @@ public class SubcolumnPruneNewEncodingTypeRatioTest {
 
     @Test
     public void test0() throws IOException {
-        String parentDir = "D://github/xjz17/subcolumn/";
+        String parentDir = "path/to/your/directory/";
         String inputParentDir = parentDir + "dataset/";
 
         String outputParentDir = parentDir + "result/";
-        // String outputParentDir = "D://encoding-subcolumn/result/";
+        // String outputParentDir = "path/to/your/directory/result/";
         // String outputPath = outputParentDir + "subcolumn_encoding_type_ratio.csv";
         String outputPath = outputParentDir + "subcolumn_encoding_type_ratio_2_32.csv";
 
@@ -1035,7 +1035,7 @@ public class SubcolumnPruneNewEncodingTypeRatioTest {
     /** Diagnostic: print filter breakdown for Stocks-USA (run with -Dtest=...#diagnoseStocksUsaFilter). */
     @Test
     public void diagnoseStocksUsaFilter() throws IOException {
-        String path = "D://github/xjz17/subcolumn/dataset/Stocks-USA.csv";
+        String path = "path/to/your/directory/dataset/Stocks-USA.csv";
         InputStream inputStream = Files.newInputStream(new File(path).toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<Float> data1 = new ArrayList<>();

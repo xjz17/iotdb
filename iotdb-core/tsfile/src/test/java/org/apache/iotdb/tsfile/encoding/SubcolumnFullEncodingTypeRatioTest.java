@@ -447,10 +447,10 @@ public class SubcolumnFullEncodingTypeRatioTest {
 
     @Test
     public void test0() throws IOException {
-        String parentDir = "D://github/xjz17/subcolumn/";
+        String parentDir = "path/to/your/directory/";
         String inputParentDir = parentDir + "dataset/";
         // String outputParentDir = parentDir + "result/";
-        String outputParentDir = "D://encoding-subcolumn/result/";
+        String outputParentDir = "path/to/your/directory/result/";
         String outputPath = outputParentDir + "subcolumn_full_encoding_type_ratio_2048.csv";
 
         int blockSize = 512;

@@ -719,15 +719,15 @@ public class SubcolumnLongPointQueryTest {
     @Test
     public void testQueryBeta() throws IOException {
 
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
-        String output_parent_dir = parent_dir + "result/point_query/";//"D:/encoding-subcolumn/result/query_vs_beta/";
+        String output_parent_dir = parent_dir + "result/point_query/";//"path/to/your/directory/result/query_vs_beta/";
 
-//        String parent_dir = "D:/github/xjz17/subcolumn/";
+//        String parent_dir = "path/to/your/directory/";
 //
 //        String input_parent_dir = parent_dir + "dataset/";
 //
-//        String output_parent_dir = "D:/encoding-subcolumn/result/query_vs_beta/";
+//        String output_parent_dir = "path/to/your/directory/result/query_vs_beta/";
 //        // String output_parent_dir = parent_dir + "result/query_vs_beta/";
 
         int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,

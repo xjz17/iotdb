@@ -867,12 +867,12 @@ public class SubcolumnLongMaterializeR1D3 {
     @Test
     public void compareMaterializationStrategies() throws IOException {
         // --- 基本设置，复用你 testQuery 中的路径 / 数据准备逻辑 ---
-        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
-        String parent_dir = "D:/github/xjz17/subcolumn/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
         // String output_parent_dir = parent_dir + "result/materialization/";
 
-        String output_parent_dir = "D:/encoding-subcolumn/result/materialization/";
+        String output_parent_dir = "path/to/your/directory/result/materialization/";
 
 //        // 这里为了演示，仅处理单个 CSV 文件（你可以循环多个文件）
 //        File directory = new File(input_parent_dir);

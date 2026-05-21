@@ -886,7 +886,7 @@ public class SubcolumnPruneNewBetaTest {
     @Test
     public void testCompressionVsBeta() throws IOException {
         // String parentDir = "path/to/your/directory/";
-        String parentDir = "D:/github/xjz17/subcolumn/";
+        String parentDir = "path/to/your/directory/";
 
         String inputParentDir = parentDir + "dataset/";
 

@@ -352,7 +352,7 @@ public static long calculateSumFromBlocks(long[][] packedBlocks, int n, int k, i
     // -------------------------
     @Test
     public void maxTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/query_parquetproto/";
 
@@ -504,7 +504,7 @@ public static long calculateSumFromBlocks(long[][] packedBlocks, int n, int k, i
 
     @Test
     public void sumTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/query_parquetproto/";
 
@@ -655,7 +655,7 @@ public static long calculateSumFromBlocks(long[][] packedBlocks, int n, int k, i
 
     @Test
     public void countTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/query_parquetproto/";
 

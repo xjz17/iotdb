@@ -293,7 +293,7 @@ public class ParquetSelectEqual {
     // 优化的 main 函数
     // -------------------------
     public static void main(String[] args) throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
         String input_parent_dir = parent_dir + "dataset/";
         String output_parent_dir = parent_dir + "result/query_parquetproto/";
 

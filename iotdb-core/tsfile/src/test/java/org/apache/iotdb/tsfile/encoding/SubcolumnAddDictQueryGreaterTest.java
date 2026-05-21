@@ -252,7 +252,7 @@ public class SubcolumnAddDictQueryGreaterTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/";
     String outputPath = outputParentDir + "subcolumn_adddict_prunenew_query_greater.csv";

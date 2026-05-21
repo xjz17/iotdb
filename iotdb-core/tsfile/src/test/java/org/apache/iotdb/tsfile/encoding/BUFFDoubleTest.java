@@ -594,7 +594,7 @@ public class BUFFDoubleTest {
     @Test
     public void test0() throws IOException {
         // String parent_dir = "path/to/your/directory/";
-        String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         // String input_parent_dir = parent_dir + "dataset/";
         String input_parent_dir = parent_dir + "ElfTestData_camel/";

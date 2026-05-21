@@ -38,7 +38,7 @@ import java.util.function.Supplier;
 
 public class CSVCompressTest {
 
-  private static final String PARENT_DIR = "D://github/xjz17/subcolumn/";
+  private static final String PARENT_DIR = "path/to/your/directory/";
   private static final String INPUT_PARENT_DIR = PARENT_DIR + "dataset/";
   private static final String OUTPUT_PARENT_DIR = PARENT_DIR + "result/";
   private static final String[] HEADERS = {

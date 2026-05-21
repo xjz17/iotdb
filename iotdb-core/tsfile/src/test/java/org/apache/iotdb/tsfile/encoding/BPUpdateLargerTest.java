@@ -20,7 +20,7 @@ public class BPUpdateLargerTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String inputParentDir = parentDir + "dataset/";
     String outputPath = parentDir + "result/update/bp_update_larger.csv";
     int blockSize = 512, repeatTime = 200;

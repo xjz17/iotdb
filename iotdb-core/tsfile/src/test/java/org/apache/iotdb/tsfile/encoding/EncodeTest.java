@@ -30,9 +30,9 @@ public class EncodeTest {
 
   public static void main(@NotNull String[] args) throws IOException {
 
-    String parent_dir = "D:/github/xjz17/subcolumn/";
+    String parent_dir = "path/to/your/directory/";
 
-    String output_parent_dir = "D:/encoding-subcolumn/trans_data_result/";
+    String output_parent_dir = "path/to/your/directory/trans_data_result/";
     // String output_parent_dir = parent_dir + "trans_data_result/";
 
     String input_parent_dir = parent_dir + "trans_data/";

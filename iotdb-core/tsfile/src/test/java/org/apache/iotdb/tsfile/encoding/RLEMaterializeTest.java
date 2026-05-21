@@ -766,14 +766,14 @@ public class RLEMaterializeTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        // String parent_dir = "path/to/your/directory/";
+        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         // String output_parent_dir = parent_dir + "result/";
-        String output_parent_dir = "D:/encoding-subcolumn/result/materialization/";
+        String output_parent_dir = "path/to/your/directory/result/materialization/";
         // String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "cstore_materialization2.csv";

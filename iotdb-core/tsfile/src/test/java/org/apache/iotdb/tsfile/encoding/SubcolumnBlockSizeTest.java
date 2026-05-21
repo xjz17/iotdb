@@ -52,12 +52,12 @@ public class SubcolumnBlockSizeTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
         
-        String output_parent_dir = "D:/encoding-subcolumn/result/compression_vs_block/";
+        String output_parent_dir = "path/to/your/directory/result/compression_vs_block/";
         // String output_parent_dir = parent_dir + "result/compression_vs_block/";
 
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };

@@ -52,13 +52,13 @@ public class SubcolumnLongPSOBlockSizeTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "D:/github/xjz17/subcolumn/";
-        // String parent_dir = "D:/encoding-subcolumn/";
+        String parent_dir = "path/to/your/directory/";
+        // String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         // String output_parent_dir =
-        // "D:/encoding-subcolumn/result/compression_vs_block_pso/";
+        // "path/to/your/directory/result/compression_vs_block_pso/";
         String output_parent_dir = parent_dir + "result/compression_vs_block_pso/";
 
         File outputDir = new File(output_parent_dir);
