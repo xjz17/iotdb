@@ -698,7 +698,7 @@ public class SubcolumnWithoutRLETest {
 
         String input_parent_dir = parent_dir + "dataset/";
 
-        String output_parent_dir = parent_dir + "result/"; //""D:/github/xjz17/subcolumn/result/";
+        String output_parent_dir = parent_dir + "result/";
 
         String outputPath = output_parent_dir + "subcolumn_without_rle.csv";
 

@@ -86,7 +86,7 @@ public class VBPQueryGroupTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/";
     String outputPath = outputParentDir + "vbp_query_group_range_count.csv";

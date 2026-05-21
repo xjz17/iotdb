@@ -52,7 +52,7 @@ public class VBPQuerySortTest {
 
   @Test
   public void testDecodeSortSingleBlock() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/";
     String outputPath = outputParentDir + "vbp_query_sort_decode.csv";

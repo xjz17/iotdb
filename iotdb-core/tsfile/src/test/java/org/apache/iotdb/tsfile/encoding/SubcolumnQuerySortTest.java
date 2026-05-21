@@ -366,7 +366,7 @@ public class SubcolumnQuerySortTest {
 
   private void runSingleBlockSortBenchmark(
       String outputPath, String algorithmName, BlockSortRunner runner) throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String inputParentDir = parentDir + "dataset/";
 
     int repeatTime = 100;
@@ -472,7 +472,7 @@ public class SubcolumnQuerySortTest {
 
   @Test
   public void testOptimizedSort() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String outputPath = parentDir + "result/" + "subcolumn_adddict_prunenew_query_sort.csv";
     runSingleBlockSortBenchmark(
         outputPath,
@@ -482,7 +482,7 @@ public class SubcolumnQuerySortTest {
 
   @Test
   public void testDecodeSort() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String outputPath = parentDir + "result/" + "subcolumn_adddict_prunenew_query_sort_decode.csv";
     runSingleBlockSortBenchmark(
         outputPath,

@@ -609,7 +609,7 @@ public class SubcolumnPruneNewBlockSizeTest {
 
     @Test
     public void testBlockSizeBenchmark() throws IOException {
-        String parentDir = "D:/github/xjz17/subcolumn/";
+        String parentDir = "path/to/your/directory/";
         String inputParentDir = parentDir + "dataset/";
         String outputParentDir = parentDir + "result/compression_vs_block_noprune3/";
 

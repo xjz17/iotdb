@@ -768,17 +768,16 @@ public class SubcolumnFullTest {
 
     @Test
     public void test0() throws IOException {
-        // String parent_dir = "path/to/your/directory/";
-        String parent_dir = "D://github/xjz17/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 
         String output_parent_dir = parent_dir + "result/";
 
-        String outputPath = output_parent_dir + "subcolumn_full_128.csv";
+        String outputPath = output_parent_dir + "subcolumn_full.csv";
 
         int block_size = 512;
-        block_size = 128;
+        // block_size = 128;
 
         int repeatTime = 500;
 

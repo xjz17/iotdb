@@ -226,11 +226,9 @@ public class TSDIFFSubcolumnPruneNewTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "D:/github/xjz17/subcolumn/";
-    // String parentDir = "D:/encoding-subcolumn/";
+    String parentDir = "path/to/your/directory/";
 
     String inputParentDir = parentDir + "dataset/";
-    // String inputParentDir = parentDir + "dataset_output/";
 
     String outputParentDir = parentDir + "result/";
     String outputPath = outputParentDir + "ts2diff_subcolumn_adddict_prunenew.csv";

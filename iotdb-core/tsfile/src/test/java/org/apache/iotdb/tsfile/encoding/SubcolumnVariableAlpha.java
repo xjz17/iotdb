@@ -1119,7 +1119,7 @@ public class SubcolumnVariableAlpha {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parent_dir = "path/to/your/directory/";
 
         String input_parent_dir = parent_dir + "dataset/";
 

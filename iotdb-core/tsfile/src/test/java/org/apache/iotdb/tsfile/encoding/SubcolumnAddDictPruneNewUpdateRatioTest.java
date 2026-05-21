@@ -35,7 +35,7 @@ public class SubcolumnAddDictPruneNewUpdateRatioTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+    String parentDir = "path/to/your/directory/";
     String inputParentDir = parentDir + "dataset/";
     String outputParentDir = parentDir + "result/update/";
     String outputPath = outputParentDir + "subcolumn_adddict_prunenew_update_ratio.csv";

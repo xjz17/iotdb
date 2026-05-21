@@ -107,30 +107,26 @@ public class DatasetEncoderCompressRoundtripBenchTest {
 
   // --- Paths: keep in sync with dataset_encode_compress_roundtrip_test.cc (active constexpr)
 
-  private static final String kDatasetDir = "E:/xjz/dataset_big_combined";
-  // private static final String kDatasetDir = "D:/github/xjz17/subcolumn/dataset_big_combined";
+  private static final String kBaseDir = "path/to/your/directory/";
 
-  private static final String kBinOutputDir = "E:/xjz/encode_compress/bins_combined_s1";
-  // private static final String kBinOutputDir = "D:/github/xjz17/subcolumn/result/encode_compress/bins_combined_s1";
+  private static final String kDatasetDir = kBaseDir + "dataset_big_combined";
+
+  private static final String kBinOutputDir = kBaseDir + "result/encode_compress/bins_combined_s1";
 
   private static final String kWriteMetricsCsvPath =
-      "D:/github/xjz17/subcolumn/result/encode_compress/"
-          + "encoder_compress_roundtrip_write_metrics_combined_s1.csv";
+      kBaseDir + "result/encode_compress/encoder_compress_roundtrip_write_metrics_combined_s1.csv";
           // + "encoder_compress_roundtrip_write_metrics_combined_s2.csv";
 
   private static final String kReadMetricsCsvPath =
-      "D:/github/xjz17/subcolumn/result/encode_compress/"
-          + "encoder_compress_roundtrip_read_metrics_combined_s1.csv";
+      kBaseDir + "result/encode_compress/encoder_compress_roundtrip_read_metrics_combined_s1.csv";
           // + "encoder_compress_roundtrip_read_metrics_combined_s2.csv";
 
 
   private static final String kCompressManifestCsvPath =
-      "D:/github/xjz17/subcolumn/result/encode_compress/"
-          + "encoder_compress_roundtrip_compress_manifest_combined_s1.csv";
+      kBaseDir + "result/encode_compress/encoder_compress_roundtrip_compress_manifest_combined_s1.csv";
           // + "encoder_compress_roundtrip_compress_manifest_combined_s2.csv";
 
-  private static final String kDecodedCsvDir = "E:/xjz/encode_compress/decoded_csv_combined_s1";
-  // private static final String kDecodedCsvDir = "D:/github/xjz17/subcolumn/result/encode_compress/decoded_csv_combined_s1";
+  private static final String kDecodedCsvDir = kBaseDir + "result/encode_compress/decoded_csv_combined_s1";
 
   private static final String ALGO_LZMA_CSV = "LZMA";
   private static final String SUFFIX_PLAIN_LZMA = "plain_lzma";
