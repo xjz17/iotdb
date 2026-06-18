@@ -14,6 +14,11 @@ import java.util.ArrayList;
 public class TSDIFFSubcolumnPruneNewTest {
 
   public static int Encoder(int[] data, int blockSize, byte[] encodedResult) {
+    return Encoder(data, blockSize, encodedResult, null, null);
+  }
+
+  public static int Encoder(
+      int[] data, int blockSize, byte[] encodedResult, long[] ts2diffTime, long[] subcolumnTime) {
     int dataLength = data.length;
     int encodePos = 0;
 
@@ -34,7 +39,9 @@ public class TSDIFFSubcolumnPruneNewTest {
     int[] beta = new int[] {3};
 
     for (int i = 0; i < numBlocks; i++) {
-      encodePos = BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult, beta);
+      encodePos =
+          BlockEncoder(
+              data, i, blockSize, blockSize, encodePos, encodedResult, beta, ts2diffTime, subcolumnTime);
     }
 
     if (remainder <= 3) {
@@ -47,7 +54,9 @@ public class TSDIFFSubcolumnPruneNewTest {
         encodePos += 4;
       }
     } else {
-      encodePos = BlockEncoder(data, numBlocks, blockSize, remainder, encodePos, encodedResult, beta);
+      encodePos =
+          BlockEncoder(
+              data, numBlocks, blockSize, remainder, encodePos, encodedResult, beta, ts2diffTime, subcolumnTime);
     }
 
     return encodePos;
@@ -97,6 +106,17 @@ public class TSDIFFSubcolumnPruneNewTest {
   public static int[] getAbsDeltaTsBlock(
       int[] tsBlock, int blockIndex, int blockSize, int remaining, int[] minDelta) {
     int[] tsBlockDelta = new int[remaining - 1];
+    fillAbsDeltaTsBlock(tsBlock, blockIndex, blockSize, remaining, minDelta, tsBlockDelta);
+    return tsBlockDelta;
+  }
+
+  private static void fillAbsDeltaTsBlock(
+      int[] tsBlock,
+      int blockIndex,
+      int blockSize,
+      int remaining,
+      int[] minDelta,
+      int[] tsBlockDelta) {
     int valueDeltaMin = Integer.MAX_VALUE;
     int valueDeltaMax = Integer.MIN_VALUE;
     int base = blockIndex * blockSize + 1;
@@ -125,7 +145,6 @@ public class TSDIFFSubcolumnPruneNewTest {
 
     minDelta[1] = valueDeltaMin;
     minDelta[2] = valueDeltaMax - valueDeltaMin;
-    return tsBlockDelta;
   }
 
   public static int BlockEncoder(
@@ -136,8 +155,24 @@ public class TSDIFFSubcolumnPruneNewTest {
       int encodePos,
       byte[] encodedResult,
       int[] beta) {
-    int[] minDelta = new int[3];
-    int[] dataDelta = getAbsDeltaTsBlock(data, blockIndex, blockSize, remainder, minDelta);
+    return BlockEncoder(
+        data, blockIndex, blockSize, remainder, encodePos, encodedResult, beta, null, null);
+  }
+
+  public static int BlockEncoder(
+      int[] data,
+      int blockIndex,
+      int blockSize,
+      int remainder,
+      int encodePos,
+      byte[] encodedResult,
+      int[] beta,
+      long[] ts2diffTime,
+      long[] subcolumnTime) {
+    long ts2diffStart = System.nanoTime();
+    int[] minDelta = SubcolumnPruneNewTest.borrowMinDelta3Buffer();
+    int[] dataDelta = SubcolumnPruneNewTest.borrowDataDeltaBuffer();
+    fillAbsDeltaTsBlock(data, blockIndex, blockSize, remainder, minDelta, dataDelta);
 
     encodedResult[encodePos] = (byte) (minDelta[0] >> 24);
     encodedResult[encodePos + 1] = (byte) (minDelta[0] >> 16);
@@ -158,10 +193,29 @@ public class TSDIFFSubcolumnPruneNewTest {
       }
     }
     int m = SubcolumnPruneNewTest.bitWidth(maxValue);
-    int[] encodingType = new int[Math.max(0, m)];
-    beta[0] = SubcolumnPruneNewTest.Subcolumn(dataDelta, remainder - 1, m, blockSize, encodingType);
+    int[] encodingType = SubcolumnPruneNewTest.borrowEncodingTypeBuffer();
+    long ts2diffEnd = System.nanoTime();
+    if (ts2diffTime != null) {
+      ts2diffTime[0] += (ts2diffEnd - ts2diffStart);
+    }
+
+    long subStart = System.nanoTime();
+    beta[0] =
+        SubcolumnPruneNewTest.Subcolumn(dataDelta, remainder - 1, m, blockSize, encodingType);
     encodePos =
-        SubcolumnPruneNewTest.SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize, encodingType);
+        SubcolumnPruneNewTest.SubcolumnEncoder(
+            dataDelta,
+            remainder - 1,
+            encodePos,
+            encodedResult,
+            beta,
+            blockSize,
+            encodingType,
+            m);
+    long subEnd = System.nanoTime();
+    if (subcolumnTime != null) {
+      subcolumnTime[0] += (subEnd - subStart);
+    }
 
     return encodePos;
   }
@@ -226,12 +280,12 @@ public class TSDIFFSubcolumnPruneNewTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "path/to/your/directory/";
+    String parentDir = "D://github/xjz17/subcolumn/";
 
     String inputParentDir = parentDir + "dataset/";
 
     String outputParentDir = parentDir + "result/";
-    String outputPath = outputParentDir + "ts2diff_subcolumn_adddict_prunenew.csv";
+    String outputPath = outputParentDir + "ts2diff_subcolumn_adddict_prunenew_opt2.csv";
 
     int blockSize = 512;
     int repeatTime = 100;
@@ -247,7 +301,9 @@ public class TSDIFFSubcolumnPruneNewTest {
           "Decoding Time",
           "Points",
           "Compressed Size",
-          "Compression Ratio"
+          "Compression Ratio",
+          "TS2DIFF Time",
+          "Subcolumn Encode Time"
         });
 
     File directory = new File(inputParentDir);
@@ -288,15 +344,27 @@ public class TSDIFFSubcolumnPruneNewTest {
       byte[] encodedResult = new byte[data2Arr.length * 8];
       long encodeTime = 0;
       long decodeTime = 0;
+      long ts2diffTime = 0;
+      long subcolumnEncodeTime = 0;
       double compressedSize = 0;
       int length = 0;
+      long[] ts2diffTimeArr = new long[1];
+      long[] subcolumnEncodeTimeArr = new long[1];
 
       long s = System.nanoTime();
       for (int repeat = 0; repeat < repeatTime; repeat++) {
-        length = Encoder(data2Arr, blockSize, encodedResult);
+        ts2diffTimeArr[0] = 0;
+        subcolumnEncodeTimeArr[0] = 0;
+        length =
+            Encoder(
+                data2Arr, blockSize, encodedResult, ts2diffTimeArr, subcolumnEncodeTimeArr);
+        ts2diffTime += ts2diffTimeArr[0];
+        subcolumnEncodeTime += subcolumnEncodeTimeArr[0];
       }
       long e = System.nanoTime();
       encodeTime += (e - s) / repeatTime;
+      ts2diffTime /= repeatTime;
+      subcolumnEncodeTime /= repeatTime;
       compressedSize += length;
 
       s = System.nanoTime();
@@ -310,12 +378,14 @@ public class TSDIFFSubcolumnPruneNewTest {
       writer.writeRecord(
           new String[] {
             datasetName,
-            "TS2DIFF+Sub-columns(AddDictPruneNew)",
+            "TS2DIFF+Sub-columns(AddDictPruneNew-Opt2)",
             String.valueOf(encodeTime),
             String.valueOf(decodeTime),
             String.valueOf(data1.size()),
             String.valueOf(compressedSize),
-            String.valueOf(ratio)
+            String.valueOf(ratio),
+            String.valueOf(ts2diffTime),
+            String.valueOf(subcolumnEncodeTime)
           });
       System.out.println(ratio);
     }

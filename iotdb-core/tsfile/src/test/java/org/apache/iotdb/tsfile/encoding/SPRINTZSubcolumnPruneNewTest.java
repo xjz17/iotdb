@@ -14,6 +14,11 @@ import java.util.ArrayList;
 public class SPRINTZSubcolumnPruneNewTest {
 
   public static int Encoder(int[] data, int blockSize, byte[] encodedResult) {
+    return Encoder(data, blockSize, encodedResult, null, null);
+  }
+
+  public static int Encoder(
+      int[] data, int blockSize, byte[] encodedResult, long[] sprintzTime, long[] subcolumnTime) {
     int dataLength = data.length;
     int encodePos = 0;
 
@@ -34,7 +39,9 @@ public class SPRINTZSubcolumnPruneNewTest {
     int[] beta = new int[] {2};
 
     for (int i = 0; i < numBlocks; i++) {
-      encodePos = BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult, beta);
+      encodePos =
+          BlockEncoder(
+              data, i, blockSize, blockSize, encodePos, encodedResult, beta, sprintzTime, subcolumnTime);
     }
 
     if (remainder <= 3) {
@@ -47,7 +54,9 @@ public class SPRINTZSubcolumnPruneNewTest {
         encodePos += 4;
       }
     } else {
-      encodePos = BlockEncoder(data, numBlocks, blockSize, remainder, encodePos, encodedResult, beta);
+      encodePos =
+          BlockEncoder(
+              data, numBlocks, blockSize, remainder, encodePos, encodedResult, beta, sprintzTime, subcolumnTime);
     }
 
     return encodePos;
@@ -103,6 +112,17 @@ public class SPRINTZSubcolumnPruneNewTest {
   public static int[] getAbsDeltaTsBlock(
       int[] tsBlock, int blockIndex, int blockSize, int remaining, int[] minDelta) {
     int[] tsBlockDelta = new int[remaining - 1];
+    fillAbsDeltaTsBlock(tsBlock, blockIndex, blockSize, remaining, minDelta, tsBlockDelta);
+    return tsBlockDelta;
+  }
+
+  private static void fillAbsDeltaTsBlock(
+      int[] tsBlock,
+      int blockIndex,
+      int blockSize,
+      int remaining,
+      int[] minDelta,
+      int[] tsBlockDelta) {
     int base = blockIndex * blockSize + 1;
     int end = blockIndex * blockSize + remaining;
     minDelta[0] = tsBlock[base - 1];
@@ -126,7 +146,6 @@ public class SPRINTZSubcolumnPruneNewTest {
     }
     minDelta[1] = valueDeltaMin;
     minDelta[2] = valueDeltaMax - valueDeltaMin;
-    return tsBlockDelta;
   }
 
   public static int BlockEncoder(
@@ -137,8 +156,24 @@ public class SPRINTZSubcolumnPruneNewTest {
       int encodePos,
       byte[] encodedResult,
       int[] beta) {
-    int[] minDelta = new int[3];
-    int[] dataDelta = getAbsDeltaTsBlock(data, blockIndex, blockSize, remainder, minDelta);
+    return BlockEncoder(
+        data, blockIndex, blockSize, remainder, encodePos, encodedResult, beta, null, null);
+  }
+
+  public static int BlockEncoder(
+      int[] data,
+      int blockIndex,
+      int blockSize,
+      int remainder,
+      int encodePos,
+      byte[] encodedResult,
+      int[] beta,
+      long[] sprintzTime,
+      long[] subcolumnTime) {
+    long sprintzStart = System.nanoTime();
+    int[] minDelta = SubcolumnPruneNewTest.borrowMinDelta3Buffer();
+    int[] dataDelta = SubcolumnPruneNewTest.borrowDataDeltaBuffer();
+    fillAbsDeltaTsBlock(data, blockIndex, blockSize, remainder, minDelta, dataDelta);
 
     encodedResult[encodePos] = (byte) (minDelta[0] >> 24);
     encodedResult[encodePos + 1] = (byte) (minDelta[0] >> 16);
@@ -159,10 +194,29 @@ public class SPRINTZSubcolumnPruneNewTest {
       }
     }
     int m = SubcolumnPruneNewTest.bitWidth(maxValue);
-    int[] encodingType = new int[Math.max(0, m)];
-    beta[0] = SubcolumnPruneNewTest.Subcolumn(dataDelta, remainder - 1, m, blockSize, encodingType);
+    int[] encodingType = SubcolumnPruneNewTest.borrowEncodingTypeBuffer();
+    long sprintzEnd = System.nanoTime();
+    if (sprintzTime != null) {
+      sprintzTime[0] += (sprintzEnd - sprintzStart);
+    }
+
+    long subStart = System.nanoTime();
+    beta[0] =
+        SubcolumnPruneNewTest.Subcolumn(dataDelta, remainder - 1, m, blockSize, encodingType);
     encodePos =
-        SubcolumnPruneNewTest.SubcolumnEncoder(dataDelta, encodePos, encodedResult, beta, blockSize, encodingType);
+        SubcolumnPruneNewTest.SubcolumnEncoder(
+            dataDelta,
+            remainder - 1,
+            encodePos,
+            encodedResult,
+            beta,
+            blockSize,
+            encodingType,
+            m);
+    long subEnd = System.nanoTime();
+    if (subcolumnTime != null) {
+      subcolumnTime[0] += (subEnd - subStart);
+    }
 
     return encodePos;
   }
@@ -229,12 +283,12 @@ public class SPRINTZSubcolumnPruneNewTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "path/to/your/directory/";
+    String parentDir = "D://github/xjz17/subcolumn/";
 
     String inputParentDir = parentDir + "dataset/";
 
     String outputParentDir = parentDir + "result/";
-    String outputPath = outputParentDir + "sprintz_subcolumn_adddict_prunenew.csv";
+    String outputPath = outputParentDir + "sprintz_subcolumn_adddict_prunenew_opt2.csv";
 
     int blockSize = 512;
     int repeatTime = 100;
@@ -249,7 +303,9 @@ public class SPRINTZSubcolumnPruneNewTest {
           "Decoding Time",
           "Points",
           "Compressed Size",
-          "Compression Ratio"
+          "Compression Ratio",
+          "SPRINTZ Time",
+          "Subcolumn Encode Time"
         });
 
     File directory = new File(inputParentDir);
@@ -290,15 +346,27 @@ public class SPRINTZSubcolumnPruneNewTest {
       byte[] encodedResult = new byte[Math.max(16, data2Arr.length * 8)];
       long encodeTime = 0;
       long decodeTime = 0;
+      long sprintzTime = 0;
+      long subcolumnEncodeTime = 0;
       double compressedSize = 0;
       int length = 0;
+      long[] sprintzTimeArr = new long[1];
+      long[] subcolumnEncodeTimeArr = new long[1];
 
       long s = System.nanoTime();
       for (int repeat = 0; repeat < repeatTime; repeat++) {
-        length = Encoder(data2Arr, blockSize, encodedResult);
+        sprintzTimeArr[0] = 0;
+        subcolumnEncodeTimeArr[0] = 0;
+        length =
+            Encoder(
+                data2Arr, blockSize, encodedResult, sprintzTimeArr, subcolumnEncodeTimeArr);
+        sprintzTime += sprintzTimeArr[0];
+        subcolumnEncodeTime += subcolumnEncodeTimeArr[0];
       }
       long e = System.nanoTime();
       encodeTime += (e - s) / repeatTime;
+      sprintzTime /= repeatTime;
+      subcolumnEncodeTime /= repeatTime;
       compressedSize += length;
 
       s = System.nanoTime();
@@ -312,12 +380,14 @@ public class SPRINTZSubcolumnPruneNewTest {
       writer.writeRecord(
           new String[] {
             datasetName,
-            "SPRINTZ+Sub-columns(AddDictPruneNew)",
+            "SPRINTZ+Sub-columns(AddDictPruneNew-Opt2)",
             String.valueOf(encodeTime),
             String.valueOf(decodeTime),
             String.valueOf(data1.size()),
             String.valueOf(compressedSize),
-            String.valueOf(ratio)
+            String.valueOf(ratio),
+            String.valueOf(sprintzTime),
+            String.valueOf(subcolumnEncodeTime)
           });
       System.out.println(ratio);
     }
