@@ -18,23 +18,65 @@ import com.csvreader.CsvWriter;
 
 public class BPTest {
 
+    private static final int PACK_BIT_STEP = 4;
+    private static final int BIT_IO_STEP = 4;
+    private static final int UNPACK_BIT_STEP = 2;
+    private static final int LOAD_BIT_STEP = 4;
+
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
+    }
+
+    private static void storeByteBits(byte[] result, int index, int byteVal) {
+        storeByteBits(result, index, byteVal, PACK_BIT_STEP);
+    }
+
+    private static void storeByteBits(byte[] result, int index, int byteVal, int step) {
+        int bitIndex = 8;
+        int remaining = 8;
+        while (remaining > 0) {
+            int bitsToWrite = Math.min(step, Math.min(bitIndex, remaining));
+            bitIndex -= bitsToWrite;
+            int mask = (1 << bitsToWrite) - 1;
+            int bits = (byteVal >> (remaining - bitsToWrite)) & mask;
+            result[index] &= (byte) ~(mask << bitIndex);
+            result[index] |= (byte) (bits << bitIndex);
+            remaining -= bitsToWrite;
+        }
+    }
+
+    private static int loadByteBits(byte[] result, int index) {
+        int step = (index & 3) == 0 ? UNPACK_BIT_STEP : LOAD_BIT_STEP;
+        return loadByteBits(result, index, step);
+    }
+
+    private static int loadByteBits(byte[] result, int index, int step) {
+        int num = 0;
+        int bitIndex = 8;
+        int remaining = 8;
+        while (remaining > 0) {
+            int bitsToRead = Math.min(step, Math.min(bitIndex, remaining));
+            int mask = (1 << bitsToRead) - 1;
+            int bits = (result[index] >> (bitIndex - bitsToRead)) & mask;
+            num = (num << bitsToRead) | bits;
+            remaining -= bitsToRead;
+            bitIndex -= bitsToRead;
+        }
+        return num;
     }
 
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
         int cnt = pos & 0x07;
         int index = pos >> 3;
         while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
+            int available = 8 - cnt;
+            int m = Math.min(BIT_IO_STEP, Math.min(available, width));
             width -= m;
-            int mask = 1 << (8 - cnt);
+            int mask = (1 << m) - 1;
+            int bits = (srcNum >> width) & mask;
+            int byteMask = mask << (8 - cnt - m);
+            result[index] = (byte) (result[index] & ~byteMask | (bits << (8 - cnt - m)));
             cnt += m;
-            byte y = (byte) (srcNum >>> width);
-            y = (byte) (y << (8 - cnt));
-            mask = ~(mask - (1 << (8 - cnt)));
-            result[index] = (byte) (result[index] & mask | y);
-            srcNum = srcNum & ~(-1 << width);
             if (cnt == 8) {
                 index++;
                 cnt = 0;
@@ -47,12 +89,13 @@ public class BPTest {
         int cnt = pos & 0x07;
         int index = pos >> 3;
         while (width > 0) {
-            int m = width + cnt >= 8 ? 8 - cnt : width;
+            int available = 8 - cnt;
+            int m = Math.min(BIT_IO_STEP, Math.min(available, width));
             width -= m;
             ret = ret << m;
-            byte y = (byte) (result[index] & (0xff >> cnt));
-            y = (byte) ((y & 0xff) >>> (8 - cnt - m));
-            ret = ret | (y & 0xff);
+            int mask = (1 << m) - 1;
+            int bits = (result[index] >> (8 - cnt - m)) & mask;
+            ret = ret | bits;
             cnt += m;
             if (cnt == 8) {
                 cnt = 0;
@@ -91,7 +134,12 @@ public class BPTest {
             }
 
             for (int j = 0; j < 4; j++) {
-                encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
+                int outByte = (buffer >>> ((3 - j) * 8)) & 0xFF;
+                if (j == 3) {
+                    storeByteBits(encoded_result, encode_pos, outByte, 3);
+                } else {
+                    storeByteBits(encoded_result, encode_pos, outByte);
+                }
                 encode_pos++;
                 bufIdx++;
                 if (bufIdx >= width) {
@@ -99,7 +147,6 @@ public class BPTest {
                 }
             }
         }
-
     }
 
     public static void unpack8Values(byte[] encoded, int offset, int width, int[] result_list, int result_offset) {
@@ -110,7 +157,7 @@ public class BPTest {
 
         while (valueIdx < 8) {
             while (totalBits < width) {
-                buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
+                buffer = (buffer << 8) | loadByteBits(encoded, byteIdx);
                 byteIdx++;
                 totalBits += 8;
             }
@@ -377,7 +424,7 @@ public class BPTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 

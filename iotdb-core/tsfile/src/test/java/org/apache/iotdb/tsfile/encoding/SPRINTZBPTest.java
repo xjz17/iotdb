@@ -17,6 +17,8 @@ import java.util.stream.Stream;
 
 public class SPRINTZBPTest {
 
+    private static final int BIT_IO_STEP = 2;
+
     public static int getBitWith(int num) {
         if (num == 0)
             return 1;
@@ -118,6 +120,46 @@ public class SPRINTZBPTest {
             value |= b;
         }
         return value;
+    }
+
+    public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
+        int cnt = pos & 0x07;
+        int index = pos >> 3;
+        while (width > 0) {
+            int m = 1;
+            width -= m;
+            int mask = 1 << (8 - cnt);
+            cnt += m;
+            byte y = (byte) (srcNum >>> width);
+            y = (byte) (y << (8 - cnt));
+            mask = ~(mask - (1 << (8 - cnt)));
+            result[index] = (byte) (result[index] & mask | y);
+            srcNum = srcNum & ~(-1 << width);
+            if (cnt == 8) {
+                index++;
+                cnt = 0;
+            }
+        }
+    }
+
+    public static int bytesToInt(byte[] result, int pos, int width) {
+        int ret = 0;
+        int cnt = pos & 0x07;
+        int index = pos >> 3;
+        while (width > 0) {
+            int m = 1;
+            width -= m;
+            ret = ret << m;
+            byte y = (byte) (result[index] & (0xff >> cnt));
+            y = (byte) ((y & 0xff) >>> (8 - cnt - m));
+            ret = ret | (y & 0xff);
+            cnt += m;
+            if (cnt == 8) {
+                cnt = 0;
+                index++;
+            }
+        }
+        return ret;
     }
 
     private static long bytesLong2Integer(byte[] encoded, int decode_pos) {
@@ -507,7 +549,7 @@ public class SPRINTZBPTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_write = Math.min(available_bits, remaining_bits);
+            int bits_to_write = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             bit_index = available_bits - bits_to_write;
 
@@ -724,7 +766,7 @@ public class SPRINTZBPTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_read = Math.min(available_bits, remaining_bits);
+            int bits_to_read = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
@@ -857,7 +899,7 @@ public class SPRINTZBPTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 

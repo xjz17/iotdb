@@ -21,6 +21,8 @@ import java.util.stream.Stream;
 
 public class TSDIFFTest {
 
+    private static final int BIT_IO_STEP = 2;
+
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
     }
@@ -371,7 +373,7 @@ public class TSDIFFTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_write = Math.min(available_bits, remaining_bits);
+            int bits_to_write = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             bit_index = available_bits - bits_to_write;
 
@@ -525,7 +527,7 @@ public class TSDIFFTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_read = Math.min(available_bits, remaining_bits);
+            int bits_to_read = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
@@ -698,7 +700,7 @@ public class TSDIFFTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 

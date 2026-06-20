@@ -18,6 +18,8 @@ import java.util.stream.Stream;
 
 public class RLEBPLongTest {
 
+    private static final int BIT_IO_STEP = 4;
+
     public static int getBitWith(int num) {
         if (num == 0)
             return 1;
@@ -262,7 +264,7 @@ public class RLEBPLongTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_write = Math.min(available_bits, remaining_bits);
+            int bits_to_write = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             bit_index = available_bits - bits_to_write;
 
@@ -293,7 +295,7 @@ public class RLEBPLongTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_write = Math.min(available_bits, remaining_bits);
+            int bits_to_write = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             bit_index = available_bits - bits_to_write;
 
@@ -405,7 +407,7 @@ public class RLEBPLongTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_read = Math.min(available_bits, remaining_bits);
+            int bits_to_read = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
@@ -434,7 +436,7 @@ public class RLEBPLongTest {
 
         while (remaining_bits > 0) {
             int available_bits = bit_index;
-            int bits_to_read = Math.min(available_bits, remaining_bits);
+            int bits_to_read = Math.min(BIT_IO_STEP, Math.min(available_bits, remaining_bits));
 
             int mask = (1 << bits_to_read) - 1;
             int bits = (cur_byte[decode_pos] >> (available_bits - bits_to_read)) & mask;
@@ -577,7 +579,7 @@ public class RLEBPLongTest {
 
     @Test
     public void test0() throws IOException {
-        String parent_dir = "path/to/your/directory/";
+        String parent_dir = "D://github/xjz17/subcolumn/";
 
         String input_parent_dir = parent_dir + "dataset/";
 

@@ -68,16 +68,19 @@ public class HBPIndexLong {
         int i = posInSeg % (k + 1);
         int j = posInSeg / (k + 1);
         long word = words[s * (k + 1) + i];
-        long section = (word >>> (j * sectionBits)) & ((1L << sectionBits) - 1L);
-        return (section & ((1L << k) - 1L));
+        long code = 0L;
+        for (int b = 0; b < k; b += 2) {
+            int chunkBits = Math.min(2, k - b);
+            long chunk = (word >>> (j * sectionBits + b)) & ((1L << chunkBits) - 1L);
+            code |= chunk << b;
+        }
+        return code;
     }
 
     public void pack(long[] codes) {
-        long sectionMask = (1L << sectionBits) - 1L;
         for (int s = 0; s < segments; s++) {
             int base = s * codesPerSegment;
             int upto = Math.min(n, base + codesPerSegment);
-            int count = upto - base;
             for (int i = 0; i <= k; i++) {
                 long w = 0L;
                 for (int j = 0; j < sectionsPerWord; j++) {
@@ -85,8 +88,11 @@ public class HBPIndexLong {
                     if (idx >= upto)
                         break;
                     long code = codes[idx] & ((1L << k) - 1L);
-                    long section = code;
-                    w |= (section & sectionMask) << (j * sectionBits);
+                    for (int b = 0; b < k; b += 2) {
+                        int chunkBits = Math.min(2, k - b);
+                        long chunk = (code >> b) & ((1L << chunkBits) - 1L);
+                        w |= chunk << (j * sectionBits + b);
+                    }
                 }
                 words[s * (k + 1) + i] = w;
             }
