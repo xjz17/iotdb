@@ -283,7 +283,7 @@ public class SPRINTZSubcolumnPruneNewTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "D://github/xjz17/subcolumn/";
+    String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
 
     String inputParentDir = parentDir + "dataset/";
 

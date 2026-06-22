@@ -2,6 +2,7 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -10,11 +11,15 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class SubcolumnPruneNewTest {
 
     private static final ThreadLocal<EncodeScratch> ENCODE_SCRATCH =
             ThreadLocal.withInitial(EncodeScratch::new);
+
+    private static final ThreadLocal<DecodeScratch> DECODE_SCRATCH =
+            ThreadLocal.withInitial(DecodeScratch::new);
 
     private static final class EncodeScratch {
         private final int[] dataDelta = new int[8192];
@@ -31,6 +36,43 @@ public class SubcolumnPruneNewTest {
         private final int[] codeMap = new int[16];
         private final int[] minDelta = new int[1];
         private final int[] minDelta3 = new int[3];
+        /** Flattened grouped subcolumns: group i starts at i * listLength. */
+        private final int[] groupFlat = new int[32 * 8192];
+        private final int[] groupMax = new int[32];
+        private int cachedBeta = -1;
+        private int cachedL;
+        private int cachedListLength = -1;
+    }
+
+    private static final class DecodeScratch {
+        private int[] bitWidthList = new int[32];
+        private int[] encodingType = new int[32];
+        private int[] subcolumnBuffer = new int[8192];
+        private int[] runLength = new int[8192];
+        private int[] rleValues = new int[8192];
+        private int[] dictKeyList = new int[16];
+
+        private void ensureL(int l) {
+            if (bitWidthList.length < l) {
+                bitWidthList = new int[l];
+                encodingType = new int[l];
+            }
+        }
+
+        private void ensureListLength(int listLength) {
+            if (subcolumnBuffer.length < listLength) {
+                subcolumnBuffer = new int[listLength];
+                runLength = new int[listLength];
+                rleValues = new int[listLength];
+            }
+        }
+
+        private int[] ensureDict(int cardinality) {
+            if (dictKeyList.length < cardinality) {
+                dictKeyList = new int[cardinality];
+            }
+            return dictKeyList;
+        }
     }
 
     private static final int[] DEFAULT_THRESHOLD =
@@ -493,6 +535,39 @@ public class SubcolumnPruneNewTest {
         return distinctCount;
     }
 
+    private static void extractAllGroups(
+            EncodeScratch scratch,
+            int[] x,
+            int xLength,
+            int beta,
+            int m,
+            int mask) {
+        int l = (m + beta - 1) / beta;
+        int[] flat = scratch.groupFlat;
+        for (int i = 0; i < l; i++) {
+            int shiftAmount = i * beta;
+            int maxValuePart = 0;
+            int base = i * xLength;
+            for (int j = 0; j < xLength; j++) {
+                int current = (x[j] >> shiftAmount) & mask;
+                flat[base + j] = current;
+                if (current > maxValuePart) {
+                    maxValuePart = current;
+                }
+            }
+            scratch.groupMax[i] = maxValuePart;
+        }
+        scratch.cachedBeta = beta;
+        scratch.cachedL = l;
+        scratch.cachedListLength = xLength;
+    }
+
+    private static boolean useGroupCache(EncodeScratch scratch, int betaValue, int l, int listLength) {
+        return scratch.cachedBeta == betaValue
+                && scratch.cachedL == l
+                && scratch.cachedListLength == listLength;
+    }
+
     public static int Subcolumn(int[] x, int xLength, int m, int blockSize, int[] encodingType) {
         return Subcolumn(x, xLength, m, blockSize, encodingType, ENCODE_SCRATCH.get());
     }
@@ -627,6 +702,10 @@ public class SubcolumnPruneNewTest {
             }
         }
 
+        if (betaBest > 1) {
+            extractAllGroups(scratch, x, xLength, betaBest, m, (1 << betaBest) - 1);
+        }
+
         return betaBest;
     }
 
@@ -709,17 +788,22 @@ public class SubcolumnPruneNewTest {
 
         int bw = bitWidth(blockSize);
         int mask = (1 << betaValue) - 1;
+        boolean useCache = useGroupCache(scratch, betaValue, l, listLength);
 
         for (int i = 0; i < l; i++) {
-            int shiftAmount = i * betaValue;
-            int maxValuePart = 0;
-            for (int j = 0; j < listLength; j++) {
-                int current = (list[j] >> shiftAmount) & mask;
-                if (current > maxValuePart) {
-                    maxValuePart = current;
+            if (useCache) {
+                bitWidthList[i] = bitWidth(scratch.groupMax[i]);
+            } else {
+                int shiftAmount = i * betaValue;
+                int maxValuePart = 0;
+                for (int j = 0; j < listLength; j++) {
+                    int current = (list[j] >> shiftAmount) & mask;
+                    if (current > maxValuePart) {
+                        maxValuePart = current;
+                    }
                 }
+                bitWidthList[i] = bitWidth(maxValuePart);
             }
-            bitWidthList[i] = bitWidth(maxValuePart);
         }
 
         encodePos = bitPacking(bitWidthList, 8, encodePos, encodedResult, l);
@@ -729,8 +813,28 @@ public class SubcolumnPruneNewTest {
 
         for (int i = 0; i < l; i++) {
             int shiftAmount = i * betaValue;
-            for (int j = 0; j < listLength; j++) {
-                subcolumnBuffer[j] = (list[j] >> shiftAmount) & mask;
+            int groupOffset = i * listLength;
+
+            if (encodingType[i] == 0) {
+                if (useCache) {
+                    encodePos = bitPackingAt(scratch.groupFlat, groupOffset, bitWidthList[i],
+                            encodePos, encodedResult, listLength);
+                } else {
+                    for (int j = 0; j < listLength; j++) {
+                        subcolumnBuffer[j] = (list[j] >> shiftAmount) & mask;
+                    }
+                    encodePos = bitPackingAt(subcolumnBuffer, 0, bitWidthList[i], encodePos,
+                            encodedResult, listLength);
+                }
+                continue;
+            }
+
+            if (useCache) {
+                System.arraycopy(scratch.groupFlat, groupOffset, subcolumnBuffer, 0, listLength);
+            } else {
+                for (int j = 0; j < listLength; j++) {
+                    subcolumnBuffer[j] = (list[j] >> shiftAmount) & mask;
+                }
             }
 
             if (encodingType[i] == 2) {
@@ -766,10 +870,7 @@ public class SubcolumnPruneNewTest {
                 continue;
             }
 
-            if (encodingType[i] == 0) {
-                encodePos = bitPackingShifted(list, listLength, shiftAmount, mask,
-                        bitWidthList[i], encodePos, encodedResult, subcolumnBuffer);
-            } else {
+            {
                 int previous = subcolumnBuffer[0];
                 int runCount = 0;
 
@@ -817,15 +918,19 @@ public class SubcolumnPruneNewTest {
         encodePos += 1;
 
         int l = (m + beta - 1) / beta;
-        int[] bitWidthList = new int[l];
+        DecodeScratch scratch = DECODE_SCRATCH.get();
+        scratch.ensureL(l);
+        scratch.ensureListLength(listLength);
+
+        int[] bitWidthList = scratch.bitWidthList;
         encodePos = decodeBitPacking(encodedResult, encodePos, 8, l, bitWidthList);
 
-        int[] encodingType = new int[l];
+        int[] encodingType = scratch.encodingType;
         encodePos = decodeBitPacking(encodedResult, encodePos, 2, l, encodingType);
 
-        int[] subcolumnBuffer = new int[listLength];
-        int[] runLength = new int[listLength];
-        int[] rleValues = new int[listLength];
+        int[] subcolumnBuffer = scratch.subcolumnBuffer;
+        int[] runLength = scratch.runLength;
+        int[] rleValues = scratch.rleValues;
 
         for (int i = 0; i < l; i++) {
             int type = encodingType[i];
@@ -847,10 +952,8 @@ public class SubcolumnPruneNewTest {
                 for (int j = 0; j < index; j++) {
                     int endPos = runLength[j];
                     int value = rleValues[j];
-                    while (currentIndex < endPos) {
-                        subcolumnBuffer[currentIndex] = value;
-                        currentIndex++;
-                    }
+                    Arrays.fill(subcolumnBuffer, currentIndex, endPos, value);
+                    currentIndex = endPos;
                 }
             } else {
                 int cardinality = ((encodedResult[encodePos] & 0xFF) << 8)
@@ -858,7 +961,7 @@ public class SubcolumnPruneNewTest {
                 encodePos += 2;
 
                 int dictBitWidth = bitWidth(cardinality);
-                int[] dictKeyList = new int[cardinality];
+                int[] dictKeyList = scratch.ensureDict(cardinality);
                 encodePos = decodeBitPacking(encodedResult, encodePos, currentBitWidth,
                         cardinality, dictKeyList);
                 encodePos = decodeBitPacking(encodedResult, encodePos, dictBitWidth, listLength,
@@ -1062,7 +1165,7 @@ public class SubcolumnPruneNewTest {
 
     @Test
     public void test0() throws IOException {
-        String parentDir = "D://github/xjz17/subcolumn/";
+        String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
 
         String inputParentDir = parentDir + "dataset/";
         String outputParentDir = parentDir + "result/";
@@ -1170,6 +1273,35 @@ public class SubcolumnPruneNewTest {
         }
 
         writer.close();
+    }
+
+    private static int[] syntheticData(int size, int seed) {
+        int[] data = new int[size];
+        int state = seed;
+        for (int i = 0; i < size; i++) {
+            state = state * 1103515245 + 12345;
+            data[i] = (state >>> 16) & 0x7FFF;
+            if (i % 17 == 0) {
+                data[i] = data[Math.max(0, i - 1)];
+            }
+        }
+        return data;
+    }
+
+    @Test
+    public void testRoundTripAfterOpt3() {
+        int blockSize = 512;
+        int[][] patterns = {
+            syntheticData(2048, 1),
+            syntheticData(4096, 7),
+            syntheticData(8192, 42)
+        };
+        byte[] encoded = new byte[65536];
+        for (int[] data : patterns) {
+            int len = Encoder(data, blockSize, encoded);
+            int[] decoded = Decoder(Arrays.copyOf(encoded, len));
+            Assert.assertArrayEquals(data, decoded);
+        }
     }
 
 }
