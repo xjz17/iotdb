@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -756,6 +757,38 @@ public class SPRINTZBPTest {
             remain_length--;
             BOSBlockDecoder(encoded, decode_pos, value_list, remain_length, value_pos_arr);
         }
+    }
+
+    public static int[] decodeToIntArray(byte[] encoded) {
+        int decode_pos = 0;
+        int length_all = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        int block_size = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
+        int block_num = length_all / block_size;
+        int remain_length = length_all - block_num * block_size;
+
+        int[] value_list = new int[length_all + block_size];
+        block_size--;
+
+        int[] value_pos_arr = new int[1];
+        for (int k = 0; k < block_num; k++) {
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size, value_pos_arr);
+        }
+
+        if (remain_length <= 3) {
+            for (int i = 0; i < remain_length; i++) {
+                int value_end = bytes2Integer(encoded, decode_pos, 4);
+                decode_pos += 4;
+                value_list[value_pos_arr[0]] = value_end;
+                value_pos_arr[0]++;
+            }
+        } else {
+            remain_length--;
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, remain_length, value_pos_arr);
+        }
+        return Arrays.copyOf(value_list, length_all);
     }
 
     public static int DecodeBits(byte[] cur_byte, int bit_width, int[] decode_pos_list) {

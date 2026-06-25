@@ -550,6 +550,39 @@ public class RLEBPLongTest {
         }
     }
 
+    public static long[] decodeToLongArray(byte[] encoded) {
+        int decode_pos = 0;
+        int length_all = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+        int block_size = bytes2Integer(encoded, decode_pos, 4);
+        decode_pos += 4;
+
+        int block_num = length_all / block_size;
+        int remain_length = length_all - block_num * block_size;
+
+        long[] value_list = new long[length_all + block_size];
+        int[] value_pos_arr = new int[1];
+
+        for (int k = 0; k < block_num; k++) {
+            decode_pos =
+                BOSBlockDecoderImprove(
+                    encoded, decode_pos, value_list, block_size, block_size, value_pos_arr);
+        }
+        if (remain_length <= 3) {
+            for (int i = 0; i < remain_length; i++) {
+                long value_end = bytes2Long(encoded, decode_pos, 8);
+                decode_pos += 8;
+                value_list[value_pos_arr[0]] = value_end;
+                value_pos_arr[0]++;
+            }
+        } else {
+            decode_pos =
+                BOSBlockDecoderImprove(
+                    encoded, decode_pos, value_list, block_size, remain_length, value_pos_arr);
+        }
+        return Arrays.copyOf(value_list, length_all);
+    }
+
     public static int getDecimalPrecision(String str) {
         int decimalIndex = str.indexOf(".");
 

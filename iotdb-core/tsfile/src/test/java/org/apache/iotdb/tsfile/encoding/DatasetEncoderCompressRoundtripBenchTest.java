@@ -24,9 +24,11 @@ import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.DictionaryDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionChimpDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV2;
 import org.apache.iotdb.tsfile.encoding.encoder.DictionaryEncoder;
 import org.apache.iotdb.tsfile.encoding.elf.ElfDoublePrecisionBenchCodec;
 import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionChimpEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV2;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import me.lemire.integercompression.FastPFOR;
 import me.lemire.integercompression.IntCompressor;
@@ -88,7 +90,7 @@ public class DatasetEncoderCompressRoundtripBenchTest {
         Pointer lpOverlapped);
   }
 
-  private static final int BENCH_PHASE_REPEATS = 40;
+  private static final int BENCH_PHASE_REPEATS = 100;
 
   private static final int BENCH_LZMA2_PRESET = 3;
 
@@ -105,43 +107,68 @@ public class DatasetEncoderCompressRoundtripBenchTest {
 
   private static final int SUBCOLUMN_BLOCK_SIZE = 512;
 
-  private static final String kBaseDir = "path/to/your/directory/";
+  private static final String kResultEncoderCompressDir =
+      "D:/github/xjz17/subcolumn/result/encoder_compress";
 
-  private static final String kDatasetDir = kBaseDir + "dataset";
-  // private static final String kDatasetDir = "path/to/your/ssd/dataset";
+  /** HDD bench: dataset + bins on E:; metrics CSV on D: repo (s1). */
+  private static final BenchStorageProfile HDD_PROFILE =
+      new BenchStorageProfile(
+          "HDD",
+          "E:/xjz/subcolumn/dataset",
+          "E:/xjz/subcolumn/encode_compress_bins/bins_combined_s1",
+          kResultEncoderCompressDir
+              + "/encoder_compress_roundtrip_write_metrics_combined_s1.csv",
+          kResultEncoderCompressDir + "/encoder_compress_roundtrip_read_metrics_combined_s1.csv",
+          kResultEncoderCompressDir
+              + "/encoder_compress_roundtrip_compress_manifest_combined_s1.csv",
+          "E:/xjz/subcolumn/encode_compress_bins/decoded_csv_combined_s1");
 
-  private static final String kBinOutputDir =
-      kBaseDir + "result/encoder_compress/bins_combined_s1";
-  private static final String kWriteMetricsCsvPath =
-      kBaseDir
-          + "result/encoder_compress/encoder_compress_roundtrip_write_metrics_combined_s1.csv";
-  private static final String kReadMetricsCsvPath =
-      kBaseDir
-          + "result/encoder_compress/encoder_compress_roundtrip_read_metrics_combined_s1.csv";
-  private static final String kCompressManifestCsvPath =
-      kBaseDir
-          + "result/encoder_compress/encoder_compress_roundtrip_compress_manifest_combined_s1.csv";
-  private static final String kDecodedCsvDir =
-      kBaseDir + "result/encoder_compress/decoded_csv_combined_s1";
+  /** SSD bench: dataset + bins on D:; metrics CSV s2 under repo result dir. */
+  private static final BenchStorageProfile SSD_PROFILE =
+      new BenchStorageProfile(
+          "SSD",
+          "D:/github/xjz17/subcolumn/dataset",
+          kResultEncoderCompressDir + "/bins_combined_s2",
+          kResultEncoderCompressDir
+              + "/encoder_compress_roundtrip_write_metrics_combined_s2.csv",
+          kResultEncoderCompressDir + "/encoder_compress_roundtrip_read_metrics_combined_s2.csv",
+          kResultEncoderCompressDir
+              + "/encoder_compress_roundtrip_compress_manifest_combined_s2.csv",
+          kResultEncoderCompressDir + "/decoded_csv_combined_s2");
 
-  // private static final String kBinOutputDir =
-  //     "path/to/your/ssd/encoder_compress/bins_combined_s2";
-  // private static final String kWriteMetricsCsvPath =
-  //     kBaseDir
-  //         + "result/encoder_compress/encoder_compress_roundtrip_write_metrics_combined_s2.csv";
-  // private static final String kReadMetricsCsvPath =
-  //     kBaseDir
-  //         + "result/encoder_compress/encoder_compress_roundtrip_read_metrics_combined_s2.csv";
-  // private static final String kCompressManifestCsvPath =
-  //     kBaseDir
-  //         + "result/encoder_compress/encoder_compress_roundtrip_compress_manifest_combined_s2.csv";
-  // private static final String kDecodedCsvDir =
-  //     "path/to/your/ssd/encoder_compress/decoded_csv_combined_s2";
+  private static final class BenchStorageProfile {
+    final String label;
+    final String datasetDir;
+    final String binOutputDir;
+    final String writeMetricsCsvPath;
+    final String readMetricsCsvPath;
+    final String compressManifestCsvPath;
+    final String decodedCsvDir;
+
+    BenchStorageProfile(
+        String label,
+        String datasetDir,
+        String binOutputDir,
+        String writeMetricsCsvPath,
+        String readMetricsCsvPath,
+        String compressManifestCsvPath,
+        String decodedCsvDir) {
+      this.label = label;
+      this.datasetDir = datasetDir;
+      this.binOutputDir = binOutputDir;
+      this.writeMetricsCsvPath = writeMetricsCsvPath;
+      this.readMetricsCsvPath = readMetricsCsvPath;
+      this.compressManifestCsvPath = compressManifestCsvPath;
+      this.decodedCsvDir = decodedCsvDir;
+    }
+  }
 
   private static final String ALGO_LZMA_CSV = "LZMA";
   private static final String SUFFIX_PLAIN_LZMA = "plain_lzma";
   private static final String ALGO_DICTIONARY_CSV = "DICTIONARY";
   private static final String SUFFIX_DICTIONARY = "dictionary";
+  private static final String ALGO_GORILLA_CSV = "GORILLA";
+  private static final String SUFFIX_GORILLA = "gorilla";
   private static final String ALGO_CHIMP_CSV = "CHIMP";
   private static final String SUFFIX_CHIMP = "chimp";
   private static final String ALGO_ELF_CSV = "ELF";
@@ -156,9 +183,23 @@ public class DatasetEncoderCompressRoundtripBenchTest {
   private static final String SUFFIX_SIMPLE8B = "simple8b";
   private static final String ALGO_FASTPFOR_CSV = "FastPFOR";
   private static final String SUFFIX_FASTPFOR = "fastpfor";
+  private static final String ALGO_RLE_CSV = "RLE";
+  private static final String SUFFIX_RLE = "rle";
+  private static final String ALGO_BITPACKING_CSV = "BITPACKING";
+  private static final String SUFFIX_BITPACKING = "bitpacking";
+  private static final String ALGO_SPRINTZ_CSV = "SPRINTZ";
+  private static final String SUFFIX_SPRINTZ = "sprintz";
+  private static final String ALGO_TS_2DIFF_CSV = "TS_2DIFF";
+  private static final String SUFFIX_TS_2DIFF = "ts_2diff";
+  private static final String ALGO_SUBCOLUMN_CSV = "SUBCOLUMN";
+  private static final String SUFFIX_SUBCOLUMN = "subcolumn";
 
   private static final int BUFF_ALP_BLOCK_SIZE = 512;
   private static final int HBP_BLOCK_SIZE = 512;
+  private static final int SPRINTZ_TS2DIFF_BLOCK_SIZE = 1024;
+  private static final int BITPACKING_BLOCK_SIZE = 1024;
+  private static final int RLE_BLOCK_SIZE = 256;
+  private static final int BENCH_ALGORITHM_COUNT = 16;
 
   private static final class PhaseTiming {
     private long sumEncodeFlushNs;
@@ -326,6 +367,45 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     return out;
   }
 
+  private static int[] scaleTokensToIntsPerSubcolumnBlock(List<String> tokens) {
+    long[] scaled = scaleTokensPerSubcolumnBlock(tokens);
+    int[] out = new int[scaled.length];
+    for (int i = 0; i < scaled.length; i++) {
+      out[i] = (int) scaled[i];
+    }
+    return out;
+  }
+
+  private static byte[] encodeSprintzInts(int[] values) {
+    byte[] scratch = new byte[values.length * 8 + 64];
+    int len = SPRINTZBPTest.BOSEncoder(values, SPRINTZ_TS2DIFF_BLOCK_SIZE, scratch);
+    return Arrays.copyOf(scratch, len);
+  }
+
+  private static byte[] encodeTs2DiffInts(int[] values) {
+    byte[] scratch = new byte[values.length * 8 + 64];
+    int len = TSDIFFTest.BOSEncoderImprove(values, SPRINTZ_TS2DIFF_BLOCK_SIZE, scratch);
+    return Arrays.copyOf(scratch, len);
+  }
+
+  private static byte[] encodeBitPackingInts(int[] values) {
+    byte[] scratch = new byte[values.length * 4 + 64];
+    int len = BPTest.Encoder(values, BITPACKING_BLOCK_SIZE, scratch);
+    return Arrays.copyOf(scratch, len);
+  }
+
+  private static byte[] encodeRleLongs(long[] values) {
+    byte[] scratch = new byte[values.length * 8 + 64];
+    int len = RLEBPLongTest.BOSEncoderImprove(values, RLE_BLOCK_SIZE, scratch);
+    return Arrays.copyOf(scratch, len);
+  }
+
+  private static byte[] encodeSubcolumnInts(int[] values) {
+    byte[] scratch = new byte[values.length * 8 + 64];
+    int len = SubcolumnPruneNewTest.Encoder(values, SUBCOLUMN_BLOCK_SIZE, scratch);
+    return Arrays.copyOf(scratch, len);
+  }
+
   private static double[] parseDoublesFromTokens(List<String> tokens) {
     double[] out = new double[tokens.size()];
     for (int i = 0; i < tokens.size(); i++) {
@@ -469,6 +549,17 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     return out;
   }
 
+  /** Match micro tests: {@code (int)((float) value * mult)} via float cast, not Math.round. */
+  private static int[] scaleDoublesToIntsMicroStyle(double[] values, int maxDecimalPrecision) {
+    int capped = Math.min(maxDecimalPrecision, K_MAX_DECIMAL_PRECISION);
+    int mult = (int) multiplierForBoundedPrecision(capped);
+    int[] out = new int[values.length];
+    for (int i = 0; i < values.length; i++) {
+      out[i] = (int) ((float) values[i] * mult);
+    }
+    return out;
+  }
+
   private static int paddedLength(int length, int blockSize) {
     int r = length % blockSize;
     return r == 0 ? length : length + (blockSize - r);
@@ -492,6 +583,16 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     return baos.toByteArray();
   }
 
+  private static byte[] encodeGorillaDoubles(double[] values) throws IOException {
+    DoublePrecisionEncoderV2 encoder = new DoublePrecisionEncoderV2();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    for (double v : values) {
+      encoder.encode(v, baos);
+    }
+    encoder.flush(baos);
+    return baos.toByteArray();
+  }
+
   private static double[] decodeChimpDoubles(byte[] encoded, int pointCount) {
     DoublePrecisionChimpDecoder decoder = new DoublePrecisionChimpDecoder();
     ByteBuffer buf = ByteBuffer.wrap(encoded);
@@ -502,6 +603,17 @@ public class DatasetEncoderCompressRoundtripBenchTest {
       out[i++] = decoder.readDouble(buf);
     }
     // Assert.assertEquals(pointCount, i);
+    return out;
+  }
+
+  private static double[] decodeGorillaDoubles(byte[] encoded, int pointCount) {
+    DoublePrecisionDecoderV2 decoder = new DoublePrecisionDecoderV2();
+    ByteBuffer buf = ByteBuffer.wrap(encoded);
+    double[] out = new double[pointCount];
+    int i = 0;
+    while (decoder.hasNext(buf)) {
+      out[i++] = decoder.readDouble(buf);
+    }
     return out;
   }
 
@@ -527,6 +639,10 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     //   Assert.assertEquals(
     //       Double.doubleToLongBits(expected[i]), Double.doubleToLongBits(got[i]));
     // }
+  }
+
+  private static void assertGorillaRoundtrip(double[] expected, byte[] encoded) {
+    decodeGorillaDoubles(encoded, expected.length);
   }
 
   private static byte[] encodeBuffFloats(float[] values, int maxDecimalPrecision) {
@@ -718,56 +834,13 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     Files.createDirectories(dir);
   }
 
-  private static String parentDirectory(String path) {
-    String normalized = path.replace('\\', '/');
-    while (normalized.endsWith("/")) {
-      normalized = normalized.substring(0, normalized.length() - 1);
+  private static File[] listBenchmarkDatasetCsvFiles(File sourceDir) {
+    File[] files = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
+    if (files == null || files.length == 0) {
+      return new File[0];
     }
-    int pos = normalized.lastIndexOf('/');
-    return pos < 0 ? "" : normalized.substring(0, pos);
-  }
-
-  private static File mergeSourceCsvsIntoCombined(String sourceDatasetDir) throws IOException {
-    File sourceDir = new File(sourceDatasetDir);
-    File[] sources = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
-    if (sources == null || sources.length == 0) {
-      throw new IOException("No CSV files in " + sourceDatasetDir);
-    }
-    Arrays.sort(sources, Comparator.comparing(File::getName));
-
-    String parent =
-        parentDirectory(sourceDir.getAbsolutePath().replace('\\', '/'));
-    File combinedDir =
-        parent.isEmpty() ? new File("dataset_big_combined") : new File(parent, "dataset_big_combined");
-    ensureDirectory(combinedDir.toPath());
-    File combinedCsv = new File(combinedDir, "combined.csv");
-
-    try (BufferedWriter out =
-        Files.newBufferedWriter(
-            combinedCsv.toPath(),
-            StandardCharsets.UTF_8,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING,
-            StandardOpenOption.WRITE)) {
-      for (File src : sources) {
-        try (java.io.BufferedReader in =
-            Files.newBufferedReader(src.toPath(), StandardCharsets.UTF_8)) {
-          String line;
-          while ((line = in.readLine()) != null) {
-            if (!line.isEmpty() && line.charAt(line.length() - 1) == '\r') {
-              line = line.substring(0, line.length() - 1);
-            }
-            out.write(line);
-            out.newLine();
-          }
-        }
-      }
-    }
-    return combinedCsv;
-  }
-
-  private static File prepareCombinedBenchmarkDataset() throws IOException {
-    return mergeSourceCsvsIntoCombined(kDatasetDir);
+    Arrays.sort(files, Comparator.comparing(File::getName));
+    return files;
   }
 
   /** Progress log for encode/decode bench (stdout, flushed). */
@@ -1202,6 +1275,24 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     return out;
   }
 
+  private static WritePathTimings benchmarkGorillaWritePath(double[] values, Path binPath)
+      throws IOException {
+    byte[] plain0 = encodeGorillaDoubles(values);
+    assertGorillaRoundtrip(values, plain0);
+    WritePathTimings out =
+        benchmarkPlainBytesWritePath(
+            plain0,
+            () -> {
+              try {
+                return encodeGorillaDoubles(values);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            },
+            binPath);
+    return out;
+  }
+
   private static WritePathTimings benchmarkBuffWritePath(
       double[] values, int maxDecimalPrecision, Path binPath) throws IOException {
     float[] floats = doublesToFloats(values);
@@ -1300,6 +1391,36 @@ public class DatasetEncoderCompressRoundtripBenchTest {
         binPath);
   }
 
+  private static WritePathTimings benchmarkRleWritePath(long[] values, Path binPath)
+      throws IOException {
+    byte[] plain0 = encodeRleLongs(values);
+    return benchmarkPlainBytesWritePath(plain0, () -> encodeRleLongs(values), binPath);
+  }
+
+  private static WritePathTimings benchmarkBitPackingWritePath(int[] values, Path binPath)
+      throws IOException {
+    byte[] plain0 = encodeBitPackingInts(values);
+    return benchmarkPlainBytesWritePath(plain0, () -> encodeBitPackingInts(values), binPath);
+  }
+
+  private static WritePathTimings benchmarkSprintzWritePath(int[] values, Path binPath)
+      throws IOException {
+    byte[] plain0 = encodeSprintzInts(values);
+    return benchmarkPlainBytesWritePath(plain0, () -> encodeSprintzInts(values), binPath);
+  }
+
+  private static WritePathTimings benchmarkTs2DiffWritePath(int[] values, Path binPath)
+      throws IOException {
+    byte[] plain0 = encodeTs2DiffInts(values);
+    return benchmarkPlainBytesWritePath(plain0, () -> encodeTs2DiffInts(values), binPath);
+  }
+
+  private static WritePathTimings benchmarkSubcolumnWritePath(int[] values, Path binPath)
+      throws IOException {
+    byte[] plain0 = encodeSubcolumnInts(values);
+    return benchmarkPlainBytesWritePath(plain0, () -> encodeSubcolumnInts(values), binPath);
+  }
+
   private static long avgDatasetVerifyReadDoublesNanos(File csvFile, double[] expected)
       throws IOException {
     long sumVerify = 0;
@@ -1331,6 +1452,55 @@ public class DatasetEncoderCompressRoundtripBenchTest {
       double[] vals = parseDoublesFromTokens(tokens);
       int maxPrec = maxDecimalPrecision(tokens);
       long[] scaled = scaleDoublesToLongsFileWide(vals, maxPrec);
+      Assert.assertArrayEquals(expected, scaled);
+    }
+    return sumVerify / BENCH_PHASE_REPEATS;
+  }
+
+  private static long avgDatasetVerifyReadIntsFileWideNanos(File csvFile, int[] expected)
+      throws IOException {
+    long sumVerify = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      List<String[]> rows = readFullCsvAllColumnsAsStringRows(csvFile);
+      long t1 = System.nanoTime();
+      sumVerify += (t1 - t0);
+      List<String> tokens = firstColumnTokensFromRows(rows);
+      double[] vals = parseDoublesFromTokens(tokens);
+      int maxPrec = maxDecimalPrecision(tokens);
+      int[] scaled = scaleDoublesToIntsFileWide(vals, maxPrec);
+      Assert.assertArrayEquals(expected, scaled);
+    }
+    return sumVerify / BENCH_PHASE_REPEATS;
+  }
+
+  private static long avgDatasetVerifyReadIntsMicroStyleNanos(File csvFile, int[] expected)
+      throws IOException {
+    long sumVerify = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      List<String[]> rows = readFullCsvAllColumnsAsStringRows(csvFile);
+      long t1 = System.nanoTime();
+      sumVerify += (t1 - t0);
+      List<String> tokens = firstColumnTokensFromRows(rows);
+      double[] vals = parseDoublesFromTokens(tokens);
+      int maxPrec = maxDecimalPrecision(tokens);
+      int[] scaled = scaleDoublesToIntsMicroStyle(vals, maxPrec);
+      Assert.assertArrayEquals(expected, scaled);
+    }
+    return sumVerify / BENCH_PHASE_REPEATS;
+  }
+
+  private static long avgDatasetVerifyReadIntsPerSubcolumnBlockNanos(File csvFile, int[] expected)
+      throws IOException {
+    long sumVerify = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      List<String[]> rows = readFullCsvAllColumnsAsStringRows(csvFile);
+      long t1 = System.nanoTime();
+      sumVerify += (t1 - t0);
+      List<String> tokens = firstColumnTokensFromRows(rows);
+      int[] scaled = scaleTokensToIntsPerSubcolumnBlock(tokens);
       Assert.assertArrayEquals(expected, scaled);
     }
     return sumVerify / BENCH_PHASE_REPEATS;
@@ -1413,12 +1583,42 @@ public class DatasetEncoderCompressRoundtripBenchTest {
       System.arraycopy(d, 0, decoded, 0, d.length);
       t1 = System.nanoTime();
       sumDec += (t1 - t0);
-      // if (rep == 0) {
-      //   for (int i = 0; i < expected.length; i++) {
-      //     Assert.assertEquals(
-      //         Double.doubleToLongBits(expected[i]), Double.doubleToLongBits(decoded[i]));
-      //   }
-      // }
+    }
+    out.avgUncompressNs = sumUnc / BENCH_PHASE_REPEATS;
+    out.avgDecodeNs = sumDec / BENCH_PHASE_REPEATS;
+
+    long sumCsv = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      Files.deleteIfExists(decodedCsvPath);
+      sumCsv += timeDecodedDoublesCsvWriteNanos(decodedCsvPath, decoded);
+    }
+    out.avgDecodedCsvWriteNs = sumCsv / BENCH_PHASE_REPEATS;
+    return out;
+  }
+
+  private static ReadPathTimings benchmarkGorillaReadPath(
+      File csvFile, double[] expected, Path binPath, Path decodedCsvPath) throws IOException {
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.UNCOMPRESSED);
+    ReadPathTimings out = new ReadPathTimings();
+    out.avgDatasetVerifyReadNs = avgDatasetVerifyReadDoublesNanos(csvFile, expected);
+    long[] brNs = new long[1];
+    byte[] blob = readBinBlobWithTiming(binPath, brNs);
+    out.avgBinReadNs = brNs[0];
+    out.compressedBytesObserved = blob.length;
+
+    double[] decoded = new double[expected.length];
+    long sumUnc = 0;
+    long sumDec = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      byte[] unc = unCompressor.uncompress(blob);
+      long t1 = System.nanoTime();
+      sumUnc += (t1 - t0);
+      t0 = System.nanoTime();
+      double[] d = decodeGorillaDoubles(unc, expected.length);
+      System.arraycopy(d, 0, decoded, 0, d.length);
+      t1 = System.nanoTime();
+      sumDec += (t1 - t0);
     }
     out.avgUncompressNs = sumUnc / BENCH_PHASE_REPEATS;
     out.avgDecodeNs = sumDec / BENCH_PHASE_REPEATS;
@@ -1550,6 +1750,184 @@ public class DatasetEncoderCompressRoundtripBenchTest {
     out.avgUncompressNs = sumUnc / BENCH_PHASE_REPEATS;
     out.avgDecodeNs = sumDec / BENCH_PHASE_REPEATS;
 
+    long sumCsv = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      Files.deleteIfExists(decodedCsvPath);
+      sumCsv += timeDecodedLongCsvWriteNanos(decodedCsvPath, decoded);
+    }
+    out.avgDecodedCsvWriteNs = sumCsv / BENCH_PHASE_REPEATS;
+    return out;
+  }
+
+  private static ReadPathTimings benchmarkPlainIntEncodedReadPath(
+      File csvFile,
+      int[] expected,
+      Path binPath,
+      Path decodedCsvPath,
+      java.util.function.Function<byte[], int[]> decodePlain,
+      long avgVerifyNs)
+      throws IOException {
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.UNCOMPRESSED);
+    ReadPathTimings out = new ReadPathTimings();
+    out.avgDatasetVerifyReadNs = avgVerifyNs;
+    long[] brNs = new long[1];
+    byte[] blob = readBinBlobWithTiming(binPath, brNs);
+    out.avgBinReadNs = brNs[0];
+    out.compressedBytesObserved = blob.length;
+
+    long sumUnc = 0;
+    long sumDec = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      byte[] unc = unCompressor.uncompress(blob);
+      long t1 = System.nanoTime();
+      sumUnc += (t1 - t0);
+      t0 = System.nanoTime();
+      // Match micro: decode in timed loop, discard returned int[] (do not assign to outer ref).
+      decodePlain.apply(unc);
+      t1 = System.nanoTime();
+      sumDec += (t1 - t0);
+    }
+    out.avgUncompressNs = sumUnc / BENCH_PHASE_REPEATS;
+    out.avgDecodeNs = sumDec / BENCH_PHASE_REPEATS;
+
+    int[] decoded = decodePlain.apply(unCompressor.uncompress(blob));
+    long sumCsv = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      Files.deleteIfExists(decodedCsvPath);
+      long[] asLong = new long[decoded.length];
+      for (int i = 0; i < decoded.length; i++) {
+        asLong[i] = decoded[i];
+      }
+      sumCsv += timeDecodedLongCsvWriteNanos(decodedCsvPath, asLong);
+    }
+    out.avgDecodedCsvWriteNs = sumCsv / BENCH_PHASE_REPEATS;
+    return out;
+  }
+
+  /**
+   * Micro-style void decode in the timed loop (return value discarded). Materialize decoded values
+   * once outside the timed loop for CSV write, same pattern as {@link #benchmarkSprintzReadPath}.
+   */
+  private static ReadPathTimings benchmarkMicroStyleVoidIntDecodeReadPath(
+      File csvFile,
+      int[] expected,
+      Path binPath,
+      Path decodedCsvPath,
+      java.util.function.Consumer<byte[]> decodeTimed,
+      java.util.function.Function<byte[], int[]> decodeMaterialize,
+      long avgVerifyNs)
+      throws IOException {
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.UNCOMPRESSED);
+    ReadPathTimings out = new ReadPathTimings();
+    out.avgDatasetVerifyReadNs = avgVerifyNs;
+    long[] brNs = new long[1];
+    byte[] blob = readBinBlobWithTiming(binPath, brNs);
+    out.avgBinReadNs = brNs[0];
+    out.compressedBytesObserved = blob.length;
+
+    long sumUnc = 0;
+    long sumDec = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      byte[] unc = unCompressor.uncompress(blob);
+      long t1 = System.nanoTime();
+      sumUnc += (t1 - t0);
+      t0 = System.nanoTime();
+      decodeTimed.accept(unc);
+      t1 = System.nanoTime();
+      sumDec += (t1 - t0);
+    }
+    out.avgUncompressNs = sumUnc / BENCH_PHASE_REPEATS;
+    out.avgDecodeNs = sumDec / BENCH_PHASE_REPEATS;
+
+    int[] decoded = decodeMaterialize.apply(unCompressor.uncompress(blob));
+    long sumCsv = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      Files.deleteIfExists(decodedCsvPath);
+      long[] asLong = new long[decoded.length];
+      for (int i = 0; i < decoded.length; i++) {
+        asLong[i] = decoded[i];
+      }
+      sumCsv += timeDecodedLongCsvWriteNanos(decodedCsvPath, asLong);
+    }
+    out.avgDecodedCsvWriteNs = sumCsv / BENCH_PHASE_REPEATS;
+    return out;
+  }
+
+  private static ReadPathTimings benchmarkSprintzReadPath(
+      File csvFile, int[] expected, Path binPath, Path decodedCsvPath) throws IOException {
+    return benchmarkMicroStyleVoidIntDecodeReadPath(
+        csvFile,
+        expected,
+        binPath,
+        decodedCsvPath,
+        SPRINTZBPTest::BOSDecoder,
+        SPRINTZBPTest::decodeToIntArray,
+        avgDatasetVerifyReadIntsMicroStyleNanos(csvFile, expected));
+  }
+
+  private static ReadPathTimings benchmarkTs2DiffReadPath(
+      File csvFile, int[] expected, Path binPath, Path decodedCsvPath) throws IOException {
+    return benchmarkMicroStyleVoidIntDecodeReadPath(
+        csvFile,
+        expected,
+        binPath,
+        decodedCsvPath,
+        TSDIFFTest::BOSDecoderImprove,
+        TSDIFFTest::decodeToIntArrayImprove,
+        avgDatasetVerifyReadIntsMicroStyleNanos(csvFile, expected));
+  }
+
+  private static ReadPathTimings benchmarkSubcolumnReadPath(
+      File csvFile, int[] expected, Path binPath, Path decodedCsvPath) throws IOException {
+    return benchmarkMicroStyleVoidIntDecodeReadPath(
+        csvFile,
+        expected,
+        binPath,
+        decodedCsvPath,
+        unc -> SubcolumnPruneNewTest.Decoder(unc),
+        SubcolumnPruneNewTest::Decoder,
+        avgDatasetVerifyReadIntsMicroStyleNanos(csvFile, expected));
+  }
+
+  private static ReadPathTimings benchmarkBitPackingReadPath(
+      File csvFile, int[] expected, Path binPath, Path decodedCsvPath) throws IOException {
+    return benchmarkPlainIntEncodedReadPath(
+        csvFile,
+        expected,
+        binPath,
+        decodedCsvPath,
+        BPTest::Decoder,
+        avgDatasetVerifyReadIntsMicroStyleNanos(csvFile, expected));
+  }
+
+  private static ReadPathTimings benchmarkRleReadPath(
+      File csvFile, long[] expected, Path binPath, Path decodedCsvPath) throws IOException {
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.UNCOMPRESSED);
+    ReadPathTimings out = new ReadPathTimings();
+    out.avgDatasetVerifyReadNs = avgDatasetVerifyReadLongsFileWideNanos(csvFile, expected);
+    long[] brNs = new long[1];
+    byte[] blob = readBinBlobWithTiming(binPath, brNs);
+    out.avgBinReadNs = brNs[0];
+    out.compressedBytesObserved = blob.length;
+
+    long sumUnc = 0;
+    long sumDec = 0;
+    for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
+      long t0 = System.nanoTime();
+      byte[] unc = unCompressor.uncompress(blob);
+      long t1 = System.nanoTime();
+      sumUnc += (t1 - t0);
+      t0 = System.nanoTime();
+      RLEBPLongTest.BOSDecoderImprove(unc);
+      t1 = System.nanoTime();
+      sumDec += (t1 - t0);
+    }
+    out.avgUncompressNs = sumUnc / BENCH_PHASE_REPEATS;
+    out.avgDecodeNs = sumDec / BENCH_PHASE_REPEATS;
+
+    long[] decoded = RLEBPLongTest.decodeToLongArray(unCompressor.uncompress(blob));
     long sumCsv = 0;
     for (int rep = 0; rep < BENCH_PHASE_REPEATS; rep++) {
       Files.deleteIfExists(decodedCsvPath);
@@ -1910,23 +2288,40 @@ public class DatasetEncoderCompressRoundtripBenchTest {
   }
 
   @Test
-  public void testEncodeCompressWriteBinCsvIfPresent() throws IOException {
-    File sourceDir = new File(kDatasetDir);
-    Assume.assumeTrue("Skip when CSV dir missing: " + kDatasetDir, sourceDir.isDirectory());
-    File[] sourceCsvs = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
-    Assume.assumeTrue(sourceCsvs != null && sourceCsvs.length > 0);
+  public void testHddEncodeCompressWriteBinCsvIfPresent() throws IOException {
+    runEncodeCompressWriteBinCsv(HDD_PROFILE);
+  }
 
-    File combinedCsv = prepareCombinedBenchmarkDataset();
-    Assume.assumeTrue("Skip when combined CSV missing: " + combinedCsv, combinedCsv.isFile());
-    File[] csvFiles = new File[] {combinedCsv};
+  @Test
+  public void testHddDecodeBinWriteDecodedCsvIfPresent() throws IOException {
+    runDecodeBinWriteDecodedCsv(HDD_PROFILE);
+  }
 
-    Path binsDir = Paths.get(kBinOutputDir);
-    Path decodedRoot = Paths.get(kDecodedCsvDir);
+  @Test
+  public void testSsdEncodeCompressWriteBinCsvIfPresent() throws IOException {
+    runEncodeCompressWriteBinCsv(SSD_PROFILE);
+  }
+
+  @Test
+  public void testSsdDecodeBinWriteDecodedCsvIfPresent() throws IOException {
+    runDecodeBinWriteDecodedCsv(SSD_PROFILE);
+  }
+
+  private static void runEncodeCompressWriteBinCsv(BenchStorageProfile profile) throws IOException {
+    File sourceDir = new File(profile.datasetDir);
+    Assume.assumeTrue(
+        "Skip when CSV dir missing: " + profile.datasetDir, sourceDir.isDirectory());
+    File[] csvFiles = listBenchmarkDatasetCsvFiles(sourceDir);
+    Assume.assumeTrue(
+        "Skip when no CSV files in " + profile.datasetDir, csvFiles.length > 0);
+
+    Path binsDir = Paths.get(profile.binOutputDir);
+    Path decodedRoot = Paths.get(profile.decodedCsvDir);
     ensureDirectory(binsDir);
     ensureDirectory(decodedRoot);
 
-    Path writeCsvPath = Paths.get(kWriteMetricsCsvPath);
-    Path manifestPath = Paths.get(kCompressManifestCsvPath);
+    Path writeCsvPath = Paths.get(profile.writeMetricsCsvPath);
+    Path manifestPath = Paths.get(profile.compressManifestCsvPath);
     ensureDirectory(writeCsvPath.getParent());
     ensureDirectory(manifestPath.getParent());
 
@@ -1955,8 +2350,11 @@ public class DatasetEncoderCompressRoundtripBenchTest {
               + "Uncompressed Bytes,Raw Plain Codec\n");
 
       System.out.printf(
-          "[DatasetEncoderCompressBinBench] encode-start | sourceDir=%s | combined=%s | binsDir=%s%n",
-          sourceDir.getAbsolutePath(), combinedCsv.getAbsolutePath(), binsDir.toAbsolutePath());
+          "[DatasetEncoderCompressBinBench] encode-start | profile=%s | sourceDir=%s | datasets=%d | binsDir=%s%n",
+          profile.label,
+          sourceDir.getAbsolutePath(),
+          csvFiles.length,
+          binsDir.toAbsolutePath());
       System.out.flush();
 
       for (File f : csvFiles) {
@@ -1973,8 +2371,9 @@ public class DatasetEncoderCompressRoundtripBenchTest {
         int boundedPrec = Math.min(maxPrecAll, K_MAX_DECIMAL_PRECISION);
         long multiplier = multiplierForBoundedPrecision(maxPrecAll);
 
-        int[] intScaled = scaleDoublesToIntsFileWide(dValues, maxPrecAll);
+        int[] intScaled = scaleDoublesToIntsMicroStyle(dValues, maxPrecAll);
         long[] hbpValues = scaleDoublesToLongsFileWide(dValues, maxPrecAll);
+        long[] rleValues = hbpValues;
 
         logBenchDatasetHeader("encode", datasetName, f, dValues.length);
 
@@ -2014,6 +2413,21 @@ public class DatasetEncoderCompressRoundtripBenchTest {
             srcPath,
             dictValues.length,
             wDc.encodedUncompressedBytes,
+            0);
+
+        Path binGorilla = binsDir.resolve(datasetName + "_" + SUFFIX_GORILLA + ".bin");
+        logBenchProgress("encode", datasetName, ALGO_GORILLA_CSV, dValues.length, binGorilla);
+        WritePathTimings wGorilla = benchmarkGorillaWritePath(dValues, binGorilla);
+        wGorilla.avgDatasetReadNs = avgReadFullCsvNs;
+        writeEncodeMetricsRow(
+            writeMetrics, datasetName, ALGO_GORILLA_CSV, wGorilla, dValues.length, boundedPrec, multiplier);
+        writeManifestRow(
+            manifest,
+            datasetName,
+            ALGO_GORILLA_CSV,
+            srcPath,
+            dValues.length,
+            wGorilla.encodedUncompressedBytes,
             0);
 
         Path binChimp = binsDir.resolve(datasetName + "_" + SUFFIX_CHIMP + ".bin");
@@ -2139,33 +2553,140 @@ public class DatasetEncoderCompressRoundtripBenchTest {
             wFp.encodedUncompressedBytes,
             0);
 
+        Path binRle = binsDir.resolve(datasetName + "_" + SUFFIX_RLE + ".bin");
+        logBenchProgress("encode", datasetName, ALGO_RLE_CSV, rleValues.length, binRle);
+        WritePathTimings wRle = benchmarkRleWritePath(rleValues, binRle);
+        wRle.avgDatasetReadNs = avgReadFullCsvNs;
+        writeEncodeMetricsRow(
+            writeMetrics,
+            datasetName,
+            ALGO_RLE_CSV,
+            wRle,
+            rleValues.length,
+            boundedPrec,
+            multiplier);
+        writeManifestRow(
+            manifest,
+            datasetName,
+            ALGO_RLE_CSV,
+            srcPath,
+            rleValues.length,
+            wRle.encodedUncompressedBytes,
+            0);
+
+        Path binBitPacking = binsDir.resolve(datasetName + "_" + SUFFIX_BITPACKING + ".bin");
+        logBenchProgress("encode", datasetName, ALGO_BITPACKING_CSV, intScaled.length, binBitPacking);
+        WritePathTimings wBp = benchmarkBitPackingWritePath(intScaled, binBitPacking);
+        wBp.avgDatasetReadNs = avgReadFullCsvNs;
+        writeEncodeMetricsRow(
+            writeMetrics,
+            datasetName,
+            ALGO_BITPACKING_CSV,
+            wBp,
+            intScaled.length,
+            boundedPrec,
+            multiplier);
+        writeManifestRow(
+            manifest,
+            datasetName,
+            ALGO_BITPACKING_CSV,
+            srcPath,
+            intScaled.length,
+            wBp.encodedUncompressedBytes,
+            0);
+
+        Path binSprintz = binsDir.resolve(datasetName + "_" + SUFFIX_SPRINTZ + ".bin");
+        logBenchProgress("encode", datasetName, ALGO_SPRINTZ_CSV, intScaled.length, binSprintz);
+        WritePathTimings wSprintz = benchmarkSprintzWritePath(intScaled, binSprintz);
+        wSprintz.avgDatasetReadNs = avgReadFullCsvNs;
+        writeEncodeMetricsRow(
+            writeMetrics,
+            datasetName,
+            ALGO_SPRINTZ_CSV,
+            wSprintz,
+            intScaled.length,
+            boundedPrec,
+            multiplier);
+        writeManifestRow(
+            manifest,
+            datasetName,
+            ALGO_SPRINTZ_CSV,
+            srcPath,
+            intScaled.length,
+            wSprintz.encodedUncompressedBytes,
+            0);
+
+        Path binTs2Diff = binsDir.resolve(datasetName + "_" + SUFFIX_TS_2DIFF + ".bin");
+        logBenchProgress("encode", datasetName, ALGO_TS_2DIFF_CSV, intScaled.length, binTs2Diff);
+        WritePathTimings wTs2Diff = benchmarkTs2DiffWritePath(intScaled, binTs2Diff);
+        wTs2Diff.avgDatasetReadNs = avgReadFullCsvNs;
+        writeEncodeMetricsRow(
+            writeMetrics,
+            datasetName,
+            ALGO_TS_2DIFF_CSV,
+            wTs2Diff,
+            intScaled.length,
+            boundedPrec,
+            multiplier);
+        writeManifestRow(
+            manifest,
+            datasetName,
+            ALGO_TS_2DIFF_CSV,
+            srcPath,
+            intScaled.length,
+            wTs2Diff.encodedUncompressedBytes,
+            0);
+
+        Path binSubcolumn = binsDir.resolve(datasetName + "_" + SUFFIX_SUBCOLUMN + ".bin");
+        logBenchProgress(
+            "encode", datasetName, ALGO_SUBCOLUMN_CSV, intScaled.length, binSubcolumn);
+        WritePathTimings wSubcolumn = benchmarkSubcolumnWritePath(intScaled, binSubcolumn);
+        wSubcolumn.avgDatasetReadNs = avgReadFullCsvNs;
+        writeEncodeMetricsRow(
+            writeMetrics,
+            datasetName,
+            ALGO_SUBCOLUMN_CSV,
+            wSubcolumn,
+            intScaled.length,
+            boundedPrec,
+            multiplier);
+        writeManifestRow(
+            manifest,
+            datasetName,
+            ALGO_SUBCOLUMN_CSV,
+            srcPath,
+            intScaled.length,
+            wSubcolumn.encodedUncompressedBytes,
+            0);
+
         System.out.printf(
-            "[DatasetEncoderCompressBinBench] encode-done | dataset=%s | algorithms=10%n",
-            datasetName);
+            "[DatasetEncoderCompressBinBench] encode-done | profile=%s | dataset=%s | algorithms=%d%n",
+            profile.label,
+            datasetName,
+            BENCH_ALGORITHM_COUNT);
         System.out.flush();
       }
       System.out.printf(
-          "[DatasetEncoderCompressBinBench] encode-finish | writeMetrics=%s | manifest=%s%n",
-          writeCsvPath.toAbsolutePath(), manifestPath.toAbsolutePath());
+          "[DatasetEncoderCompressBinBench] encode-finish | profile=%s | writeMetrics=%s | manifest=%s%n",
+          profile.label,
+          writeCsvPath.toAbsolutePath(),
+          manifestPath.toAbsolutePath());
       System.out.flush();
     }
   }
 
-  @Test
-  public void testDecodeBinWriteDecodedCsvIfPresent() throws IOException {
-    File sourceDir = new File(kDatasetDir);
-    Assume.assumeTrue("Skip when CSV dir missing: " + kDatasetDir, sourceDir.isDirectory());
-    File[] sourceCsvs = sourceDir.listFiles((dir, name) -> name.endsWith(".csv"));
-    Assume.assumeTrue(sourceCsvs != null && sourceCsvs.length > 0);
+  private static void runDecodeBinWriteDecodedCsv(BenchStorageProfile profile) throws IOException {
+    File sourceDir = new File(profile.datasetDir);
+    Assume.assumeTrue(
+        "Skip when CSV dir missing: " + profile.datasetDir, sourceDir.isDirectory());
+    File[] csvFiles = listBenchmarkDatasetCsvFiles(sourceDir);
+    Assume.assumeTrue(
+        "Skip when no CSV files in " + profile.datasetDir, csvFiles.length > 0);
 
-    File combinedCsv = prepareCombinedBenchmarkDataset();
-    Assume.assumeTrue("Skip when combined CSV missing: " + combinedCsv, combinedCsv.isFile());
-    File[] csvFiles = new File[] {combinedCsv};
-
-    Path binsDir = Paths.get(kBinOutputDir);
-    Path decodedRoot = Paths.get(kDecodedCsvDir);
-    Path readCsvPath = Paths.get(kReadMetricsCsvPath);
-    Path manifestPath = Paths.get(kCompressManifestCsvPath);
+    Path binsDir = Paths.get(profile.binOutputDir);
+    Path decodedRoot = Paths.get(profile.decodedCsvDir);
+    Path readCsvPath = Paths.get(profile.readMetricsCsvPath);
+    Path manifestPath = Paths.get(profile.compressManifestCsvPath);
 
     ensureDirectory(decodedRoot);
     ensureDirectory(readCsvPath.getParent());
@@ -2187,8 +2708,11 @@ public class DatasetEncoderCompressRoundtripBenchTest {
               + "TsFile Size Bytes\n");
 
       System.out.printf(
-          "[DatasetEncoderCompressBinBench] decode-start | sourceDir=%s | combined=%s | binsDir=%s%n",
-          sourceDir.getAbsolutePath(), combinedCsv.getAbsolutePath(), binsDir.toAbsolutePath());
+          "[DatasetEncoderCompressBinBench] decode-start | profile=%s | sourceDir=%s | datasets=%d | binsDir=%s%n",
+          profile.label,
+          sourceDir.getAbsolutePath(),
+          csvFiles.length,
+          binsDir.toAbsolutePath());
       System.out.flush();
 
       for (File f : csvFiles) {
@@ -2197,15 +2721,21 @@ public class DatasetEncoderCompressRoundtripBenchTest {
         double[] expectedDoubles = parseDoublesFromTokens(tokens);
         long[] dictValues = scaleTokensPerSubcolumnBlock(tokens);
         int maxPrecAll = maxDecimalPrecision(tokens);
-        int[] intScaled = scaleDoublesToIntsFileWide(expectedDoubles, maxPrecAll);
+        int[] intScaled = scaleDoublesToIntsMicroStyle(expectedDoubles, maxPrecAll);
         long[] hbpValues = scaleDoublesToLongsFileWide(expectedDoubles, maxPrecAll);
+        long[] rleValues = hbpValues;
         Assert.assertEquals(expectedDoubles.length, dictValues.length);
         String datasetName = stripCsvExtension(f.getName());
 
         Map<String, ManifestRecord> rows = manifestMap.get(datasetName);
         Assert.assertNotNull(
-            "No manifest rows for dataset " + datasetName
-                + " (run testEncodeCompressWriteBinCsvIfPresent first)",
+            "No manifest rows for dataset "
+                + datasetName
+                + " (run "
+                + (profile.label.equals("HDD")
+                    ? "testHddEncodeCompressWriteBinCsvIfPresent"
+                    : "testSsdEncodeCompressWriteBinCsvIfPresent")
+                + " first)",
             rows);
 
         logBenchDatasetHeader("decode", datasetName, f, expectedDoubles.length);
@@ -2233,6 +2763,15 @@ public class DatasetEncoderCompressRoundtripBenchTest {
         ReadPathTimings rDc =
             benchmarkDictionaryReadPath(f, dictValues, binDict, decodedDict);
         writeReadMetricsRow(readMetrics, datasetName, ALGO_DICTIONARY_CSV, rDc, dictValues.length);
+
+        Assert.assertNotNull(rows.get(ALGO_GORILLA_CSV));
+        Path binGorilla = binsDir.resolve(datasetName + "_" + SUFFIX_GORILLA + ".bin");
+        Assert.assertTrue("Missing bin: " + binGorilla, Files.isRegularFile(binGorilla));
+        Path decodedGorilla = decodedRoot.resolve(datasetName + "_" + SUFFIX_GORILLA + "_decoded.csv");
+        logBenchProgress("decode", datasetName, ALGO_GORILLA_CSV, expectedDoubles.length, binGorilla);
+        ReadPathTimings rGorilla =
+            benchmarkGorillaReadPath(f, expectedDoubles, binGorilla, decodedGorilla);
+        writeReadMetricsRow(readMetrics, datasetName, ALGO_GORILLA_CSV, rGorilla, expectedDoubles.length);
 
         Assert.assertNotNull(rows.get(ALGO_CHIMP_CSV));
         Path binChimp = binsDir.resolve(datasetName + "_" + SUFFIX_CHIMP + ".bin");
@@ -2298,13 +2837,65 @@ public class DatasetEncoderCompressRoundtripBenchTest {
             benchmarkFastPforReadPath(f, intScaled, binFp, decodedFp);
         writeReadMetricsRow(readMetrics, datasetName, ALGO_FASTPFOR_CSV, rFp, intScaled.length);
 
+        Assert.assertNotNull(rows.get(ALGO_RLE_CSV));
+        Path binRle = binsDir.resolve(datasetName + "_" + SUFFIX_RLE + ".bin");
+        Assert.assertTrue("Missing bin: " + binRle, Files.isRegularFile(binRle));
+        Path decodedRle = decodedRoot.resolve(datasetName + "_" + SUFFIX_RLE + "_decoded.csv");
+        logBenchProgress("decode", datasetName, ALGO_RLE_CSV, rleValues.length, binRle);
+        ReadPathTimings rRle = benchmarkRleReadPath(f, rleValues, binRle, decodedRle);
+        writeReadMetricsRow(readMetrics, datasetName, ALGO_RLE_CSV, rRle, rleValues.length);
+
+        Assert.assertNotNull(rows.get(ALGO_BITPACKING_CSV));
+        Path binBitPacking = binsDir.resolve(datasetName + "_" + SUFFIX_BITPACKING + ".bin");
+        Assert.assertTrue("Missing bin: " + binBitPacking, Files.isRegularFile(binBitPacking));
+        Path decodedBitPacking =
+            decodedRoot.resolve(datasetName + "_" + SUFFIX_BITPACKING + "_decoded.csv");
+        logBenchProgress("decode", datasetName, ALGO_BITPACKING_CSV, intScaled.length, binBitPacking);
+        ReadPathTimings rBp =
+            benchmarkBitPackingReadPath(f, intScaled, binBitPacking, decodedBitPacking);
+        writeReadMetricsRow(readMetrics, datasetName, ALGO_BITPACKING_CSV, rBp, intScaled.length);
+
+        Assert.assertNotNull(rows.get(ALGO_SPRINTZ_CSV));
+        Path binSprintz = binsDir.resolve(datasetName + "_" + SUFFIX_SPRINTZ + ".bin");
+        Assert.assertTrue("Missing bin: " + binSprintz, Files.isRegularFile(binSprintz));
+        Path decodedSprintz = decodedRoot.resolve(datasetName + "_" + SUFFIX_SPRINTZ + "_decoded.csv");
+        logBenchProgress("decode", datasetName, ALGO_SPRINTZ_CSV, intScaled.length, binSprintz);
+        ReadPathTimings rSprintz =
+            benchmarkSprintzReadPath(f, intScaled, binSprintz, decodedSprintz);
+        writeReadMetricsRow(readMetrics, datasetName, ALGO_SPRINTZ_CSV, rSprintz, intScaled.length);
+
+        Assert.assertNotNull(rows.get(ALGO_TS_2DIFF_CSV));
+        Path binTs2Diff = binsDir.resolve(datasetName + "_" + SUFFIX_TS_2DIFF + ".bin");
+        Assert.assertTrue("Missing bin: " + binTs2Diff, Files.isRegularFile(binTs2Diff));
+        Path decodedTs2Diff =
+            decodedRoot.resolve(datasetName + "_" + SUFFIX_TS_2DIFF + "_decoded.csv");
+        logBenchProgress("decode", datasetName, ALGO_TS_2DIFF_CSV, intScaled.length, binTs2Diff);
+        ReadPathTimings rTs2Diff =
+            benchmarkTs2DiffReadPath(f, intScaled, binTs2Diff, decodedTs2Diff);
+        writeReadMetricsRow(readMetrics, datasetName, ALGO_TS_2DIFF_CSV, rTs2Diff, intScaled.length);
+
+        Assert.assertNotNull(rows.get(ALGO_SUBCOLUMN_CSV));
+        Path binSubcolumn = binsDir.resolve(datasetName + "_" + SUFFIX_SUBCOLUMN + ".bin");
+        Assert.assertTrue("Missing bin: " + binSubcolumn, Files.isRegularFile(binSubcolumn));
+        Path decodedSubcolumn =
+            decodedRoot.resolve(datasetName + "_" + SUFFIX_SUBCOLUMN + "_decoded.csv");
+        logBenchProgress(
+            "decode", datasetName, ALGO_SUBCOLUMN_CSV, intScaled.length, binSubcolumn);
+        ReadPathTimings rSubcolumn =
+            benchmarkSubcolumnReadPath(f, intScaled, binSubcolumn, decodedSubcolumn);
+        writeReadMetricsRow(
+            readMetrics, datasetName, ALGO_SUBCOLUMN_CSV, rSubcolumn, intScaled.length);
+
         System.out.printf(
-            "[DatasetEncoderCompressBinBench] decode-done | dataset=%s | algorithms=10%n",
-            datasetName);
+            "[DatasetEncoderCompressBinBench] decode-done | profile=%s | dataset=%s | algorithms=%d%n",
+            profile.label,
+            datasetName,
+            BENCH_ALGORITHM_COUNT);
         System.out.flush();
       }
       System.out.printf(
-          "[DatasetEncoderCompressBinBench] decode-finish | readMetrics=%s%n",
+          "[DatasetEncoderCompressBinBench] decode-finish | profile=%s | readMetrics=%s%n",
+          profile.label,
           readCsvPath.toAbsolutePath());
       System.out.flush();
     }
