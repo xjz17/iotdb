@@ -280,7 +280,8 @@ public class TSDIFFSubcolumnPruneNewTest {
 
   @Test
   public void test0() throws IOException {
-    String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+    // String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+    String parentDir = "D:/github/xjz17/subcolumn/";
 
     String inputParentDir = parentDir + "dataset/";
 
