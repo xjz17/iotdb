@@ -227,6 +227,9 @@ public class SubcolumnPruneNewTest {
 
     private static int bitPackingAt(int[] numbers, int offset, int bitWidth, int encodePos,
             byte[] encodedResult, int numValues) {
+        if (bitWidth == 0) {
+            return encodePos;
+        }
         if (bitWidth == 1) {
             return bitPackingWidth1At(numbers, offset, encodePos, encodedResult, numValues);
         }
@@ -731,6 +734,36 @@ public class SubcolumnPruneNewTest {
         return distinctCount;
     }
 
+    private static int countGroupedRunsAndDistinctUntilLimit(
+            int[] values,
+            int length,
+            int shiftAmount,
+            int mask,
+            int distinctLimit,
+            int[] out) {
+        int previous = (values[0] >> shiftAmount) & mask;
+        int seenMask = 1 << previous;
+        int runs = 1;
+        int distinctCount = 1;
+
+        for (int i = 1; i < length; i++) {
+            int current = (values[i] >> shiftAmount) & mask;
+            if (current != previous) {
+                runs++;
+                previous = current;
+            }
+            int bit = 1 << current;
+            if ((seenMask & bit) == 0) {
+                seenMask |= bit;
+                distinctCount++;
+            }
+        }
+
+        out[0] = runs;
+        out[1] = distinctCount >= distinctLimit ? distinctLimit : distinctCount;
+        return distinctCount;
+    }
+
     private static void extractAllGroups(
             EncodeScratch scratch,
             int[] x,
@@ -784,6 +817,7 @@ public class SubcolumnPruneNewTest {
         int[] rleCostSingle = scratch.rleCostSingle;
         int[] deCostSingle = scratch.deCostSingle;
         int[] encodingTypeTemp = scratch.encodingTypeTemp;
+        int[] groupStats = scratch.minDelta3;
 
         int[] threshold = blockSize == 512 ? THRESHOLD_512 : thresholdForBlockSize(blockSize);
         int lengthBitWidth = bitWidth(xLength);
@@ -861,15 +895,6 @@ public class SubcolumnPruneNewTest {
                     }
                 }
 
-                if (rleCostMax < currentCost) {
-                    int runCount = countGroupedRuns(x, xLength, groupStart, mask);
-                    int rleCost = runCount * (beta + lengthBitWidth);
-                    if (rleCost < currentCost) {
-                        currentCost = rleCost;
-                        encodingTypeTemp[i] = 1;
-                    }
-                }
-
                 int deCostMax = 0;
                 for (int j = groupStart; j < groupEnd; j++) {
                     if (deCostSingle[j] > deCostMax) {
@@ -877,9 +902,34 @@ public class SubcolumnPruneNewTest {
                     }
                 }
 
+                boolean needRle = rleCostMax < currentCost;
+                boolean maybeNeedDe = deCostMax < currentCost;
+                int groupedRunCount = -1;
+                int groupedDistinctCount = -1;
+
+                if (needRle && maybeNeedDe) {
+                    countGroupedRunsAndDistinctUntilLimit(
+                            x, xLength, groupStart, mask, betaThreshold, groupStats);
+                    groupedRunCount = groupStats[0];
+                    groupedDistinctCount = groupStats[1];
+                }
+
+                if (needRle) {
+                    int runCount = groupedRunCount >= 0
+                            ? groupedRunCount
+                            : countGroupedRuns(x, xLength, groupStart, mask);
+                    int rleCost = runCount * (beta + lengthBitWidth);
+                    if (rleCost < currentCost) {
+                        currentCost = rleCost;
+                        encodingTypeTemp[i] = 1;
+                    }
+                }
+
                 if (deCostMax < currentCost) {
-                    int distinctCount = countDistinctValuesUntilLimit(
-                            x, xLength, groupStart, mask, betaThreshold);
+                    int distinctCount = groupedDistinctCount >= 0
+                            ? groupedDistinctCount
+                            : countDistinctValuesUntilLimit(
+                                    x, xLength, groupStart, mask, betaThreshold);
                     if (distinctCount < betaThreshold) {
                         int deCost = xLength * bitWidth(distinctCount) + distinctCount * beta;
                         if (deCost < currentCost) {
@@ -1067,10 +1117,20 @@ public class SubcolumnPruneNewTest {
         int mask = (1 << betaValue) - 1;
         boolean useCache = useGroupCache(scratch, betaValue, l, listLength);
 
-        for (int i = 0; i < l; i++) {
-            if (useCache) {
+        if (useCache) {
+            for (int i = 0; i < l; i++) {
                 bitWidthList[i] = bitWidth(scratch.groupMax[i]);
-            } else {
+            }
+        } else if (betaValue == 1) {
+            int unionValue = 0;
+            for (int j = 0; j < listLength; j++) {
+                unionValue |= list[j];
+            }
+            for (int i = 0; i < l; i++) {
+                bitWidthList[i] = (unionValue >>> i) & 1;
+            }
+        } else {
+            for (int i = 0; i < l; i++) {
                 int shiftAmount = i * betaValue;
                 int maxValuePart = 0;
                 for (int j = 0; j < listLength; j++) {
