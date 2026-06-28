@@ -593,27 +593,28 @@ public class SubcolumnPruneNewTest {
         int lengthBitWidth = bitWidth(xLength);
         int cost1 = 0;
 
-        for (int i = 0; i < m; i++) {
-            int currentValue = (x[0] >> i) & 1;
-            boolean hasOne = currentValue == 1;
-            int runCount = 1;
-            boolean changed = false;
-
-            for (int j = 1; j < xLength; j++) {
-                int subcolumnValue = (x[j] >> i) & 1;
-                if (subcolumnValue == 1) {
-                    hasOne = true;
-                }
-                if (subcolumnValue != currentValue) {
-                    runCount++;
-                    currentValue = subcolumnValue;
-                    changed = true;
-                }
+        Arrays.fill(rleCostSingle, 0, m, 1);
+        int valueMask = m == Integer.SIZE ? -1 : (1 << m) - 1;
+        int previousValue = x[0] & valueMask;
+        int unionValue = previousValue;
+        for (int j = 1; j < xLength; j++) {
+            int currentValue = x[j] & valueMask;
+            unionValue |= currentValue;
+            int changedBits = previousValue ^ currentValue;
+            while (changedBits != 0) {
+                int changedBit = Integer.numberOfTrailingZeros(changedBits);
+                rleCostSingle[changedBit]++;
+                changedBits &= changedBits - 1;
             }
+            previousValue = currentValue;
+        }
 
-            bpeCostSingle[i] = hasOne ? xLength : 0;
+        for (int i = 0; i < m; i++) {
+            int runCount = rleCostSingle[i];
+
+            bpeCostSingle[i] = ((unionValue >>> i) & 1) == 1 ? xLength : 0;
             rleCostSingle[i] = runCount * (1 + lengthBitWidth);
-            deCostSingle[i] = changed ? xLength * 2 + 2 : xLength + 2;
+            deCostSingle[i] = runCount > 1 ? xLength * 2 + 2 : xLength + 2;
 
             if (bpeCostSingle[i] <= rleCostSingle[i] && bpeCostSingle[i] <= deCostSingle[i]) {
                 encodingType[i] = 0;
@@ -905,7 +906,11 @@ public class SubcolumnPruneNewTest {
 
     public static int SubcolumnDecoder(byte[] encodedResult, int encodePos, int[] list,
             int blockSize) {
-        int listLength = list.length;
+        return SubcolumnDecoder(encodedResult, encodePos, list, 0, list.length, blockSize);
+    }
+
+    private static int SubcolumnDecoder(byte[] encodedResult, int encodePos, int[] list,
+            int outputOffset, int listLength, int blockSize) {
         int m = bytes2Integer(encodedResult, encodePos, 1);
         encodePos += 1;
 
@@ -974,7 +979,7 @@ public class SubcolumnPruneNewTest {
 
             int shiftAmount = i * beta;
             for (int j = 0; j < listLength; j++) {
-                list[j] |= subcolumnBuffer[j] << shiftAmount;
+                list[outputOffset + j] |= subcolumnBuffer[j] << shiftAmount;
             }
         }
 
@@ -1057,12 +1062,11 @@ public class SubcolumnPruneNewTest {
         int minDelta = bytes2Integer(encodedResult, encodePos, 4);
         encodePos += 4;
 
-        int[] blockData = new int[remainder];
-        encodePos = SubcolumnDecoder(encodedResult, encodePos, blockData, blockSize);
-
         int base = blockIndex * blockSize;
+        encodePos = SubcolumnDecoder(encodedResult, encodePos, data, base, remainder, blockSize);
+
         for (int i = 0; i < remainder; i++) {
-            data[base + i] = blockData[i] + minDelta;
+            data[base + i] += minDelta;
         }
 
         return encodePos;
