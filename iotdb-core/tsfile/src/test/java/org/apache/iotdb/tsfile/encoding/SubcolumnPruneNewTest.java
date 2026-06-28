@@ -36,6 +36,7 @@ public class SubcolumnPruneNewTest {
         private final int[] codeMap = new int[16];
         private final int[] minDelta = new int[1];
         private final int[] minDelta3 = new int[3];
+        private final int[] beta = new int[1];
         /** Flattened grouped subcolumns: group i starts at i * listLength. */
         private final int[] groupFlat = new int[32 * 8192];
         private final int[] groupMax = new int[32];
@@ -526,6 +527,116 @@ public class SubcolumnPruneNewTest {
         return decodePos;
     }
 
+    private static int decodeBitPackingOrShifted(
+            byte[] encoded,
+            int decodePos,
+            int bitWidth,
+            int numValues,
+            int[] output,
+            int outputOffset,
+            int shiftAmount,
+            int[] fallbackBuffer) {
+        if (bitWidth == 0) {
+            return decodePos;
+        }
+        if (bitWidth == 1) {
+            return decodeBitPackingWidth1OrShifted(encoded, decodePos, numValues, output,
+                    outputOffset, shiftAmount);
+        }
+        if (bitWidth == 2) {
+            return decodeBitPackingWidth2OrShifted(encoded, decodePos, numValues, output,
+                    outputOffset, shiftAmount);
+        }
+        if (bitWidth == 4) {
+            return decodeBitPackingWidth4OrShifted(encoded, decodePos, numValues, output,
+                    outputOffset, shiftAmount);
+        }
+        if (bitWidth == 8) {
+            return decodeBitPackingWidth8OrShifted(encoded, decodePos, numValues, output,
+                    outputOffset, shiftAmount);
+        }
+
+        decodePos = decodeBitPacking(encoded, decodePos, bitWidth, numValues, fallbackBuffer);
+        for (int i = 0; i < numValues; i++) {
+            output[outputOffset + i] |= fallbackBuffer[i] << shiftAmount;
+        }
+        return decodePos;
+    }
+
+    private static int decodeBitPackingWidth1OrShifted(
+            byte[] encoded, int decodePos, int numValues, int[] output, int outputOffset,
+            int shiftAmount) {
+        int i = 0;
+        while (i + 8 <= numValues) {
+            int value = encoded[decodePos++] & 0xFF;
+            output[outputOffset + i] |= ((value >>> 7) & 1) << shiftAmount;
+            output[outputOffset + i + 1] |= ((value >>> 6) & 1) << shiftAmount;
+            output[outputOffset + i + 2] |= ((value >>> 5) & 1) << shiftAmount;
+            output[outputOffset + i + 3] |= ((value >>> 4) & 1) << shiftAmount;
+            output[outputOffset + i + 4] |= ((value >>> 3) & 1) << shiftAmount;
+            output[outputOffset + i + 5] |= ((value >>> 2) & 1) << shiftAmount;
+            output[outputOffset + i + 6] |= ((value >>> 1) & 1) << shiftAmount;
+            output[outputOffset + i + 7] |= (value & 1) << shiftAmount;
+            i += 8;
+        }
+        int bitPos = decodePos * 8;
+        while (i < numValues) {
+            output[outputOffset + i] |= bytesToInt(encoded, bitPos, 1) << shiftAmount;
+            bitPos++;
+            i++;
+        }
+        return (bitPos + 7) / 8;
+    }
+
+    private static int decodeBitPackingWidth2OrShifted(
+            byte[] encoded, int decodePos, int numValues, int[] output, int outputOffset,
+            int shiftAmount) {
+        int i = 0;
+        while (i + 4 <= numValues) {
+            int value = encoded[decodePos++] & 0xFF;
+            output[outputOffset + i] |= ((value >>> 6) & 3) << shiftAmount;
+            output[outputOffset + i + 1] |= ((value >>> 4) & 3) << shiftAmount;
+            output[outputOffset + i + 2] |= ((value >>> 2) & 3) << shiftAmount;
+            output[outputOffset + i + 3] |= (value & 3) << shiftAmount;
+            i += 4;
+        }
+        int bitPos = decodePos * 8;
+        while (i < numValues) {
+            output[outputOffset + i] |= bytesToInt(encoded, bitPos, 2) << shiftAmount;
+            bitPos += 2;
+            i++;
+        }
+        return (bitPos + 7) / 8;
+    }
+
+    private static int decodeBitPackingWidth4OrShifted(
+            byte[] encoded, int decodePos, int numValues, int[] output, int outputOffset,
+            int shiftAmount) {
+        int i = 0;
+        while (i + 2 <= numValues) {
+            int value = encoded[decodePos++] & 0xFF;
+            output[outputOffset + i] |= ((value >>> 4) & 15) << shiftAmount;
+            output[outputOffset + i + 1] |= (value & 15) << shiftAmount;
+            i += 2;
+        }
+        if (i < numValues) {
+            int bitPos = decodePos * 8;
+            output[outputOffset + i] |= bytesToInt(encoded, bitPos, 4) << shiftAmount;
+            bitPos += 4;
+            return (bitPos + 7) / 8;
+        }
+        return decodePos;
+    }
+
+    private static int decodeBitPackingWidth8OrShifted(
+            byte[] encoded, int decodePos, int numValues, int[] output, int outputOffset,
+            int shiftAmount) {
+        for (int i = 0; i < numValues; i++) {
+            output[outputOffset + i] |= (encoded[decodePos++] & 0xFF) << shiftAmount;
+        }
+        return decodePos;
+    }
+
     public static void int2Bytes(int integer, int encodePos, byte[] currentBytes) {
         currentBytes[encodePos] = (byte) (integer >> 24);
         currentBytes[encodePos + 1] = (byte) (integer >> 16);
@@ -1003,17 +1114,18 @@ public class SubcolumnPruneNewTest {
                 continue;
             }
 
+            int seenMask = 0;
             if (useCache) {
                 System.arraycopy(scratch.groupFlat, groupOffset, subcolumnBuffer, 0, listLength);
+                for (int j = 0; j < listLength; j++) {
+                    seenMask |= 1 << subcolumnBuffer[j];
+                }
             } else {
                 for (int j = 0; j < listLength; j++) {
-                    subcolumnBuffer[j] = (list[j] >> shiftAmount) & mask;
+                    int current = (list[j] >> shiftAmount) & mask;
+                    subcolumnBuffer[j] = current;
+                    seenMask |= 1 << current;
                 }
-            }
-
-            int seenMask = 0;
-            for (int j = 0; j < listLength; j++) {
-                seenMask |= 1 << subcolumnBuffer[j];
             }
 
             int cardinality = Integer.bitCount(seenMask);
@@ -1082,10 +1194,12 @@ public class SubcolumnPruneNewTest {
         for (int i = 0; i < l; i++) {
             int type = encodingType[i];
             int currentBitWidth = bitWidthList[i];
+            int shiftAmount = i * beta;
 
             if (type == 0) {
-                encodePos = decodeBitPacking(encodedResult, encodePos, currentBitWidth,
-                        listLength, subcolumnBuffer);
+                encodePos = decodeBitPackingOrShifted(encodedResult, encodePos, currentBitWidth,
+                        listLength, list, outputOffset, shiftAmount, subcolumnBuffer);
+                continue;
             } else if (type == 1) {
                 int index = ((encodedResult[encodePos] & 0xFF) << 8)
                         | (encodedResult[encodePos + 1] & 0xFF);
@@ -1098,10 +1212,14 @@ public class SubcolumnPruneNewTest {
                 int currentIndex = 0;
                 for (int j = 0; j < index; j++) {
                     int endPos = runLength[j];
-                    int value = rleValues[j];
-                    Arrays.fill(subcolumnBuffer, currentIndex, endPos, value);
+                    int value = rleValues[j] << shiftAmount;
+                    int outputBase = outputOffset + currentIndex;
+                    for (int k = currentIndex; k < endPos; k++) {
+                        list[outputBase++] |= value;
+                    }
                     currentIndex = endPos;
                 }
+                continue;
             } else {
                 int cardinality = ((encodedResult[encodePos] & 0xFF) << 8)
                         | (encodedResult[encodePos + 1] & 0xFF);
@@ -1115,13 +1233,9 @@ public class SubcolumnPruneNewTest {
                         subcolumnBuffer);
 
                 for (int j = 0; j < listLength; j++) {
-                    subcolumnBuffer[j] = dictKeyList[subcolumnBuffer[j]];
+                    list[outputOffset + j] |= dictKeyList[subcolumnBuffer[j]] << shiftAmount;
                 }
-            }
-
-            int shiftAmount = i * beta;
-            for (int j = 0; j < listLength; j++) {
-                list[outputOffset + j] |= subcolumnBuffer[j] << shiftAmount;
+                continue;
             }
         }
 
@@ -1143,6 +1257,7 @@ public class SubcolumnPruneNewTest {
             int[] minDelta,
             int[] out) {
         int valueDeltaMin = Integer.MAX_VALUE;
+        int valueDeltaMax = Integer.MIN_VALUE;
         int base = blockIndex * blockSize;
         int end = base + remaining;
 
@@ -1151,19 +1266,17 @@ public class SubcolumnPruneNewTest {
             if (current < valueDeltaMin) {
                 valueDeltaMin = current;
             }
-        }
-
-        int maxValue = 0;
-        for (int j = base; j < end; j++) {
-            int delta = tsBlock[j] - valueDeltaMin;
-            out[j - base] = delta;
-            if (delta > maxValue) {
-                maxValue = delta;
+            if (current > valueDeltaMax) {
+                valueDeltaMax = current;
             }
         }
 
+        for (int j = base; j < end; j++) {
+            out[j - base] = tsBlock[j] - valueDeltaMin;
+        }
+
         minDelta[0] = valueDeltaMin;
-        return maxValue;
+        return valueDeltaMax - valueDeltaMin;
     }
 
     public static int BlockEncoder(int[] data, int blockIndex, int blockSize, int remainder,
@@ -1231,7 +1344,8 @@ public class SubcolumnPruneNewTest {
 
         int numBlocks = dataLength / blockSize;
         int remainder = dataLength % blockSize;
-        int[] beta = new int[] {2};
+        int[] beta = ENCODE_SCRATCH.get().beta;
+        beta[0] = 2;
 
         for (int i = 0; i < numBlocks; i++) {
             encodePos = BlockEncoder(data, i, blockSize, blockSize, encodePos, encodedResult,
