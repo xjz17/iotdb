@@ -940,6 +940,9 @@ public class SubcolumnPruneNewTest {
                 }
 
                 cost += currentCost;
+                if (cost >= cMin) {
+                    break;
+                }
             }
 
             if (cost < cMin) {
