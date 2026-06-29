@@ -37,6 +37,11 @@ public class SubcolumnPruneNewTest {
         private final int[] minDelta = new int[1];
         private final int[] minDelta3 = new int[3];
         private final int[] beta = new int[1];
+        private final int[] betaCandidateOrder = new int[3];
+        private final int[] betaCandidateLowerBound = new int[3];
+        private final int[] betaCandidateCost = new int[3];
+        private final int[] betaCandidateEncodingType = new int[3 * 32];
+        private int lastBestBeta = 2;
         /** Flattened grouped subcolumns: group i starts at i * listLength. */
         private final int[] groupFlat = new int[32 * 8192];
         private final int[] groupMax = new int[32];
@@ -95,6 +100,7 @@ public class SubcolumnPruneNewTest {
     private static final int[] THRESHOLD_8192 =
             {2, 3, 5, 9, 17, 33, 65, 129, 257, 513, 745, 1025, 1261, 1756, 2049, 2049, 2410, 2731, 3019, 3277, 3511, 3724, 3918, 4096, 4097, 4097, 4248, 4389, 4520, 4643, 4757, 4864};
     private static final int[] BETA_LIST = {2, 3, 4};
+    private static boolean USE_ALPHA_HYBRID = false;
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -764,6 +770,84 @@ public class SubcolumnPruneNewTest {
         return distinctCount;
     }
 
+    private static int betaLowerBound(
+            int beta,
+            int m,
+            int xLength,
+            int[] bpeCostSingle,
+            int[] rleCostSingle,
+            int[] deCostSingle) {
+        int l = (m + beta - 1) / beta;
+        int lowerBound = 0;
+        for (int i = 0; i < l; i++) {
+            int groupStart = i * beta;
+            int groupEnd = Math.min(m, groupStart + beta);
+            int betaStart = groupEnd - 1;
+
+            while (betaStart >= groupStart && bpeCostSingle[betaStart] == 0) {
+                betaStart--;
+            }
+
+            if (betaStart < groupStart) {
+                betaStart = groupStart;
+            }
+
+            int bpeCost = bpeCostSingle[betaStart] * (betaStart - groupStart + 1);
+            int rleCostMax = 0;
+            int deCostMax = 0;
+            for (int j = groupStart; j < groupEnd; j++) {
+                if (rleCostSingle[j] > rleCostMax) {
+                    rleCostMax = rleCostSingle[j];
+                }
+                if (deCostSingle[j] > deCostMax) {
+                    deCostMax = deCostSingle[j];
+                }
+            }
+            lowerBound += Math.min(bpeCost, Math.min(rleCostMax, deCostMax));
+        }
+        return lowerBound;
+    }
+
+    private static int buildHybridBetaOrder(
+            int m,
+            int xLength,
+            int[] bpeCostSingle,
+            int[] rleCostSingle,
+            int[] deCostSingle,
+            EncodeScratch scratch) {
+        int count = 0;
+        for (int beta : BETA_LIST) {
+            if (beta > m) {
+                break;
+            }
+            scratch.betaCandidateOrder[count] = beta;
+            scratch.betaCandidateLowerBound[count] =
+                    betaLowerBound(beta, m, xLength, bpeCostSingle, rleCostSingle, deCostSingle);
+            count++;
+        }
+
+        for (int i = 0; i < count; i++) {
+            for (int j = i + 1; j < count; j++) {
+                boolean preferJ = scratch.betaCandidateLowerBound[j]
+                        < scratch.betaCandidateLowerBound[i];
+                if (scratch.betaCandidateOrder[j] == scratch.lastBestBeta
+                        && scratch.betaCandidateOrder[i] != scratch.lastBestBeta) {
+                    preferJ = true;
+                }
+                if (preferJ) {
+                    int betaTmp = scratch.betaCandidateOrder[i];
+                    scratch.betaCandidateOrder[i] = scratch.betaCandidateOrder[j];
+                    scratch.betaCandidateOrder[j] = betaTmp;
+
+                    int lowerTmp = scratch.betaCandidateLowerBound[i];
+                    scratch.betaCandidateLowerBound[i] = scratch.betaCandidateLowerBound[j];
+                    scratch.betaCandidateLowerBound[j] = lowerTmp;
+                }
+            }
+        }
+        return count;
+    }
+
     private static void extractAllGroups(
             EncodeScratch scratch,
             int[] x,
@@ -860,7 +944,18 @@ public class SubcolumnPruneNewTest {
 
         int cMin = cost1;
 
-        for (int beta : BETA_LIST) {
+        int betaCandidateCount = USE_ALPHA_HYBRID
+                ? buildHybridBetaOrder(m, xLength, bpeCostSingle, rleCostSingle, deCostSingle,
+                        scratch)
+                : BETA_LIST.length;
+        if (USE_ALPHA_HYBRID) {
+            Arrays.fill(scratch.betaCandidateCost, Integer.MAX_VALUE);
+        }
+        for (int betaCandidateIndex = 0; betaCandidateIndex < betaCandidateCount;
+                betaCandidateIndex++) {
+            int beta = USE_ALPHA_HYBRID
+                    ? scratch.betaCandidateOrder[betaCandidateIndex]
+                    : BETA_LIST[betaCandidateIndex];
             if (beta > m) {
                 break;
             }
@@ -940,21 +1035,57 @@ public class SubcolumnPruneNewTest {
                 }
 
                 cost += currentCost;
-                if (cost >= cMin) {
+                int pruningLimit = USE_ALPHA_HYBRID ? cost1 : cMin;
+                if (cost >= pruningLimit) {
                     break;
                 }
             }
 
-            if (cost < cMin) {
+            if (USE_ALPHA_HYBRID) {
+                int candidateIndex = beta - BETA_LIST[0];
+                scratch.betaCandidateCost[candidateIndex] = cost;
+                if (cost < cost1) {
+                    System.arraycopy(
+                            encodingTypeTemp,
+                            0,
+                            scratch.betaCandidateEncodingType,
+                            candidateIndex * 32,
+                            l);
+                }
+            } else if (cost < cMin) {
                 cMin = cost;
                 betaBest = beta;
                 System.arraycopy(encodingTypeTemp, 0, encodingType, 0, l);
             }
         }
 
+        if (USE_ALPHA_HYBRID) {
+            cMin = cost1;
+            betaBest = 1;
+            for (int beta : BETA_LIST) {
+                if (beta > m) {
+                    break;
+                }
+                int candidateIndex = beta - BETA_LIST[0];
+                int cost = scratch.betaCandidateCost[candidateIndex];
+                if (cost < cMin) {
+                    int l = (m + beta - 1) / beta;
+                    cMin = cost;
+                    betaBest = beta;
+                    System.arraycopy(
+                            scratch.betaCandidateEncodingType,
+                            candidateIndex * 32,
+                            encodingType,
+                            0,
+                            l);
+                }
+            }
+        }
+
         if (betaBest > 1) {
             extractAllGroups(scratch, x, xLength, betaBest, m, (1 << betaBest) - 1);
         }
+        scratch.lastBestBeta = betaBest;
 
         return betaBest;
     }
@@ -1394,6 +1525,30 @@ public class SubcolumnPruneNewTest {
         return Encoder(data, blockSize, encodedResult, null, null);
     }
 
+    private static void resetAlphaHybridState() {
+        EncodeScratch scratch = ENCODE_SCRATCH.get();
+        scratch.lastBestBeta = 2;
+        scratch.cachedBeta = -1;
+        scratch.cachedL = 0;
+        scratch.cachedListLength = -1;
+    }
+
+    public static int EncoderHybridAlpha(int[] data, int blockSize, byte[] encodedResult) {
+        return EncoderHybridAlpha(data, blockSize, encodedResult, null, null);
+    }
+
+    public static int EncoderHybridAlpha(int[] data, int blockSize, byte[] encodedResult,
+            long[] forTime, long[] subcolumnTime) {
+        boolean previous = USE_ALPHA_HYBRID;
+        USE_ALPHA_HYBRID = true;
+        resetAlphaHybridState();
+        try {
+            return Encoder(data, blockSize, encodedResult, forTime, subcolumnTime);
+        } finally {
+            USE_ALPHA_HYBRID = previous;
+        }
+    }
+
     public static int Encoder(int[] data, int blockSize, byte[] encodedResult, long[] forTime,
             long[] subcolumnTime) {
         int dataLength = data.length;
@@ -1484,6 +1639,119 @@ public class SubcolumnPruneNewTest {
         }
 
         return fileName.substring(0, dotIndex);
+    }
+
+    private static int[] loadCsvAsScaledInts(File file) throws IOException {
+        InputStream inputStream = Files.newInputStream(file.toPath());
+        CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+        ArrayList<Float> data = new ArrayList<>();
+
+        int maxDecimal = 0;
+        while (loader.readRecord()) {
+            String fStr = loader.getValues()[0];
+            if (fStr.isEmpty()) {
+                continue;
+            }
+            int curDecimal = getDecimalPrecision(fStr);
+            if (curDecimal > maxDecimal) {
+                maxDecimal = curDecimal;
+            }
+            data.add(Float.valueOf(fStr));
+        }
+        inputStream.close();
+
+        int[] result = new int[data.size()];
+        int maxMul = (int) Math.pow(10, maxDecimal);
+        for (int i = 0; i < data.size(); i++) {
+            result[i] = (int) (data.get(i) * maxMul);
+        }
+        return result;
+    }
+
+    @Test
+    public void benchmarkAlphaHybrid() throws IOException {
+        String inputParentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
+        int blockSize = 512;
+        int warmupTime = 3;
+        int repeatTime = 30;
+
+        File directory = new File(inputParentDir);
+        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+        if (csvFiles == null) {
+            return;
+        }
+        Arrays.sort(csvFiles);
+
+        System.out.println(
+                "Dataset,Points,BaselineSize,HybridSize,BaselineRatio,HybridRatio,"
+                        + "BaselineNsPerPoint,HybridNsPerPoint,TimeChangePct,SameSize");
+        for (File file : csvFiles) {
+            int[] data = loadCsvAsScaledInts(file);
+            byte[] baselineEncoded = new byte[Math.max(16, data.length * 8)];
+            byte[] hybridEncoded = new byte[Math.max(16, data.length * 8)];
+
+            int baselineLength = 0;
+            int hybridLength = 0;
+            for (int i = 0; i < warmupTime; i++) {
+                baselineLength = Encoder(data, blockSize, baselineEncoded);
+                hybridLength = EncoderHybridAlpha(data, blockSize, hybridEncoded);
+            }
+
+            long baselineTime = 0;
+            long hybridTime = 0;
+            for (int i = 0; i < repeatTime; i++) {
+                if ((i & 1) == 0) {
+                    long start = System.nanoTime();
+                    baselineLength = Encoder(data, blockSize, baselineEncoded);
+                    baselineTime += System.nanoTime() - start;
+
+                    start = System.nanoTime();
+                    hybridLength = EncoderHybridAlpha(data, blockSize, hybridEncoded);
+                    hybridTime += System.nanoTime() - start;
+                } else {
+                    long start = System.nanoTime();
+                    hybridLength = EncoderHybridAlpha(data, blockSize, hybridEncoded);
+                    hybridTime += System.nanoTime() - start;
+
+                    start = System.nanoTime();
+                    baselineLength = Encoder(data, blockSize, baselineEncoded);
+                    baselineTime += System.nanoTime() - start;
+                }
+            }
+            baselineTime /= repeatTime;
+            hybridTime /= repeatTime;
+
+            Assert.assertArrayEquals(
+                    data, Decoder(Arrays.copyOf(hybridEncoded, hybridLength)));
+
+            double baselineRatio = baselineLength / (double) (Math.max(1, data.length) * Long.BYTES);
+            double hybridRatio = hybridLength / (double) (Math.max(1, data.length) * Long.BYTES);
+            double baselineNsPerPoint = baselineTime / (double) Math.max(1, data.length);
+            double hybridNsPerPoint = hybridTime / (double) Math.max(1, data.length);
+            double timeChangePct = (hybridNsPerPoint - baselineNsPerPoint)
+                    / Math.max(1.0e-9, baselineNsPerPoint) * 100.0;
+
+            System.out.println(
+                    extractFileName(file.toString())
+                            + ","
+                            + data.length
+                            + ","
+                            + baselineLength
+                            + ","
+                            + hybridLength
+                            + ","
+                            + baselineRatio
+                            + ","
+                            + hybridRatio
+                            + ","
+                            + baselineNsPerPoint
+                            + ","
+                            + hybridNsPerPoint
+                            + ","
+                            + timeChangePct
+                            + ","
+                            + (baselineLength == hybridLength));
+        }
     }
 
     @Test
