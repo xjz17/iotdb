@@ -101,6 +101,7 @@ public class SubcolumnPruneNewTest {
             {2, 3, 5, 9, 17, 33, 65, 129, 257, 513, 745, 1025, 1261, 1756, 2049, 2049, 2410, 2731, 3019, 3277, 3511, 3724, 3918, 4096, 4097, 4097, 4248, 4389, 4520, 4643, 4757, 4864};
     private static final int[] BETA_LIST = {2, 3, 4};
     private static boolean USE_ALPHA_HYBRID = false;
+    private static boolean USE_ALPHA_FAST_HYBRID = false;
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -959,6 +960,10 @@ public class SubcolumnPruneNewTest {
             if (beta > m) {
                 break;
             }
+            if (USE_ALPHA_FAST_HYBRID
+                    && scratch.betaCandidateLowerBound[betaCandidateIndex] >= cMin) {
+                continue;
+            }
 
             int l = (m + beta - 1) / beta;
             int cost = 0;
@@ -1041,7 +1046,13 @@ public class SubcolumnPruneNewTest {
                 }
             }
 
-            if (USE_ALPHA_HYBRID) {
+            if (USE_ALPHA_FAST_HYBRID) {
+                if (cost < cMin) {
+                    cMin = cost;
+                    betaBest = beta;
+                    System.arraycopy(encodingTypeTemp, 0, encodingType, 0, l);
+                }
+            } else if (USE_ALPHA_HYBRID) {
                 int candidateIndex = beta - BETA_LIST[0];
                 scratch.betaCandidateCost[candidateIndex] = cost;
                 if (cost < cost1) {
@@ -1059,7 +1070,7 @@ public class SubcolumnPruneNewTest {
             }
         }
 
-        if (USE_ALPHA_HYBRID) {
+        if (USE_ALPHA_HYBRID && !USE_ALPHA_FAST_HYBRID) {
             cMin = cost1;
             betaBest = 1;
             for (int beta : BETA_LIST) {
@@ -1540,12 +1551,34 @@ public class SubcolumnPruneNewTest {
     public static int EncoderHybridAlpha(int[] data, int blockSize, byte[] encodedResult,
             long[] forTime, long[] subcolumnTime) {
         boolean previous = USE_ALPHA_HYBRID;
+        boolean previousFast = USE_ALPHA_FAST_HYBRID;
         USE_ALPHA_HYBRID = true;
+        USE_ALPHA_FAST_HYBRID = false;
         resetAlphaHybridState();
         try {
             return Encoder(data, blockSize, encodedResult, forTime, subcolumnTime);
         } finally {
             USE_ALPHA_HYBRID = previous;
+            USE_ALPHA_FAST_HYBRID = previousFast;
+        }
+    }
+
+    public static int EncoderFastHybridAlpha(int[] data, int blockSize, byte[] encodedResult) {
+        return EncoderFastHybridAlpha(data, blockSize, encodedResult, null, null);
+    }
+
+    public static int EncoderFastHybridAlpha(int[] data, int blockSize, byte[] encodedResult,
+            long[] forTime, long[] subcolumnTime) {
+        boolean previous = USE_ALPHA_HYBRID;
+        boolean previousFast = USE_ALPHA_FAST_HYBRID;
+        USE_ALPHA_HYBRID = true;
+        USE_ALPHA_FAST_HYBRID = true;
+        resetAlphaHybridState();
+        try {
+            return Encoder(data, blockSize, encodedResult, forTime, subcolumnTime);
+        } finally {
+            USE_ALPHA_HYBRID = previous;
+            USE_ALPHA_FAST_HYBRID = previousFast;
         }
     }
 
@@ -1751,6 +1784,84 @@ public class SubcolumnPruneNewTest {
                             + timeChangePct
                             + ","
                             + (baselineLength == hybridLength));
+        }
+    }
+
+    @Test
+    public void benchmarkFastAlphaHybrid() throws IOException {
+        String inputParentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/dataset/";
+        int blockSize = 512;
+        int warmupTime = 3;
+        int repeatTime = 30;
+
+        File directory = new File(inputParentDir);
+        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+        if (csvFiles == null) {
+            return;
+        }
+        Arrays.sort(csvFiles);
+
+        System.out.println(
+                "Dataset,Points,HybridSize,FastSize,HybridRatio,FastRatio,"
+                        + "HybridNsPerPoint,FastNsPerPoint,FastVsHybridTimePct,"
+                        + "FastVsHybridSizeDelta,FastNoWorseRatio,FastFaster");
+        for (File file : csvFiles) {
+            int[] data = loadCsvAsScaledInts(file);
+            byte[] hybridEncoded = new byte[Math.max(16, data.length * 8)];
+            byte[] fastEncoded = new byte[Math.max(16, data.length * 8)];
+
+            int hybridLength = 0;
+            int fastLength = 0;
+            for (int i = 0; i < warmupTime; i++) {
+                hybridLength = EncoderHybridAlpha(data, blockSize, hybridEncoded);
+                fastLength = EncoderFastHybridAlpha(data, blockSize, fastEncoded);
+            }
+
+            long start = System.nanoTime();
+            for (int i = 0; i < repeatTime; i++) {
+                hybridLength = EncoderHybridAlpha(data, blockSize, hybridEncoded);
+            }
+            long hybridTime = (System.nanoTime() - start) / repeatTime;
+
+            start = System.nanoTime();
+            for (int i = 0; i < repeatTime; i++) {
+                fastLength = EncoderFastHybridAlpha(data, blockSize, fastEncoded);
+            }
+            long fastTime = (System.nanoTime() - start) / repeatTime;
+
+            Assert.assertArrayEquals(data, Decoder(Arrays.copyOf(fastEncoded, fastLength)));
+
+            double hybridRatio = hybridLength / (double) (Math.max(1, data.length) * Long.BYTES);
+            double fastRatio = fastLength / (double) (Math.max(1, data.length) * Long.BYTES);
+            double hybridNsPerPoint = hybridTime / (double) Math.max(1, data.length);
+            double fastNsPerPoint = fastTime / (double) Math.max(1, data.length);
+            double timeChangePct = (fastNsPerPoint - hybridNsPerPoint)
+                    / Math.max(1.0e-9, hybridNsPerPoint) * 100.0;
+
+            System.out.println(
+                    extractFileName(file.toString())
+                            + ","
+                            + data.length
+                            + ","
+                            + hybridLength
+                            + ","
+                            + fastLength
+                            + ","
+                            + hybridRatio
+                            + ","
+                            + fastRatio
+                            + ","
+                            + hybridNsPerPoint
+                            + ","
+                            + fastNsPerPoint
+                            + ","
+                            + timeChangePct
+                            + ","
+                            + (fastLength - hybridLength)
+                            + ","
+                            + (fastLength <= hybridLength)
+                            + ","
+                            + (fastNsPerPoint < hybridNsPerPoint));
         }
     }
 
