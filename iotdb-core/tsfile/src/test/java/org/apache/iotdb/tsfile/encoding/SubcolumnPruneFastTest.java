@@ -408,9 +408,10 @@ public class SubcolumnPruneFastTest {
 
     @Test
     public void testBlockSizeBenchmark() throws IOException {
-        String parentDir = "path/to/your/directory/";
+        // String parentDir = "/Users/xiaojinzhao/Documents/GitHub/subcolumn/";
+        String parentDir = "D:/github/xjz17/subcolumn/";
         String inputParentDir = parentDir + "dataset/";
-        String outputParentDir = parentDir + "result/compression_vs_block_prune_fast/";
+        String outputParentDir = parentDir + "result/compression_vs_block_noprune_legacy/";
 
         File outputDir = new File(outputParentDir);
         if (!outputDir.exists() && !outputDir.mkdirs()) {
@@ -418,7 +419,7 @@ public class SubcolumnPruneFastTest {
         }
 
         int[] blockSizeList = {32, 64, 128, 256, 512, 1024, 2048, 4096, 8192};
-        int repeatTime = 200;
+        int repeatTime = 100;
 
         String[] datasets = {
             "Bird-migration",
