@@ -989,6 +989,9 @@ public final class SubcolumnAblationPruneNewEngine {
                 }
 
                 cost += currentCost;
+                if (cost >= cMin) {
+                    break;
+                }
             }
 
             if (cost < cMin) {
@@ -1555,7 +1558,8 @@ public final class SubcolumnAblationPruneNewEngine {
         String inputParentDir = parentDir + "dataset/";
 
         int blockSize = 512;
-        int repeatTime = 500;
+        // int repeatTime = 500;
+        int repeatTime = 200;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
         writer.setRecordDelimiter('\n');
